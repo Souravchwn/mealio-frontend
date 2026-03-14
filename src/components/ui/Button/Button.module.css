@@ -1,0 +1,133 @@
+.root {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: var(--tracking-wide);
+}
+
+.root:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.root:active {
+    transform: scale(0.98);
+}
+
+/* Sizes */
+.small {
+    height: 36px;
+    padding: 0 var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.medium {
+    height: 44px;
+    padding: 0 var(--space-6);
+    font-size: var(--text-base);
+}
+
+.large {
+    height: 52px;
+    padding: 0 var(--space-8);
+    font-size: var(--text-lg);
+}
+
+/* Variants */
+.primary {
+    background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+    color: white;
+    box-shadow: 0 2px 8px rgb(99 102 241 / 0.3);
+}
+
+.primary:hover {
+    background: linear-gradient(135deg, var(--color-primary-hover), #6d28d9);
+    box-shadow: 0 4px 16px rgb(99 102 241 / 0.4);
+    transform: translateY(-1px);
+}
+
+.secondary {
+    background: var(--color-bg-card);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.secondary:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+}
+
+.ghost:hover {
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+}
+
+.danger {
+    background: var(--color-danger);
+    color: white;
+}
+
+.danger:hover {
+    background: var(--color-danger-dark);
+}
+
+.accent {
+    background: linear-gradient(135deg, var(--color-accent), #e65100);
+    color: white;
+    box-shadow: 0 2px 8px rgb(245 158 11 / 0.3);
+}
+
+.accent:hover {
+    box-shadow: 0 4px 16px rgb(245 158 11 / 0.4);
+    transform: translateY(-1px);
+}
+
+/* States */
+.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.fullWidth {
+    width: 100%;
+}
+
+/* Loading spinner */
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: var(--radius-full);
+    animation: spin 0.6s linear infinite;
+}
+
+/* Ripple effect pseudo-element */
+.root::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.root:hover::after {
+    opacity: 1;
+}

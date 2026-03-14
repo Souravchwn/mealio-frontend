@@ -1,0 +1,114 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.header {
+    margin-bottom: 0;
+}
+
+.title {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+}
+
+.subtitle {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.auditList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.auditCard {
+    border-left: 3px solid var(--color-primary);
+}
+
+.auditHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.auditIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.auditMeta {
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.auditTime {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.auditReason {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius-sm);
+}
+
+.reasonLabel {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.auditDiff {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.diffOld,
+.diffNew {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+.diffOld {
+    background: var(--color-danger-light);
+}
+
+.diffNew {
+    background: var(--color-success-light);
+}
+
+.diffLabel {
+    display: block;
+    font-family: var(--font-primary);
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-1);
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 640px) {
+    .auditDiff {
+        grid-template-columns: 1fr;
+    }
+}

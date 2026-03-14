@@ -1,0 +1,220 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.headerText h2 {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    margin-bottom: var(--space-1);
+}
+
+.headerText p {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.cutoffBadge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.cutoffActive {
+    background: var(--color-success-light);
+    color: var(--color-success-dark);
+}
+
+.cutoffExpired {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+/* Meal Cards */
+.mealCards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-6);
+}
+
+.mealCard {
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    text-align: center;
+    border: 2px solid var(--color-border);
+    background: var(--color-bg-card);
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.mealCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--color-text-muted);
+    transition: background var(--transition-base);
+}
+
+.mealCardActive {
+    border-color: var(--color-success);
+}
+
+.mealCardActive::before {
+    background: linear-gradient(90deg, var(--color-success), #34d399);
+}
+
+.mealIcon {
+    font-size: 48px;
+    margin-bottom: var(--space-4);
+    display: block;
+}
+
+.mealName {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    margin-bottom: var(--space-6);
+}
+
+/* Toggle Switch */
+.toggleWrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.toggleLabel {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    min-width: 32px;
+}
+
+.toggleOff {
+    color: var(--color-text-muted);
+}
+
+.toggleOn {
+    color: var(--color-success);
+}
+
+.toggle {
+    position: relative;
+    width: 60px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    background: var(--color-text-muted);
+    cursor: pointer;
+    transition: background var(--transition-base);
+}
+
+.toggleActive {
+    background: var(--color-success);
+}
+
+.toggleKnob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-full);
+    background: white;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-spring);
+}
+
+.toggleActive .toggleKnob {
+    transform: translateX(28px);
+}
+
+.toggleDisabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Guest Section */
+.guestSection {
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+}
+
+.guestHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.guestTitle {
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.guestControls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.guestBtn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    font-size: var(--text-xl);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.guestBtn:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.guestBtn:active {
+    transform: scale(0.95);
+}
+
+.guestCount {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    min-width: 48px;
+    text-align: center;
+}
+
+/* All On/Off buttons */
+.bulkActions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+@media (max-width: 768px) {
+    .mealCards {
+        grid-template-columns: 1fr;
+    }
+}

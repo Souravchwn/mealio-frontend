@@ -1,0 +1,278 @@
+{
+    "common": {
+        "appName": "Mealio",
+        "tagline": "Smart Mess Management",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "close": "Close",
+        "loading": "Loading...",
+        "error": "Something went wrong",
+        "retry": "Retry",
+        "success": "Success!",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "search": "Search...",
+        "noData": "No data available",
+        "viewAll": "View All",
+        "currency": "৳",
+        "today": "Today",
+        "thisMonth": "This Month"
+    },
+    "landing": {
+        "hero": {
+            "title": "Your Mess,",
+            "titleHighlight": "Simplified.",
+            "subtitle": "Stop scrolling WhatsApp for meal counts. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
+            "cta": "Get Started Free",
+            "ctaSecondary": "See How It Works"
+        },
+        "stats": {
+            "messes": "Active Messes",
+            "meals": "Meals Tracked",
+            "saved": "Hours Saved Monthly"
+        },
+        "features": {
+            "title": "Everything Your Mess Needs",
+            "subtitle": "From daily meal toggles to monthly settlements — all in one place.",
+            "mealToggle": {
+                "title": "One-Tap Meal Toggle",
+                "description": "Toggle breakfast, lunch, or dinner with a single tap. Works via Telegram bot or the web app. Cut-off enforcement ensures the cook always has accurate headcounts."
+            },
+            "expense": {
+                "title": "Smart Expense Tracking",
+                "description": "Log every bazaar trip by category — protein, vegetables, spices, and more. Live meal rate updates automatically so everyone knows exactly what they owe."
+            },
+            "headcount": {
+                "title": "Real-Time Cook Dashboard",
+                "description": "The cook sees exactly how many people are eating today, including guests. No more guessing, no more food waste. Updated in real-time."
+            },
+            "matrix": {
+                "title": "The Excel Killer",
+                "description": "A full month matrix showing every member's meal attendance. Auto-calculated totals, balances, and one-click month-close. Say goodbye to Excel sheets."
+            },
+            "finance": {
+                "title": "ACID Financial Integrity",
+                "description": "Every taka is traceable. Atomic transactions ensure no ghost values, no lost data. Bank-grade reliability for your mess finances."
+            },
+            "ai": {
+                "title": "AI Insights (Coming Soon)",
+                "description": "Nutrition analysis, commodity price tracking, and predictive shopping. Your mess data becomes a goldmine for health and economic insights."
+            }
+        },
+        "roles": {
+            "title": "Built for Everyone in Your Mess",
+            "member": {
+                "title": "Members",
+                "description": "Toggle meals, add guests, check your balance — all from your phone."
+            },
+            "manager": {
+                "title": "Meal Manager",
+                "description": "Log daily bazaar expenses and track the live meal rate effortlessly."
+            },
+            "admin": {
+                "title": "Admin",
+                "description": "Full control — month matrix, settlements, member management, and audit trail."
+            },
+            "cook": {
+                "title": "Cook",
+                "description": "One big number — today's headcount. No clutter, just clarity."
+            }
+        },
+        "cta": {
+            "title": "Ready to Digitize Your Mess?",
+            "subtitle": "Join hundreds of messes already using Mealio to save time, money, and arguments.",
+            "button": "Create Your Mess"
+        },
+        "footer": {
+            "madeWith": "Made with ❤️ for the mess culture of",
+            "bangladesh": "Bangladesh",
+            "and": "&",
+            "india": "India",
+            "copyright": "© 2026 Mealio. All rights reserved."
+        }
+    },
+    "auth": {
+        "login": {
+            "title": "Welcome Back",
+            "subtitle": "Sign in to manage your mess",
+            "email": "Email Address",
+            "password": "Password",
+            "submit": "Sign In",
+            "forgotPassword": "Forgot password?",
+            "noAccount": "Don't have an account?",
+            "register": "Create one"
+        },
+        "register": {
+            "title": "Join Mealio",
+            "subtitle": "Create your account and get started",
+            "name": "Full Name",
+            "email": "Email Address",
+            "phone": "Phone Number",
+            "password": "Password",
+            "confirmPassword": "Confirm Password",
+            "messCode": "Mess Invite Code",
+            "messCodeHelp": "Ask your mess admin for the invite code",
+            "submit": "Create Account",
+            "hasAccount": "Already have an account?",
+            "login": "Sign in"
+        }
+    },
+    "nav": {
+        "overview": "Overview",
+        "meals": "My Meals",
+        "mealHistory": "Meal History",
+        "expenses": "Expenses",
+        "expenseAnalytics": "Analytics",
+        "headcount": "Headcount",
+        "matrix": "Month Matrix",
+        "members": "Members",
+        "audit": "Audit Trail",
+        "settings": "Settings",
+        "logout": "Logout",
+        "profile": "Profile"
+    },
+    "overview": {
+        "greeting": "Good {timeOfDay}, {name}!",
+        "morning": "morning",
+        "afternoon": "afternoon",
+        "evening": "evening",
+        "todayMeals": "Today's Meals",
+        "mealRate": "Meal Rate",
+        "yourBalance": "Your Balance",
+        "totalMembers": "Total Members",
+        "monthExpense": "Month Expense",
+        "totalMeals": "Total Meals",
+        "headcountToday": "Headcount Today",
+        "recentExpenses": "Recent Expenses",
+        "quickActions": "Quick Actions",
+        "toggleMeals": "Toggle Meals",
+        "addExpense": "Add Expense",
+        "viewMatrix": "View Matrix",
+        "viewHeadcount": "View Headcount"
+    },
+    "meals": {
+        "title": "Today's Meals",
+        "subtitle": "Toggle your meals for today",
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "on": "ON",
+        "off": "OFF",
+        "guestCount": "Guest Count",
+        "addGuest": "Add Guest",
+        "removeGuest": "Remove Guest",
+        "cutoffPassed": "Cut-off time has passed",
+        "cutoffIn": "Cut-off in {time}",
+        "allOn": "All Meals ON",
+        "allOff": "All Meals OFF",
+        "history": {
+            "title": "Meal History",
+            "subtitle": "Your meal attendance calendar"
+        },
+        "status": {
+            "active": "Active",
+            "frozen": "Frozen"
+        }
+    },
+    "expenses": {
+        "title": "Bazaar Expenses",
+        "subtitle": "Track and manage daily bazaar spending",
+        "addExpense": "Add Expense",
+        "amount": "Amount (৳)",
+        "category": "Category",
+        "description": "Description",
+        "date": "Date",
+        "mealRate": "Current Meal Rate",
+        "totalExpense": "Total Expense",
+        "addedBy": "Added by",
+        "noExpenses": "No expenses recorded yet",
+        "categories": {
+            "PROTEIN": "Protein",
+            "CARB": "Carbohydrate",
+            "VEGETABLE": "Vegetable",
+            "SPICE": "Spice",
+            "OIL": "Oil",
+            "UTILITY": "Utility",
+            "OTHER": "Other"
+        },
+        "analytics": {
+            "title": "Expense Analytics",
+            "subtitle": "Understand your spending patterns",
+            "byCategory": "By Category",
+            "dailyTrend": "Daily Trend",
+            "monthComparison": "Month Comparison"
+        }
+    },
+    "headcount": {
+        "title": "Today's Headcount",
+        "subtitle": "Real-time count for the cook",
+        "members": "Members",
+        "guests": "Guests",
+        "total": "Total",
+        "lastUpdated": "Last updated",
+        "preparing": "Preparing for",
+        "people": "people"
+    },
+    "matrix": {
+        "title": "Month Matrix",
+        "subtitle": "Complete meal attendance matrix",
+        "member": "Member",
+        "totalMeals": "Total Meals",
+        "amount": "Amount",
+        "balance": "Balance",
+        "closeMonth": "Close Month",
+        "exportCsv": "Export CSV",
+        "monthClosed": "Month Closed",
+        "confirmClose": "Are you sure you want to close this month? This action cannot be undone.",
+        "closeSuccess": "Month closed successfully!",
+        "summary": {
+            "totalExpense": "Total Expense",
+            "totalMeals": "Total Meals",
+            "mealRate": "Meal Rate",
+            "members": "Members"
+        }
+    },
+    "members": {
+        "title": "Members",
+        "subtitle": "Manage your mess members",
+        "name": "Name",
+        "role": "Role",
+        "balance": "Balance",
+        "phone": "Phone",
+        "status": "Status",
+        "addMember": "Add Member",
+        "inviteCode": "Invite Code",
+        "roles": {
+            "ADMIN": "Admin",
+            "MANAGER": "Manager",
+            "MEMBER": "Member"
+        }
+    },
+    "audit": {
+        "title": "Audit Trail",
+        "subtitle": "Track all administrative changes",
+        "admin": "Admin",
+        "action": "Action",
+        "entity": "Entity",
+        "reason": "Reason",
+        "time": "Time",
+        "oldValue": "Old Value",
+        "newValue": "New Value",
+        "noEntries": "No audit entries yet"
+    },
+    "settings": {
+        "title": "Mess Settings",
+        "subtitle": "Configure your mess preferences",
+        "messName": "Mess Name",
+        "cutoffTime": "Meal Cut-off Time",
+        "cutoffHelp": "Members cannot toggle meals after this time",
+        "inviteCode": "Invite Code",
+        "regenerateCode": "Regenerate Code",
+        "saveChanges": "Save Changes",
+        "dangerZone": "Danger Zone",
+        "deleteMess": "Delete Mess"
+    }
+}
