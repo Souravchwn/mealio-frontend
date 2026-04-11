@@ -214,11 +214,19 @@
         grid-template-columns: 1fr;
     }
 
-    .statsRow {
-        grid-template-columns: 1fr;
-    }
-
     .expenseRow {
         padding: var(--space-3) var(--space-4);
+    }
+
+    .listHeader {
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .title {
+        font-size: var(--text-xl);
+    }
+
+    .miniStatValue {
+        font-size: var(--text-xl);
     }
 }

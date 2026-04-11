@@ -25,7 +25,7 @@
         "hero": {
             "title": "Your Mess,",
             "titleHighlight": "Simplified.",
-            "subtitle": "Stop scrolling WhatsApp for meal counts. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
+            "subtitle": "Stop chasing meal counts in endless group chats. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
             "cta": "Get Started Free",
             "ctaSecondary": "See How It Works"
         },
@@ -103,7 +103,9 @@
             "submit": "Sign In",
             "forgotPassword": "Forgot password?",
             "noAccount": "Don't have an account?",
-            "register": "Create one"
+            "register": "Create one",
+            "success": "Logged in successfully!",
+            "error": "Login failed. Please check your credentials."
         },
         "register": {
             "title": "Join Mealio",
@@ -117,7 +119,10 @@
             "messCodeHelp": "Ask your mess admin for the invite code",
             "submit": "Create Account",
             "hasAccount": "Already have an account?",
-            "login": "Sign in"
+            "login": "Sign in",
+            "success": "Account created successfully!",
+            "error": "Registration failed. Please try again.",
+            "passwordMismatch": "Passwords do not match"
         }
     },
     "nav": {
@@ -127,6 +132,7 @@
         "expenses": "Expenses",
         "expenseAnalytics": "Analytics",
         "headcount": "Headcount",
+        "mySummary": "My Summary",
         "matrix": "Month Matrix",
         "members": "Members",
         "audit": "Audit Trail",
@@ -248,7 +254,8 @@
         "roles": {
             "ADMIN": "Admin",
             "MANAGER": "Manager",
-            "MEMBER": "Member"
+            "MEMBER": "Member",
+            "GUEST": "Guest"
         }
     },
     "audit": {
@@ -262,6 +269,32 @@
         "oldValue": "Old Value",
         "newValue": "New Value",
         "noEntries": "No audit entries yet"
+    },
+    "mySummary": {
+        "title": "My Monthly Summary",
+        "subtitle": "Personal breakdown for {month}",
+        "mealRate": "Meal Rate",
+        "totalMeals": "Meals (Last 7 Days)",
+        "contributed": "Contributed",
+        "mealCost": "Meal Cost",
+        "balance": "Balance",
+        "mealBreakdown": "Meal Breakdown",
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "guestMeals": "Guest Meals",
+        "times": "times",
+        "last7Days": "Last 7 Days",
+        "financialSummary": "Financial Summary",
+        "telegramStatus": "Telegram",
+        "telegramLinked": "Linked",
+        "telegramNotLinked": "Not linked — use /link in the bot"
+    },
+    "guest": {
+        "badge": "Guest",
+        "dateRange": "Guest from {from} to {until}",
+        "expired": "Guest period ended",
+        "active": "Active guest"
     },
     "settings": {
         "title": "Mess Settings",

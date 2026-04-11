@@ -1,34 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { Plus, TrendingUp, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { cn, formatCurrency, getCategoryColor } from "@/lib/utils";
-import type { ExpenseCategory } from "@/types";
+import type { ExpenseCategory, ExpenseResponse } from "@/types";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import styles from "./expenses.module.css";
 
-const MOCK_EXPENSES = [
-    { id: "1", description: "Rui Fish — Karwan Bazar", amount: 850, category: "PROTEIN" as ExpenseCategory, date: "2026-03-14", memberName: "Rahat" },
-    { id: "2", description: "Rice (25kg) — Hatirjheel", amount: 1400, category: "CARB" as ExpenseCategory, date: "2026-03-14", memberName: "Sourav" },
-    { id: "3", description: "Mixed Vegetables", amount: 450, category: "VEGETABLE" as ExpenseCategory, date: "2026-03-13", memberName: "Rahat" },
-    { id: "4", description: "Cooking Oil (5L)", amount: 680, category: "OIL" as ExpenseCategory, date: "2026-03-13", memberName: "Sourav" },
-    { id: "5", description: "Eggs (30pcs)", amount: 420, category: "PROTEIN" as ExpenseCategory, date: "2026-03-12", memberName: "Rahat" },
-    { id: "6", description: "Spice Mix", amount: 180, category: "SPICE" as ExpenseCategory, date: "2026-03-12", memberName: "Rahat" },
-    { id: "7", description: "Gas Cylinder", amount: 1200, category: "UTILITY" as ExpenseCategory, date: "2026-03-11", memberName: "Sourav" },
-    { id: "8", description: "Potatoes & Onions", amount: 320, category: "VEGETABLE" as ExpenseCategory, date: "2026-03-11", memberName: "Rahat" },
-];
+const CATEGORIES: ExpenseCategory[] = ["PROTEIN", "CARB", "VEGETABLE", "SPICE", "OIL", "UTILITY", "OTHER"];
 
 export default function ExpensesPage() {
     const t = useTranslations("expenses");
     const tc = useTranslations("common");
     const locale = useLocale();
-    const [showForm, setShowForm] = useState(false);
+    const { user, token } = useAuth();
 
-    const totalExpense = MOCK_EXPENSES.reduce((sum, e) => sum + e.amount, 0);
-    const mealRate = 87.5;
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
+    const [mealRate, setMealRate] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [search, setSearch] = useState("");
+
+    // Form state
+    const [amount, setAmount] = useState("");
+    const [category, setCategory] = useState<ExpenseCategory>("PROTEIN");
+    const [description, setDescription] = useState("");
+    const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+
+    useEffect(() => {
+        if (!user || !token) return;
+        Promise.allSettled([
+            api.expenses.getExpenses(user.messId, currentMonth, token),
+            api.expenses.getMealRate(user.messId, currentMonth, token),
+        ]).then(([expRes, rateRes]) => {
+            if (expRes.status === "fulfilled") setExpenses(expRes.value);
+            if (rateRes.status === "fulfilled") setMealRate(Number(rateRes.value.mealRate));
+            setLoading(false);
+        });
+    }, [user, token, currentMonth]);
+
+    const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const canAddExpense = user?.role === "ADMIN" || user?.role === "MANAGER";
+
+    const filtered = search.trim()
+        ? expenses.filter(
+              (e) =>
+                  (e.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
+                  e.memberName.toLowerCase().includes(search.toLowerCase())
+          )
+        : expenses;
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!user || !token) return;
+        setSubmitting(true);
+        try {
+            const newExpense = await api.expenses.addExpense(
+                {
+                    messId: user.messId,
+                    memberId: user.id,
+                    amount: Number(amount),
+                    category,
+                    description,
+                    date,
+                },
+                token
+            );
+            setExpenses((prev) => [newExpense, ...prev]);
+            setMealRate(Number(newExpense.liveMealRate));
+            setShowForm(false);
+            setAmount("");
+            setDescription("");
+            setDate(new Date().toISOString().slice(0, 10));
+            toast.success("Expense added");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to add expense");
+        } finally {
+            setSubmitting(false);
+        }
+    }
 
     return (
         <div className={styles.page}>
@@ -38,10 +97,12 @@ export default function ExpensesPage() {
                     <h2 className={styles.title}>{t("title")}</h2>
                     <p className={styles.subtitle}>{t("subtitle")}</p>
                 </div>
-                <Button onClick={() => setShowForm(!showForm)}>
-                    <Plus size={18} />
-                    {t("addExpense")}
-                </Button>
+                {canAddExpense && (
+                    <Button onClick={() => setShowForm(!showForm)}>
+                        <Plus size={18} />
+                        {t("addExpense")}
+                    </Button>
+                )}
             </div>
 
             {/* Stats */}
@@ -50,7 +111,7 @@ export default function ExpensesPage() {
                     <div className={styles.miniStat}>
                         <span className={styles.miniStatLabel}>{t("totalExpense")}</span>
                         <span className={styles.miniStatValue}>
-                            {formatCurrency(totalExpense, locale)}
+                            {loading ? "—" : formatCurrency(totalExpense, locale)}
                         </span>
                     </div>
                 </Card>
@@ -58,23 +119,17 @@ export default function ExpensesPage() {
                     <div className={styles.miniStat}>
                         <span className={styles.miniStatLabel}>{t("mealRate")}</span>
                         <span className={cn(styles.miniStatValue, styles.primaryText)}>
-                            {formatCurrency(mealRate, locale)}
+                            {loading ? "—" : formatCurrency(mealRate, locale)}
                         </span>
                     </div>
                 </Card>
             </div>
 
             {/* Add Expense Form */}
-            {showForm && (
+            {showForm && canAddExpense && (
                 <Card className={styles.formCard}>
                     <h3 className={styles.formTitle}>{t("addExpense")}</h3>
-                    <form
-                        className={styles.form}
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            setShowForm(false);
-                        }}
-                    >
+                    <form className={styles.form} onSubmit={handleSubmit}>
                         <div className={styles.formRow}>
                             <div className={styles.field}>
                                 <label className={styles.label}>{t("amount")}</label>
@@ -82,23 +137,21 @@ export default function ExpensesPage() {
                                     className={styles.input}
                                     type="number"
                                     step="0.01"
+                                    min="0.01"
                                     placeholder="0.00"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    required
                                 />
                             </div>
                             <div className={styles.field}>
                                 <label className={styles.label}>{t("category")}</label>
-                                <select className={styles.select}>
-                                    {(
-                                        [
-                                            "PROTEIN",
-                                            "CARB",
-                                            "VEGETABLE",
-                                            "SPICE",
-                                            "OIL",
-                                            "UTILITY",
-                                            "OTHER",
-                                        ] as ExpenseCategory[]
-                                    ).map((cat) => (
+                                <select
+                                    className={styles.select}
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+                                >
+                                    {CATEGORIES.map((cat) => (
                                         <option key={cat} value={cat}>
                                             {t(`categories.${cat}`)}
                                         </option>
@@ -113,18 +166,28 @@ export default function ExpensesPage() {
                                     className={styles.input}
                                     type="text"
                                     placeholder="e.g. Rui fish from Karwan Bazar"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
                                 />
                             </div>
                             <div className={styles.field}>
                                 <label className={styles.label}>{t("date")}</label>
-                                <input className={styles.input} type="date" />
+                                <input
+                                    className={styles.input}
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    required
+                                />
                             </div>
                         </div>
                         <div className={styles.formActions}>
                             <Button variant="ghost" type="button" onClick={() => setShowForm(false)}>
                                 {tc("cancel")}
                             </Button>
-                            <Button type="submit">{tc("save")}</Button>
+                            <Button type="submit" disabled={submitting}>
+                                {submitting ? tc("loading") || "Saving…" : tc("save")}
+                            </Button>
                         </div>
                     </form>
                 </Card>
@@ -139,38 +202,50 @@ export default function ExpensesPage() {
                             className={styles.searchInput}
                             type="text"
                             placeholder={tc("search")}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                 </div>
                 <div className={styles.expenseList}>
-                    {MOCK_EXPENSES.map((expense) => (
-                        <div key={expense.id} className={styles.expenseRow}>
-                            <div
-                                className={styles.categoryDot}
-                                style={{ backgroundColor: getCategoryColor(expense.category) }}
-                            />
-                            <div className={styles.expenseInfo}>
-                                <span className={styles.expenseDesc}>
-                                    {expense.description}
-                                </span>
-                                <span className={styles.expenseMeta}>
-                                    {expense.date} · {expense.memberName} ·{" "}
-                                    <span
-                                        className={styles.categoryTag}
-                                        style={{
-                                            backgroundColor: getCategoryColor(expense.category) + "18",
-                                            color: getCategoryColor(expense.category),
-                                        }}
-                                    >
-                                        {t(`categories.${expense.category}`)}
+                    {loading ? (
+                        <div className={styles.expenseRow} style={{ justifyContent: "center", color: "var(--color-text-muted)" }}>
+                            Loading…
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className={styles.expenseRow} style={{ justifyContent: "center", color: "var(--color-text-muted)" }}>
+                            No expenses this month.
+                        </div>
+                    ) : (
+                        filtered.map((expense) => (
+                            <div key={expense.id} className={styles.expenseRow}>
+                                <div
+                                    className={styles.categoryDot}
+                                    style={{ backgroundColor: getCategoryColor(expense.category) }}
+                                />
+                                <div className={styles.expenseInfo}>
+                                    <span className={styles.expenseDesc}>
+                                        {expense.description || "—"}
                                     </span>
+                                    <span className={styles.expenseMeta}>
+                                        {expense.date} · {expense.memberName} ·{" "}
+                                        <span
+                                            className={styles.categoryTag}
+                                            style={{
+                                                backgroundColor: getCategoryColor(expense.category) + "18",
+                                                color: getCategoryColor(expense.category),
+                                            }}
+                                        >
+                                            {t(`categories.${expense.category}`)}
+                                        </span>
+                                    </span>
+                                </div>
+                                <span className={styles.expenseAmount}>
+                                    {formatCurrency(Number(expense.amount), locale)}
                                 </span>
                             </div>
-                            <span className={styles.expenseAmount}>
-                                {formatCurrency(expense.amount, locale)}
-                            </span>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </Card>
         </div>

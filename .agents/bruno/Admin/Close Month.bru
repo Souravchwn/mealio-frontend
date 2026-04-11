@@ -1,0 +1,50 @@
+meta {
+  name: Close Month
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/admin/close-month
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "messId": "{{messId}}",
+    "adminId": "{{adminMemberId}}",
+    "yearMonth": "2026-02"
+  }
+}
+
+docs {
+  # Close Month
+
+  **Requires `SYSTEM_ADMIN` role.**
+
+  Finalises a calendar month by:
+  1. Calculating the definitive meal rate
+  2. Settling each member's balance
+  3. Persisting a `MonthlySnapshot` (status → `CLOSED`)
+
+  Once closed a month **cannot be re-opened**. Any attempt returns HTTP 409.
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 200  | `MonthCloseResponse` with snapshot details |
+  | 400  | Validation error (bad yearMonth format, missing fields) |
+  | 401  | Missing or invalid token |
+  | 403  | Insufficient role (not SYSTEM_ADMIN) |
+  | 404  | Mess not found |
+  | 409  | Month already closed |
+}

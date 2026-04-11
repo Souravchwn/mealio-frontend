@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mealio — Smart Mess Management
 
-## Getting Started
+Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.
 
-First, run the development server:
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 20+ 
+- npm or yarn
+
+### Installation
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🎭 Demo Accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app is currently running with **mock data** for demonstration. Use these credentials to explore different user roles:
 
-## Learn More
+| Role | Email | Password | Access Level |
+|------|-------|----------|--------------|
+| **Admin** | `admin@demo.com` | `admin123` | Full access to all features including matrix, members, audit logs |
+| **Manager** | `manager@demo.com` | `manager123` | Can manage expenses, view headcount, toggle meals |
+| **Member** | `member@demo.com` | `member123` | Can toggle own meals, view headcount |
 
-To learn more about Next.js, take a look at the following resources:
+### Features by Role
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Admin:**
+- View monthly matrix with all member meal data
+- Manage members and settings
+- Close monthly accounts
+- View audit trails
+- All manager and member features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Manager:**
+- Add and view expenses
+- View headcount for cooking
+- Toggle meals for all members
+- View overview dashboard
 
-## Deploy on Vercel
+**Member:**
+- Toggle own meals (breakfast, lunch, dinner)
+- Add guest counts
+- View personal balance
+- View headcount
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🎨 Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Meal Toggle** — Mark meals on/off before cutoff time
+- **Expense Tracking** — Categorized expense management
+- **Headcount** — Real-time meal planning for cooks
+- **Monthly Matrix** — Complete meal and expense breakdown
+- **Multi-language** — English & Bengali (বাংলা)
+- **Dark Mode** — Beautiful light/dark themes
+- **Responsive** — Works on mobile, tablet, and desktop
+
+## 🔧 Configuration
+
+### Enable/Disable Mock Data
+
+Edit `.env.local`:
+
+```bash
+# Use mock data (for demo/development)
+NEXT_PUBLIC_USE_MOCK_DATA=true
+
+# Use real API (for production)
+NEXT_PUBLIC_USE_MOCK_DATA=false
+API_BASE_URL=http://your-api-url:8080
+```
+
+### Mock Data Location
+
+All mock data is in `src/lib/mockData.ts`. You can customize:
+- Demo user accounts
+- Sample expenses
+- Monthly matrix data
+- Headcount information
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   └── [locale]/
+│       ├── (auth)/          # Login, Register
+│       ├── (dashboard)/     # Protected dashboard pages
+│       └── page.tsx         # Landing page
+├── components/
+│   ├── ui/                  # Reusable UI components
+│   └── composed/            # Complex composed components
+├── contexts/
+│   └── AuthContext.tsx      # Authentication state management
+├── lib/
+│   ├── api.ts              # API client with mock fallback
+│   ├── mockData.ts         # Demo data
+│   └── utils.ts            # Utility functions
+└── types/
+    └── index.ts            # TypeScript type definitions
+```
+
+## 🌐 Internationalization
+
+Switch between English and Bengali using the language switcher in the navbar.
+
+Translation files: `messages/en.json` and `messages/bn.json`
+
+## 🎯 Production Deployment
+
+1. Set up your backend API
+2. Update `.env.local` with production API URL
+3. Set `NEXT_PUBLIC_USE_MOCK_DATA=false`
+4. Build and deploy:
+
+```bash
+npm run build
+npm start
+```
+
+## 🛠 Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** CSS Modules
+- **i18n:** next-intl
+- **UI:** Custom design system
+- **State:** React Context API
+- **Icons:** Lucide React
+
+## 📝 License
+
+Private project for mess management.
+
+---
+
+Made with 🍽 for Bangladesh 🇧🇩 and India 🇮🇳

@@ -2,8 +2,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - var(--topbar-height) - var(--space-12));
+    min-height: calc(100dvh - var(--topbar-height) - var(--space-12));
     animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    padding: var(--space-4) 0;
 }
 
 .bigNumberCard {
@@ -165,10 +166,24 @@
 
 @media (max-width: 640px) {
     .bigNumberCard {
-        padding: var(--space-8) var(--space-6);
+        padding: var(--space-8) var(--space-5);
+        box-shadow: var(--shadow-md);
     }
 
     .bigNumber {
-        font-size: 80px;
+        font-size: 96px;
+    }
+
+    .breakdown {
+        gap: var(--space-6);
+    }
+
+    .breakdownIcon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .breakdownValue {
+        font-size: var(--text-xl);
     }
 }

@@ -3,15 +3,48 @@
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
-import { ArrowLeft, Utensils } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
+import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import styles from "../auth.module.css";
 
 export default function LoginPage() {
     const t = useTranslations("auth.login");
     const tc = useTranslations("common");
     const locale = useLocale();
+    const router = useRouter();
+    const { login } = useAuth();
+
+    // Form state
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+
+        try {
+            const response = await api.auth.login({ email, password });
+
+            // Use auth context to store user and token
+            login(response.user, response.accessToken);
+
+            toast.success(t("success") || "Logged in successfully!");
+            // Redirect to dashboard
+            router.push(`/${locale}/overview`);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : t("error") || "Login failed");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <div className={styles.page}>
@@ -30,11 +63,18 @@ export default function LoginPage() {
 
             {/* Right form panel */}
             <div className={styles.formSide}>
-                <div className={styles.switcherWrap}>
+                <div className={styles.switcherWrap} style={{ display: 'flex', gap: '0.5rem' }}>
+                    <ThemeToggle />
                     <LocaleSwitcher />
                 </div>
 
                 <div className={styles.formContainer}>
+                    {/* Brand logo — visible only on mobile when visual panel is hidden */}
+                    <div className={styles.mobileBrand}>
+                        <div className={styles.mobileLogo}>🍽</div>
+                        <span className={styles.mobileBrandName}>{tc("appName")}</span>
+                    </div>
+
                     <Link href={`/${locale}`} className={styles.backLink}>
                         <ArrowLeft size={16} />
                         {tc("back")}
@@ -43,7 +83,7 @@ export default function LoginPage() {
                     <h1 className={styles.title}>{t("title")}</h1>
                     <p className={styles.subtitle}>{t("subtitle")}</p>
 
-                    <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
+                    <form className={styles.form} onSubmit={handleLogin}>
                         <div className={styles.field}>
                             <label className={styles.label} htmlFor="email">
                                 {t("email")}
@@ -54,6 +94,9 @@ export default function LoginPage() {
                                 type="email"
                                 placeholder="name@example.com"
                                 autoComplete="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
                             />
                         </div>
 
@@ -67,6 +110,9 @@ export default function LoginPage() {
                                 type="password"
                                 placeholder="••••••••"
                                 autoComplete="current-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
                             />
                             <Link href="#" className={styles.forgotLink}>
                                 {t("forgotPassword")}
@@ -74,8 +120,8 @@ export default function LoginPage() {
                         </div>
 
                         <div className={styles.submitBtn}>
-                            <Button type="submit" size="large" fullWidth>
-                                {t("submit")}
+                            <Button type="submit" size="large" fullWidth disabled={isLoading}>
+                                {isLoading ? tc("loading") || "Submitting..." : t("submit")}
                             </Button>
                         </div>
                     </form>

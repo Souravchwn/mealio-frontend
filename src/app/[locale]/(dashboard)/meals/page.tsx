@@ -1,46 +1,133 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Sun, CloudSun, Moon, Clock, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { MealSlot } from "@/types";
+import { toast } from "sonner";
 import styles from "./meals.module.css";
+
+type MealSlotKey = "breakfast" | "lunch" | "dinner";
+
+const SLOT_MAP: Record<MealSlotKey, MealSlot> = {
+    breakfast: MealSlot.BREAKFAST,
+    lunch: MealSlot.LUNCH,
+    dinner: MealSlot.DINNER,
+};
 
 export default function MealsPage() {
     const t = useTranslations("meals");
+    const { user, token } = useAuth();
 
-    const [meals, setMeals] = useState({
-        breakfast: true,
-        lunch: true,
+    const today = new Date().toISOString().slice(0, 10);
+
+    const [meals, setMeals] = useState<Record<MealSlotKey, boolean>>({
+        breakfast: false,
+        lunch: false,
         dinner: false,
     });
-
     const [guestCount, setGuestCount] = useState(0);
-    const cutoffPassed = false; // Replace with real cut-off logic
+    const [cutoffPassed, setCutoffPassed] = useState(false);
+    const [cutoffTime, setCutoffTime] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [toggling, setToggling] = useState<MealSlotKey | null>(null);
+    const [updatingGuest, setUpdatingGuest] = useState(false);
 
-    function toggleMeal(slot: "breakfast" | "lunch" | "dinner") {
-        if (cutoffPassed) return;
-        setMeals((prev) => ({ ...prev, [slot]: !prev[slot] }));
-        // TODO: API call with optimistic update
+    const loadToday = useCallback(async () => {
+        if (!user || !token) return;
+        try {
+            const log = await api.meals.getToday(user.id, token, today);
+            setMeals({
+                breakfast: log.breakfast,
+                lunch: log.lunch,
+                dinner: log.dinner,
+            });
+            setGuestCount(log.guestCount);
+            setCutoffPassed(log.cutOffPassed);
+            setCutoffTime(log.cutOffTime);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load today's meals");
+        } finally {
+            setLoading(false);
+        }
+    }, [user, token, today]);
+
+    useEffect(() => {
+        loadToday();
+    }, [loadToday]);
+
+    async function toggleMeal(slot: MealSlotKey) {
+        if (cutoffPassed || toggling !== null || !user || !token) return;
+        const newStatus = !meals[slot];
+        setMeals((prev) => ({ ...prev, [slot]: newStatus }));
+        setToggling(slot);
+        try {
+            await api.meals.toggleMeal(
+                { memberId: user.id, date: today, slot: SLOT_MAP[slot], status: newStatus },
+                token
+            );
+        } catch (err) {
+            setMeals((prev) => ({ ...prev, [slot]: !newStatus }));
+            toast.error(err instanceof Error ? err.message : "Failed to toggle meal");
+        } finally {
+            setToggling(null);
+        }
     }
 
-    const mealSlots = [
-        {
-            key: "breakfast" as const,
-            icon: <Sun size={48} strokeWidth={1.5} />,
-            label: t("breakfast"),
-        },
-        {
-            key: "lunch" as const,
-            icon: <CloudSun size={48} strokeWidth={1.5} />,
-            label: t("lunch"),
-        },
-        {
-            key: "dinner" as const,
-            icon: <Moon size={48} strokeWidth={1.5} />,
-            label: t("dinner"),
-        },
+    async function setAllMeals(status: boolean) {
+        if (cutoffPassed || !user || !token) return;
+        const slots: MealSlotKey[] = ["breakfast", "lunch", "dinner"];
+        setMeals({ breakfast: status, lunch: status, dinner: status });
+        try {
+            await Promise.all(
+                slots.map((slot) =>
+                    api.meals.toggleMeal(
+                        { memberId: user.id, date: today, slot: SLOT_MAP[slot], status },
+                        token
+                    )
+                )
+            );
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to update meals");
+            loadToday();
+        }
+    }
+
+    async function changeGuest(delta: number) {
+        if (cutoffPassed || updatingGuest || !user || !token) return;
+        const newCount = Math.max(0, guestCount + delta);
+        setGuestCount(newCount);
+        setUpdatingGuest(true);
+        try {
+            await api.meals.updateGuest({ memberId: user.id, date: today, guestCount: newCount }, token);
+        } catch (err) {
+            setGuestCount(guestCount);
+            toast.error(err instanceof Error ? err.message : "Failed to update guest count");
+        } finally {
+            setUpdatingGuest(false);
+        }
+    }
+
+    const cutoffRemaining = (() => {
+        if (!cutoffTime || cutoffPassed) return "";
+        const [h, m] = cutoffTime.split(":").map(Number);
+        const cutoff = new Date();
+        cutoff.setHours(h, m, 0, 0);
+        const diff = cutoff.getTime() - Date.now();
+        if (diff <= 0) return "";
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    })();
+
+    const mealSlots: { key: MealSlotKey; icon: React.ReactNode; label: string }[] = [
+        { key: "breakfast", icon: <Sun size={48} strokeWidth={1.5} />, label: t("breakfast") },
+        { key: "lunch", icon: <CloudSun size={48} strokeWidth={1.5} />, label: t("lunch") },
+        { key: "dinner", icon: <Moon size={48} strokeWidth={1.5} />, label: t("dinner") },
     ];
 
     return (
@@ -61,7 +148,11 @@ export default function MealsPage() {
                     <Clock size={16} />
                     {cutoffPassed
                         ? t("cutoffPassed")
-                        : t("cutoffIn", { time: "3h 25m" })}
+                        : cutoffRemaining
+                        ? t("cutoffIn", { time: cutoffRemaining })
+                        : cutoffTime
+                        ? `Cutoff: ${cutoffTime}`
+                        : "—"}
                 </div>
             </div>
 
@@ -70,20 +161,16 @@ export default function MealsPage() {
                 <Button
                     variant="secondary"
                     size="small"
-                    onClick={() =>
-                        setMeals({ breakfast: true, lunch: true, dinner: true })
-                    }
-                    disabled={cutoffPassed}
+                    onClick={() => setAllMeals(true)}
+                    disabled={cutoffPassed || loading}
                 >
                     {t("allOn")}
                 </Button>
                 <Button
                     variant="ghost"
                     size="small"
-                    onClick={() =>
-                        setMeals({ breakfast: false, lunch: false, dinner: false })
-                    }
-                    disabled={cutoffPassed}
+                    onClick={() => setAllMeals(false)}
+                    disabled={cutoffPassed || loading}
                 >
                     {t("allOff")}
                 </Button>
@@ -98,31 +185,34 @@ export default function MealsPage() {
                             styles.mealCard,
                             meals[slot.key] && styles.mealCardActive
                         )}
+                        onClick={() => !cutoffPassed && !loading && toggleMeal(slot.key)}
                     >
                         <span className={styles.mealIcon}>{slot.icon}</span>
-                        <h3 className={styles.mealName}>{slot.label}</h3>
+                        <div className={styles.mealCardContent}>
+                            <h3 className={styles.mealName}>{slot.label}</h3>
 
-                        <div className={styles.toggleWrap}>
-                            <span className={cn(styles.toggleLabel, styles.toggleOff)}>
-                                {t("off")}
-                            </span>
-                            <button
-                                className={cn(
-                                    styles.toggle,
-                                    meals[slot.key] && styles.toggleActive,
-                                    cutoffPassed && styles.toggleDisabled
-                                )}
-                                onClick={() => toggleMeal(slot.key)}
-                                disabled={cutoffPassed}
-                                role="switch"
-                                aria-checked={meals[slot.key]}
-                                aria-label={`Toggle ${slot.label}`}
-                            >
-                                <span className={styles.toggleKnob} />
-                            </button>
-                            <span className={cn(styles.toggleLabel, styles.toggleOn)}>
-                                {t("on")}
-                            </span>
+                            <div className={styles.toggleWrap}>
+                                <span className={cn(styles.toggleLabel, styles.toggleOff)}>
+                                    {t("off")}
+                                </span>
+                                <button
+                                    className={cn(
+                                        styles.toggle,
+                                        meals[slot.key] && styles.toggleActive,
+                                        (cutoffPassed || toggling === slot.key) && styles.toggleDisabled
+                                    )}
+                                    onClick={(e) => { e.stopPropagation(); toggleMeal(slot.key); }}
+                                    disabled={cutoffPassed || toggling !== null || loading}
+                                    role="switch"
+                                    aria-checked={meals[slot.key]}
+                                    aria-label={`Toggle ${slot.label}`}
+                                >
+                                    <span className={styles.toggleKnob} />
+                                </button>
+                                <span className={cn(styles.toggleLabel, styles.toggleOn)}>
+                                    {t("on")}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -137,8 +227,8 @@ export default function MealsPage() {
                 <div className={styles.guestControls}>
                     <button
                         className={styles.guestBtn}
-                        onClick={() => setGuestCount((c) => Math.max(0, c - 1))}
-                        disabled={guestCount === 0 || cutoffPassed}
+                        onClick={() => changeGuest(-1)}
+                        disabled={guestCount === 0 || cutoffPassed || updatingGuest}
                         aria-label={t("removeGuest")}
                     >
                         <Minus size={20} />
@@ -146,8 +236,8 @@ export default function MealsPage() {
                     <span className={styles.guestCount}>{guestCount}</span>
                     <button
                         className={styles.guestBtn}
-                        onClick={() => setGuestCount((c) => c + 1)}
-                        disabled={cutoffPassed}
+                        onClick={() => changeGuest(1)}
+                        disabled={cutoffPassed || updatingGuest}
                         aria-label={t("addGuest")}
                     >
                         <Plus size={20} />

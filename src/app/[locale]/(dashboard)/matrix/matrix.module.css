@@ -156,6 +156,18 @@
     color: var(--color-text);
 }
 
+.guestBadge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    background: #f59e0b22;
+    color: #d97706;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
 .dayHeader {
     min-width: 32px;
 }

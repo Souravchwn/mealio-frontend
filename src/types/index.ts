@@ -4,6 +4,7 @@ export const Role = {
     ADMIN: "ADMIN",
     MANAGER: "MANAGER",
     MEMBER: "MEMBER",
+    GUEST: "GUEST",
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];
@@ -41,7 +42,10 @@ export type MonthStatus = (typeof MonthStatus)[keyof typeof MonthStatus];
 export interface Mess {
     id: string;
     name: string;
+    inviteCode: string;
     cutOffTime: string;
+    isActive: boolean;
+    estimatedMonthlyBudget?: number;
     createdAt: string;
 }
 
@@ -50,8 +54,13 @@ export interface Member {
     messId: string;
     name: string;
     phone?: string;
-    telegramUserId?: string;
+    telegramUid?: number;
+    telegramLinked: boolean;
     role: Role;
+    isActive: boolean;
+    isGuest: boolean;
+    guestFrom?: string;
+    guestUntil?: string;
     balance: number;
 }
 
@@ -69,7 +78,7 @@ export interface DailyLog {
 export interface Expense {
     id: string;
     messId: string;
-    memberId: string;
+    memberId: string | null;
     memberName?: string;
     amount: number;
     category: ExpenseCategory;
@@ -85,7 +94,7 @@ export interface MonthlySnapshot {
     totalExpense: number;
     mealRate: number;
     totalMeals: number;
-    status: MonthStatus;
+    isClosed: boolean;
     closedAt?: string;
 }
 
@@ -126,19 +135,24 @@ export interface HeadcountResponse {
     memberCount: number;
     guestCount: number;
     totalHeadcount: number;
-    source: "firebase" | "database";
+    source: "database";
 }
 
 export interface ExpenseResponse {
     id: string;
+    messId: string;
+    memberId: string;
+    memberName: string;
     amount: number;
     category: ExpenseCategory;
-    description: string;
+    description: string | null;
     date: string;
+    createdAt: string;
     liveMealRate: number;
 }
 
 export interface MonthMatrixResponse {
+    messId: string;
     messName: string;
     yearMonth: string;
     mealRate: number;
@@ -150,6 +164,10 @@ export interface MonthMatrixResponse {
 export interface MemberMatrixRow {
     memberId: string;
     memberName: string;
+    memberRole: string;
+    isGuest: boolean;
+    guestFrom?: string;
+    guestUntil?: string;
     days: DayEntry[];
     totalMeals: number;
     totalAmount: number;
@@ -157,12 +175,15 @@ export interface MemberMatrixRow {
 }
 
 export interface DayEntry {
+    logId: string;
+    memberId: string;
+    memberName: string;
     date: string;
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
     guestCount: number;
-    totalMeals: number;
+    frozen: boolean;
 }
 
 /* API Requests */
@@ -182,7 +203,7 @@ export interface RegisterRequest {
 
 export interface ExpenseRequest {
     messId: string;
-    memberId: string;
+    memberId?: string;
     amount: number;
     category: ExpenseCategory;
     description: string;
@@ -206,4 +227,10 @@ export interface CloseMonthRequest {
     messId: string;
     adminId: string;
     yearMonth: string;
+}
+
+export interface MessSwitchResponse {
+    accessToken: string;
+    refreshToken: string;
+    mess: { id: string; name: string };
 }

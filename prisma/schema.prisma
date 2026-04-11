@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Mess {
+  id                     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                   String
+  inviteCode             String   @unique @map("invite_code")
+  cutOffTime             DateTime @map("cut_off_time") @db.Time(6)
+  estimatedMonthlyBudget Decimal? @map("estimated_monthly_budget") @db.Decimal(10, 2)
+  isActive               Boolean  @default(true) @map("is_active")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  members       Member[]
+  messMonths    MessMonth[]
+  dailyLogs     DailyLog[]
+  expenses      Expense[]
+  ledgerEntries LedgerEntry[]
+  auditLogs     AuditLog[]
+  memberships   MessMembership[]
+
+  @@map("messes")
+}
+
+model Member {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId         String?   @map("mess_id") @db.Uuid
+  name           String
+  email          String    @unique
+  phone          String?
+  passwordHash   String    @map("password_hash")
+  role           String    @default("MEMBER")
+  telegramUid    BigInt?   @unique @map("telegram_uid")
+  telegramLinked Boolean   @default(false) @map("telegram_linked")
+  isActive       Boolean   @default(true) @map("is_active")
+  isGuest        Boolean   @default(false) @map("is_guest")
+  guestFrom      DateTime? @map("guest_from") @db.Date
+  guestUntil     DateTime? @map("guest_until") @db.Date
+  invitedBy      String?   @map("invited_by") @db.Uuid
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  mess           Mess?           @relation(fields: [messId], references: [id], onDelete: Cascade)
+  inviter        Member?         @relation("InvitedBy", fields: [invitedBy], references: [id])
+  invitees       Member[]        @relation("InvitedBy")
+  dailyLogs      DailyLog[]
+  addedExpenses  Expense[]       @relation("AddedBy")
+  ledgerEntries  LedgerEntry[]   @relation("MemberLedger")
+  createdLedgers LedgerEntry[]   @relation("CreatedBy")
+  auditLogs      AuditLog[]
+  memberships    MessMembership[]
+
+  @@index([messId], map: "idx_members_mess")
+  @@index([telegramUid], map: "idx_members_telegram")
+  @@map("members")
+}
+
+model MessMonth {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId       String    @map("mess_id") @db.Uuid
+  yearMonth    String    @map("year_month")
+  isClosed     Boolean   @default(false) @map("is_closed")
+  closedAt     DateTime? @map("closed_at") @db.Timestamptz(6)
+  mealRate     Decimal?  @map("meal_rate") @db.Decimal(10, 4)
+  totalExpense Decimal   @default(0) @map("total_expense") @db.Decimal(10, 2)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess          Mess          @relation(fields: [messId], references: [id], onDelete: Cascade)
+  ledgerEntries LedgerEntry[]
+
+  @@unique([messId, yearMonth])
+  @@map("mess_months")
+}
+
+model DailyLog {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId     String   @map("mess_id") @db.Uuid
+  memberId   String   @map("member_id") @db.Uuid
+  logDate    DateTime @map("log_date") @db.Date
+  breakfast  Boolean  @default(true)
+  lunch      Boolean  @default(true)
+  dinner     Boolean  @default(true)
+  guestCount Int      @default(0) @map("guest_count")
+  frozen     Boolean  @default(false)
+  toggledAt  DateTime @default(now()) @map("toggled_at") @db.Timestamptz(6)
+
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([messId, memberId, logDate])
+  @@index([messId, logDate], map: "idx_daily_logs_mess_date")
+  @@index([memberId, logDate], map: "idx_daily_logs_member_date")
+  @@map("daily_logs")
+}
+
+model Expense {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String   @map("mess_id") @db.Uuid
+  addedBy     String?  @map("added_by") @db.Uuid
+  amount      Decimal  @db.Decimal(10, 2)
+  category    String
+  description String?
+  expenseDate DateTime @map("expense_date") @db.Date
+  yearMonth   String   @map("year_month")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess          Mess    @relation(fields: [messId], references: [id], onDelete: Cascade)
+  addedByMember Member? @relation("AddedBy", fields: [addedBy], references: [id])
+
+  @@index([messId, yearMonth], map: "idx_expenses_mess_month")
+  @@map("expenses")
+}
+
+model LedgerEntry {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String   @map("mess_id") @db.Uuid
+  messMonthId String?  @map("mess_month_id") @db.Uuid
+  memberId    String   @map("member_id") @db.Uuid
+  entryType   String   @map("entry_type")
+  amount      Decimal  @db.Decimal(10, 2)
+  note        String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess      Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  messMonth MessMonth? @relation(fields: [messMonthId], references: [id])
+  member    Member     @relation("MemberLedger", fields: [memberId], references: [id], onDelete: Cascade)
+  creator   Member?    @relation("CreatedBy", fields: [createdBy], references: [id])
+
+  @@index([memberId, messMonthId], map: "idx_ledger_member_month")
+  @@map("ledger_entries")
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String?  @map("mess_id") @db.Uuid
+  actorId     String?  @map("actor_id") @db.Uuid
+  action      String
+  targetTable String?  @map("target_table")
+  targetId    String?  @map("target_id") @db.Uuid
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess  Mess?   @relation(fields: [messId], references: [id])
+  actor Member? @relation(fields: [actorId], references: [id])
+
+  @@map("audit_log")
+}
+
+model MessMembership {
+  id       String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  memberId String   @map("member_id") @db.Uuid
+  messId   String   @map("mess_id") @db.Uuid
+  role     String
+  isActive Boolean  @default(true) @map("is_active")
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, messId])
+  @@map("mess_memberships")
+}
