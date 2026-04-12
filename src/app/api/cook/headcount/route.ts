@@ -13,15 +13,28 @@ export async function GET(req: NextRequest) {
   const today = new Date().toISOString().slice(0, 10)
   const todayObj = new Date(`${today}T00:00:00.000Z`)
 
-  const [mess, logs] = await Promise.all([
+  const [mess, allMembers, logs] = await Promise.all([
     prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),
+    // All active non-guest members
+    prisma.member.findMany({
+      where: { messId, isActive: true, isGuest: false },
+      select: { id: true },
+    }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: todayObj },
-      select: { lunch: true, guestCount: true },
+      select: { memberId: true, lunch: true, guestCount: true },
     }),
   ])
 
-  const memberCount = logs.filter((l) => l.lunch).length
+  const logByMember = new Map(logs.map((l) => [l.memberId, l]))
+
+  // A member is counted if they have no log (default ON) OR their log has lunch = true
+  const memberCount = allMembers.filter((m) => {
+    const log = logByMember.get(m.id)
+    return log ? log.lunch : true
+  }).length
+
+  // Guest count only from explicit log entries
   const guestCount = logs.reduce((s, l) => s + l.guestCount, 0)
 
   return NextResponse.json({

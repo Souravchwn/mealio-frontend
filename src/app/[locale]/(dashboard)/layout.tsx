@@ -22,7 +22,6 @@ import {
     Bell,
     BarChart2,
 } from "lucide-react";
-import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials } from "@/lib/utils";
@@ -107,7 +106,7 @@ export default function DashboardLayout({
             key: "mySummary",
             href: `${basePath}/my-summary`,
             icon: <BarChart2 size={20} />,
-            roles: ["MEMBER"],
+            roles: ["ADMIN", "MANAGER", "MEMBER"],
         },
     ];
 
@@ -154,8 +153,8 @@ export default function DashboardLayout({
     );
     const pageTitle = currentNavItem ? t(currentNavItem.key) : t("overview");
 
-    // Bottom nav items (max 5 for mobile)
-    const bottomNavItems = filteredMain.slice(0, 4);
+    // Bottom nav — show all filtered main items (up to 5)
+    const bottomNavItems = filteredMain.slice(0, 5);
 
     return (
         <div className={styles.layout}>
@@ -263,7 +262,6 @@ export default function DashboardLayout({
 
                     <div className={styles.topbarRight}>
                         <ThemeToggle />
-                        <LocaleSwitcher />
                         <button
                             className={styles.menuButton}
                             style={{ display: "flex" }}

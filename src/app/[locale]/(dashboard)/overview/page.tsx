@@ -128,7 +128,7 @@ export default function OverviewPage() {
         {
             key: "mealRate",
             label: t("mealRate"),
-            value: formatCurrency(stats.mealRate, locale),
+            value: formatCurrency(stats.mealRate),
             icon: <TrendingUp size={22} />,
             iconClass: styles.statIconPrimary,
             trend: null,
@@ -136,7 +136,7 @@ export default function OverviewPage() {
         {
             key: "balance",
             label: t("yourBalance"),
-            value: formatCurrency(stats.balance, locale),
+            value: formatCurrency(stats.balance),
             icon: <Wallet size={22} />,
             iconClass: styles.statIconSuccess,
             trend: null,
@@ -144,7 +144,7 @@ export default function OverviewPage() {
         {
             key: "monthExpense",
             label: t("monthExpense"),
-            value: formatCurrency(stats.monthExpense, locale),
+            value: formatCurrency(stats.monthExpense),
             icon: <Receipt size={22} />,
             iconClass: styles.statIconAccent,
             trend: null,
@@ -286,7 +286,7 @@ export default function OverviewPage() {
                                         <div className={styles.expenseDate}>{expense.date}</div>
                                     </div>
                                     <div className={styles.expenseAmount}>
-                                        {formatCurrency(expense.amount, locale)}
+                                        {formatCurrency(expense.amount)}
                                     </div>
                                 </div>
                             ))

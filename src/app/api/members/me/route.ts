@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { monthRange, countMealSlots } from '@/lib/financial'
+import { monthRange, countMealSlots, calculateMemberBalance } from '@/lib/financial'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -47,6 +47,6 @@ export async function GET(req: NextRequest) {
     my_meal_count: myMealCount,
     contributed,
     meal_cost: mealCost,
-    balance: contributed - mealCost,
+    balance: calculateMemberBalance(contributed, myMealCount, mealRate),
   })
 }

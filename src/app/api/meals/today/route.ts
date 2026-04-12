@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { extractCutoffTime, isCutoffPassed } from '@/lib/financial'
+import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -17,11 +19,7 @@ export async function GET(req: NextRequest) {
     select: { cutOffTime: true },
   })
 
-  // cutOffTime is DateTime @db.Time — extract HH:MM from the ISO string
-  const cutOffTime = mess?.cutOffTime
-    ? mess.cutOffTime.toISOString().slice(11, 16)
-    : '21:00'
-
+  const cutoffHHMM = extractCutoffTime(mess?.cutOffTime)
   const logDateObj = new Date(`${logDate}T00:00:00.000Z`)
 
   let log = await prisma.dailyLog.findFirst({
@@ -45,14 +43,7 @@ export async function GET(req: NextRequest) {
 
   if (!log) return NextResponse.json({ detail: 'Failed to get meal log' }, { status: 500 })
 
-  const today = new Date().toISOString().slice(0, 10)
-  let cutOffPassed = log.frozen
-  if (!cutOffPassed && logDate === today) {
-    const [h, m] = cutOffTime.split(':').map(Number)
-    const cutoff = new Date()
-    cutoff.setHours(h, m, 0, 0)
-    cutOffPassed = Date.now() >= cutoff.getTime()
-  }
+  const cutOffPassed = log.frozen || isCutoffPassed(cutoffHHMM, logDate, DEFAULT_TIMEZONE)
 
   return NextResponse.json({
     id: log.id,
@@ -63,7 +54,7 @@ export async function GET(req: NextRequest) {
     dinner: log.dinner,
     guest_count: log.guestCount,
     frozen: log.frozen,
-    cut_off_time: cutOffTime,
+    cut_off_time: cutoffHHMM,
     cut_off_passed: cutOffPassed,
   })
 }

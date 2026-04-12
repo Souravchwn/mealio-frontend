@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { cn, formatCurrency, getCategoryColor } from "@/lib/utils";
@@ -18,7 +17,6 @@ const CATEGORIES: ExpenseCategory[] = ["PROTEIN", "CARB", "VEGETABLE", "SPICE", 
 export default function ExpensesPage() {
     const t = useTranslations("expenses");
     const tc = useTranslations("common");
-    const locale = useLocale();
     const { user, token } = useAuth();
 
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -29,8 +27,16 @@ export default function ExpensesPage() {
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [search, setSearch] = useState("");
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    // Form state
+    // Edit form state
+    const [editAmount, setEditAmount] = useState("");
+    const [editCategory, setEditCategory] = useState<ExpenseCategory>("PROTEIN");
+    const [editDescription, setEditDescription] = useState("");
+    const [editDate, setEditDate] = useState("");
+
+    // Add form state
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState<ExpenseCategory>("PROTEIN");
     const [description, setDescription] = useState("");
@@ -58,6 +64,56 @@ export default function ExpensesPage() {
                   e.memberName.toLowerCase().includes(search.toLowerCase())
           )
         : expenses;
+
+    const isAdmin = user?.role === "ADMIN";
+
+    function startEdit(expense: ExpenseResponse) {
+        setEditingId(expense.id);
+        setEditAmount(String(expense.amount));
+        setEditCategory(expense.category as ExpenseCategory);
+        setEditDescription(expense.description ?? "");
+        setEditDate(expense.date);
+    }
+
+    function cancelEdit() {
+        setEditingId(null);
+    }
+
+    async function handleEditSave(id: string) {
+        if (!token) return;
+        try {
+            await api.admin.updateExpense(
+                id,
+                { amount: Number(editAmount), category: editCategory, description: editDescription, date: editDate },
+                token
+            );
+            setExpenses((prev) =>
+                prev.map((e) =>
+                    e.id === id
+                        ? { ...e, amount: Number(editAmount), category: editCategory, description: editDescription, date: editDate }
+                        : e
+                )
+            );
+            setEditingId(null);
+            toast.success("Expense updated");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to update expense");
+        }
+    }
+
+    async function handleDelete(id: string) {
+        if (!token) return;
+        setDeletingId(id);
+        try {
+            await api.admin.deleteExpense(id, token);
+            setExpenses((prev) => prev.filter((e) => e.id !== id));
+            toast.success("Expense deleted");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to delete expense");
+        } finally {
+            setDeletingId(null);
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -111,7 +167,7 @@ export default function ExpensesPage() {
                     <div className={styles.miniStat}>
                         <span className={styles.miniStatLabel}>{t("totalExpense")}</span>
                         <span className={styles.miniStatValue}>
-                            {loading ? "—" : formatCurrency(totalExpense, locale)}
+                            {loading ? "—" : formatCurrency(totalExpense)}
                         </span>
                     </div>
                 </Card>
@@ -119,7 +175,7 @@ export default function ExpensesPage() {
                     <div className={styles.miniStat}>
                         <span className={styles.miniStatLabel}>{t("mealRate")}</span>
                         <span className={cn(styles.miniStatValue, styles.primaryText)}>
-                            {loading ? "—" : formatCurrency(mealRate, locale)}
+                            {loading ? "—" : formatCurrency(mealRate)}
                         </span>
                     </div>
                 </Card>
@@ -217,34 +273,103 @@ export default function ExpensesPage() {
                             No expenses this month.
                         </div>
                     ) : (
-                        filtered.map((expense) => (
-                            <div key={expense.id} className={styles.expenseRow}>
-                                <div
-                                    className={styles.categoryDot}
-                                    style={{ backgroundColor: getCategoryColor(expense.category) }}
-                                />
-                                <div className={styles.expenseInfo}>
-                                    <span className={styles.expenseDesc}>
-                                        {expense.description || "—"}
-                                    </span>
-                                    <span className={styles.expenseMeta}>
-                                        {expense.date} · {expense.memberName} ·{" "}
-                                        <span
-                                            className={styles.categoryTag}
-                                            style={{
-                                                backgroundColor: getCategoryColor(expense.category) + "18",
-                                                color: getCategoryColor(expense.category),
-                                            }}
-                                        >
-                                            {t(`categories.${expense.category}`)}
-                                        </span>
-                                    </span>
+                        filtered.map((expense) => {
+                            const isEditing = editingId === expense.id;
+                            const isDeleting = deletingId === expense.id;
+                            return (
+                                <div key={expense.id} className={cn(styles.expenseRow, isEditing && styles.expenseRowEditing)}>
+                                    {isEditing ? (
+                                        <div className={styles.editInline}>
+                                            <input
+                                                className={styles.editInput}
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                value={editAmount}
+                                                onChange={(e) => setEditAmount(e.target.value)}
+                                                placeholder="Amount"
+                                            />
+                                            <select
+                                                className={styles.editSelect}
+                                                value={editCategory}
+                                                onChange={(e) => setEditCategory(e.target.value as ExpenseCategory)}
+                                            >
+                                                {CATEGORIES.map((cat) => (
+                                                    <option key={cat} value={cat}>{t(`categories.${cat}`)}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                className={styles.editInput}
+                                                type="text"
+                                                value={editDescription}
+                                                onChange={(e) => setEditDescription(e.target.value)}
+                                                placeholder="Description"
+                                            />
+                                            <input
+                                                className={styles.editInput}
+                                                type="date"
+                                                value={editDate}
+                                                onChange={(e) => setEditDate(e.target.value)}
+                                            />
+                                            <div className={styles.editActions}>
+                                                <button className={styles.iconBtnSave} onClick={() => void handleEditSave(expense.id)} aria-label="Save">
+                                                    <Check size={14} />
+                                                </button>
+                                                <button className={styles.iconBtnCancel} onClick={cancelEdit} aria-label="Cancel">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div
+                                                className={styles.categoryDot}
+                                                style={{ backgroundColor: getCategoryColor(expense.category) }}
+                                            />
+                                            <div className={styles.expenseInfo}>
+                                                <span className={styles.expenseDesc}>
+                                                    {expense.description || "—"}
+                                                </span>
+                                                <span className={styles.expenseMeta}>
+                                                    {expense.date} · {expense.memberName} ·{" "}
+                                                    <span
+                                                        className={styles.categoryTag}
+                                                        style={{
+                                                            backgroundColor: getCategoryColor(expense.category) + "18",
+                                                            color: getCategoryColor(expense.category),
+                                                        }}
+                                                    >
+                                                        {t(`categories.${expense.category}`)}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <span className={styles.expenseAmount}>
+                                                {formatCurrency(Number(expense.amount))}
+                                            </span>
+                                            {isAdmin && (
+                                                <div className={styles.expenseActions}>
+                                                    <button
+                                                        className={styles.iconBtn}
+                                                        onClick={() => startEdit(expense)}
+                                                        aria-label="Edit"
+                                                    >
+                                                        <Pencil size={13} />
+                                                    </button>
+                                                    <button
+                                                        className={cn(styles.iconBtn, styles.iconBtnDanger)}
+                                                        onClick={() => void handleDelete(expense.id)}
+                                                        disabled={isDeleting}
+                                                        aria-label="Delete"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
-                                <span className={styles.expenseAmount}>
-                                    {formatCurrency(Number(expense.amount), locale)}
-                                </span>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </Card>

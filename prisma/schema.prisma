@@ -15,13 +15,14 @@ model Mess {
   isActive               Boolean  @default(true) @map("is_active")
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  members       Member[]
-  messMonths    MessMonth[]
-  dailyLogs     DailyLog[]
-  expenses      Expense[]
-  ledgerEntries LedgerEntry[]
-  auditLogs     AuditLog[]
-  memberships   MessMembership[]
+  members         Member[]
+  messMonths      MessMonth[]
+  dailyLogs       DailyLog[]
+  expenses        Expense[]
+  ledgerEntries   LedgerEntry[]
+  auditLogs       AuditLog[]
+  memberships     MessMembership[]
+  telegramGroups  TelegramGroup[]
 
   @@map("messes")
 }
@@ -149,6 +150,40 @@ model AuditLog {
   actor Member? @relation(fields: [actorId], references: [id])
 
   @@map("audit_log")
+}
+
+model TelegramGroup {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chatId    String   @unique @map("chat_id")
+  chatName  String?  @map("chat_name")
+  messId    String   @map("mess_id") @db.Uuid
+  timezone  String   @default("Asia/Dhaka")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_groups")
+}
+
+model TelegramOtp {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  telegramId String   @map("telegram_id")
+  phone      String
+  otp        String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([telegramId], map: "idx_telegram_otps_uid")
+  @@map("telegram_otps")
+}
+
+model ProcessedUpdate {
+  updateId    BigInt   @id @map("update_id")
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_updates")
 }
 
 model MessMembership {

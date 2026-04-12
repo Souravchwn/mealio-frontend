@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { extractCutoffTime, isCutoffPassed } from '@/lib/financial'
+import { DEFAULT_TIMEZONE, VALID_MEAL_SLOTS } from '@/lib/constants'
+import { createAudit } from '@/lib/audit'
 
 export async function POST(req: NextRequest) {
   const token = extractToken(req)
@@ -10,8 +13,8 @@ export async function POST(req: NextRequest) {
 
   const { member_id, date, slot, status } = await req.json()
 
-  const validSlots = ['BREAKFAST', 'LUNCH', 'DINNER']
-  if (!validSlots.includes((slot as string)?.toUpperCase())) {
+  const slotLower = (slot as string)?.toLowerCase()
+  if (!VALID_MEAL_SLOTS.includes(slotLower as typeof VALID_MEAL_SLOTS[number])) {
     return NextResponse.json({ detail: 'Invalid meal slot' }, { status: 400 })
   }
 
@@ -25,18 +28,12 @@ export async function POST(req: NextRequest) {
     select: { cutOffTime: true },
   })
 
-  const cutOffTime = mess?.cutOffTime
-    ? mess.cutOffTime.toISOString().slice(11, 16)
-    : '21:00'
-
-  const today = new Date().toISOString().slice(0, 10)
-  if ((date as string) === today) {
-    const [h, m] = cutOffTime.split(':').map(Number)
-    const cutoff = new Date()
-    cutoff.setHours(h, m, 0, 0)
-    if (Date.now() >= cutoff.getTime()) {
-      return NextResponse.json({ detail: `Cut-off time (${cutOffTime}) has passed` }, { status: 403 })
-    }
+  const cutoffHHMM = extractCutoffTime(mess?.cutOffTime)
+  if (isCutoffPassed(cutoffHHMM, date as string, DEFAULT_TIMEZONE)) {
+    return NextResponse.json(
+      { detail: `Cut-off time (${cutoffHHMM}) has passed` },
+      { status: 403 },
+    )
   }
 
   const logDateObj = new Date(`${date as string}T00:00:00.000Z`)
@@ -65,21 +62,19 @@ export async function POST(req: NextRequest) {
   if (!log) return NextResponse.json({ detail: 'Failed to get meal log' }, { status: 500 })
   if (log.frozen) return NextResponse.json({ detail: 'This day is frozen' }, { status: 403 })
 
-  const column = (slot as string).toLowerCase() as 'breakfast' | 'lunch' | 'dinner'
+  const column = slotLower as 'breakfast' | 'lunch' | 'dinner'
   await prisma.dailyLog.update({
     where: { id: log.id },
     data: { [column]: status, toggledAt: new Date() },
   })
 
-  await prisma.auditLog.create({
-    data: {
-      messId: payload.messId,
-      actorId: payload.sub,
-      action: 'TOGGLE_MEAL',
-      targetTable: 'daily_logs',
-      targetId: log.id,
-      newValue: { slot, status, date },
-    },
+  await createAudit({
+    messId: payload.messId,
+    actorId: payload.sub,
+    action: 'TOGGLE_MEAL',
+    targetTable: 'daily_logs',
+    targetId: log.id,
+    newValue: { slot: slotLower, status, date },
   })
 
   return NextResponse.json({ ok: true })

@@ -65,7 +65,7 @@ export default function MySummaryPage() {
                     const d = new Date(today);
                     d.setDate(today.getDate() - i);
                     const dateStr = d.toISOString().slice(0, 10);
-                    const dayLabel = d.toLocaleDateString(locale === "bn" ? "bn-BD" : "en-US", { weekday: "short" });
+                    const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
 
                     weekLogPromises.push(
                         api.meals
@@ -143,7 +143,7 @@ export default function MySummaryPage() {
                 <div className={styles.statCard}>
                     <span className={styles.statLabel}>{t("mealRate")}</span>
                     <span className={styles.statValue}>
-                        {formatCurrency(summary?.mealRate ?? 0, locale)}
+                        {formatCurrency(summary?.mealRate ?? 0)}
                     </span>
                 </div>
                 <div className={styles.statCard}>
@@ -153,13 +153,13 @@ export default function MySummaryPage() {
                 <div className={styles.statCard}>
                     <span className={styles.statLabel}>{t("contributed")}</span>
                     <span className={styles.statValue}>
-                        {formatCurrency(summary?.contributed ?? 0, locale)}
+                        {formatCurrency(summary?.contributed ?? 0)}
                     </span>
                 </div>
                 <div className={styles.statCard}>
                     <span className={styles.statLabel}>{t("mealCost")}</span>
                     <span className={styles.statValue}>
-                        {formatCurrency(summary?.mealCost ?? 0, locale)}
+                        {formatCurrency(summary?.mealCost ?? 0)}
                     </span>
                 </div>
                 <div className={styles.statCard} style={{ gridColumn: "span 2" }}>
@@ -172,7 +172,7 @@ export default function MySummaryPage() {
                         }`}
                     >
                         {(summary?.balance ?? 0) >= 0 ? "+" : ""}
-                        {formatCurrency(summary?.balance ?? 0, locale)}
+                        {formatCurrency(summary?.balance ?? 0)}
                     </span>
                 </div>
             </div>
@@ -237,13 +237,13 @@ export default function MySummaryPage() {
                     <div className={styles.financeRow}>
                         <span className={styles.financeLabel}>{t("contributed")}</span>
                         <span className={styles.financeValue}>
-                            {formatCurrency(summary?.contributed ?? 0, locale)}
+                            {formatCurrency(summary?.contributed ?? 0)}
                         </span>
                     </div>
                     <div className={styles.financeRow}>
                         <span className={styles.financeLabel}>{t("mealCost")}</span>
                         <span className={styles.financeValue}>
-                            − {formatCurrency(summary?.mealCost ?? 0, locale)}
+                            − {formatCurrency(summary?.mealCost ?? 0)}
                         </span>
                     </div>
                     <div className={styles.financeRow}>
@@ -254,7 +254,7 @@ export default function MySummaryPage() {
                             }`}
                         >
                             {(summary?.balance ?? 0) >= 0 ? "+" : ""}
-                            {formatCurrency(summary?.balance ?? 0, locale)}
+                            {formatCurrency(summary?.balance ?? 0)}
                         </span>
                     </div>
                 </div>

@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { Download, Lock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, Lock, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import type { MonthMatrixResponse, MemberMatrixRow } from "@/types";
+import type { MonthMatrixResponse, MemberMatrixRow, DayEntry } from "@/types";
 import { Role } from "@/types";
 import { toast } from "sonner";
 import styles from "./matrix.module.css";
@@ -59,6 +59,59 @@ function exportCsv(matrix: MonthMatrixResponse) {
     URL.revokeObjectURL(url);
 }
 
+interface CellPopoverProps {
+    day: DayEntry | null;
+    memberId: string;
+    memberName: string;
+    date: string;
+    onToggle: (slot: "breakfast" | "lunch" | "dinner", value: boolean) => void;
+    onClose: () => void;
+}
+
+function CellPopover({ day, memberId, memberName, date, onToggle, onClose }: CellPopoverProps) {
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+        }
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [onClose]);
+
+    const slots = [
+        { key: "breakfast" as const, label: "B", emoji: "🍳" },
+        { key: "lunch" as const, label: "L", emoji: "🍱" },
+        { key: "dinner" as const, label: "D", emoji: "🌙" },
+    ];
+
+    return (
+        <div ref={ref} className={styles.popover}>
+            <div className={styles.popoverHeader}>
+                <span className={styles.popoverName}>{memberName}</span>
+                <span className={styles.popoverDate}>{date}</span>
+            </div>
+            <div className={styles.popoverSlots}>
+                {slots.map(({ key, label, emoji }) => {
+                    const active = day ? day[key] : true;
+                    return (
+                        <button
+                            key={key}
+                            className={cn(styles.slotBtn, active && styles.slotBtnOn)}
+                            onClick={() => onToggle(key, !active)}
+                            title={key}
+                        >
+                            <span>{emoji}</span>
+                            <span>{label}</span>
+                            <span className={styles.slotStatus}>{active ? "ON" : "OFF"}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function MatrixPage() {
     const t = useTranslations("matrix");
     const locale = useLocale();
@@ -69,6 +122,8 @@ export default function MatrixPage() {
     const [matrix, setMatrix] = useState<MonthMatrixResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [closing, setClosing] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [activeCell, setActiveCell] = useState<{ memberId: string; date: string } | null>(null);
 
     const isAdmin = user?.role === Role.ADMIN;
 
@@ -86,7 +141,7 @@ export default function MatrixPage() {
     }, [user, token]);
 
     useEffect(() => {
-        fetchMatrix(selectedMonth);
+        void fetchMatrix(selectedMonth);
     }, [fetchMatrix, selectedMonth]);
 
     async function handleCloseMonth() {
@@ -99,11 +154,63 @@ export default function MatrixPage() {
                 token
             );
             toast.success(`Month ${selectedMonth} closed successfully`);
-            fetchMatrix(selectedMonth);
+            void fetchMatrix(selectedMonth);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to close month");
         } finally {
             setClosing(false);
+        }
+    }
+
+    async function handleToggleSlot(
+        memberId: string,
+        date: string,
+        slot: "breakfast" | "lunch" | "dinner",
+        value: boolean
+    ) {
+        if (!token) return;
+        // Optimistic update
+        setMatrix((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                members: prev.members.map((m) => {
+                    if (m.memberId !== memberId) return m;
+                    const existingDayIdx = m.days.findIndex((d) => d.date === date);
+                    let newDays: DayEntry[];
+                    if (existingDayIdx >= 0) {
+                        newDays = m.days.map((d) =>
+                            d.date === date ? { ...d, [slot]: value } : d
+                        );
+                    } else {
+                        newDays = [
+                            ...m.days,
+                            {
+                                logId: `temp-${date}`,
+                                memberId,
+                                memberName: m.memberName,
+                                date,
+                                breakfast: slot === "breakfast" ? value : true,
+                                lunch: slot === "lunch" ? value : true,
+                                dinner: slot === "dinner" ? value : true,
+                                guestCount: 0,
+                                frozen: false,
+                            },
+                        ];
+                    }
+                    const totalMeals = newDays.reduce(
+                        (s, d) => s + (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0) + d.guestCount,
+                        0
+                    );
+                    return { ...m, days: newDays, totalMeals };
+                }),
+            };
+        });
+        try {
+            await api.admin.editMeal({ memberId, date, slot, value }, token);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to update meal");
+            void fetchMatrix(selectedMonth); // revert on error
         }
     }
 
@@ -128,24 +235,44 @@ export default function MatrixPage() {
                     const mealsOn = day
                         ? (day.breakfast ? 1 : 0) + (day.lunch ? 1 : 0) + (day.dinner ? 1 : 0)
                         : 0;
+                    const isActive = activeCell?.memberId === member.memberId && activeCell?.date === dayStr;
+
                     return (
-                        <td key={i} className={styles.dayCell}>
+                        <td key={i} className={cn(styles.dayCell, editMode && styles.dayCellEditable)}>
                             <span
                                 className={cn(
                                     styles.cellDot,
                                     mealsOn === 3 && styles.cellFull,
                                     mealsOn > 0 && mealsOn < 3 && styles.cellPartial,
-                                    mealsOn === 0 && styles.cellOff,
-                                    day && day.guestCount > 0 && styles.cellGuest
+                                    mealsOn === 0 && day && styles.cellOff,
+                                    !day && styles.cellDefault,
+                                    !!(day?.guestCount && day.guestCount > 0) && styles.cellGuest,
+                                    isActive && styles.cellActive
                                 )}
                                 title={
                                     day
                                         ? `B:${day.breakfast ? "✓" : "✗"} L:${day.lunch ? "✓" : "✗"} D:${day.dinner ? "✓" : "✗"}${day.guestCount > 0 ? ` G:${day.guestCount}` : ""}`
-                                        : "No data"
+                                        : "Default ON"
                                 }
+                                onClick={() => {
+                                    if (!editMode) return;
+                                    setActiveCell(isActive ? null : { memberId: member.memberId, date: dayStr });
+                                }}
                             >
-                                {mealsOn}
+                                {day ? mealsOn : "·"}
                             </span>
+                            {isActive && (
+                                <CellPopover
+                                    day={day ?? null}
+                                    memberId={member.memberId}
+                                    memberName={member.memberName}
+                                    date={dayStr}
+                                    onToggle={(slot, value) => {
+                                        void handleToggleSlot(member.memberId, dayStr, slot, value);
+                                    }}
+                                    onClose={() => setActiveCell(null)}
+                                />
+                            )}
                         </td>
                     );
                 })}
@@ -153,7 +280,7 @@ export default function MatrixPage() {
                     <strong>{member.totalMeals}</strong>
                 </td>
                 <td className={styles.totalCell}>
-                    {formatCurrency(Number(member.totalAmount), locale)}
+                    {formatCurrency(Number(member.totalAmount))}
                 </td>
                 <td
                     className={cn(
@@ -161,7 +288,7 @@ export default function MatrixPage() {
                         Number(member.balance) >= 0 ? styles.positive : styles.negative
                     )}
                 >
-                    <strong>{formatCurrency(Math.abs(Number(member.balance)), locale)}</strong>
+                    <strong>{formatCurrency(Math.abs(Number(member.balance)))}</strong>
                     {Number(member.balance) < 0 && <span className={styles.owes}>owes</span>}
                 </td>
             </tr>
@@ -191,6 +318,14 @@ export default function MatrixPage() {
                 </div>
                 <div className={styles.headerActions}>
                     <Button
+                        variant={editMode ? "primary" : "secondary"}
+                        size="small"
+                        onClick={() => { setEditMode(!editMode); setActiveCell(null); }}
+                    >
+                        <Pencil size={16} />
+                        {editMode ? "Done Editing" : "Edit Meals"}
+                    </Button>
+                    <Button
                         variant="secondary"
                         size="small"
                         onClick={() => matrix && exportCsv(matrix)}
@@ -210,6 +345,13 @@ export default function MatrixPage() {
                 </div>
             </div>
 
+            {editMode && (
+                <div className={styles.editBanner}>
+                    <Pencil size={14} />
+                    Edit mode — click any day cell to toggle meal slots for that member
+                </div>
+            )}
+
             {/* Month Selector */}
             <div className={styles.monthSelector}>
                 <button
@@ -220,7 +362,7 @@ export default function MatrixPage() {
                 </button>
                 <span className={styles.monthLabel}>
                     {new Date(selectedMonth + "-01").toLocaleDateString(
-                        locale === "bn" ? "bn-BD" : "en-US",
+                        "en-US",
                         { year: "numeric", month: "long" }
                     )}
                 </span>
@@ -237,7 +379,7 @@ export default function MatrixPage() {
                 <div className={styles.summaryCard}>
                     <span className={styles.summaryLabel}>{t("summary.totalExpense")}</span>
                     <span className={styles.summaryValue}>
-                        {loading ? "—" : formatCurrency(totalExpense, locale)}
+                        {loading ? "—" : formatCurrency(totalExpense)}
                     </span>
                 </div>
                 <div className={styles.summaryCard}>
@@ -247,7 +389,7 @@ export default function MatrixPage() {
                 <div className={cn(styles.summaryCard, styles.summaryPrimary)}>
                     <span className={styles.summaryLabel}>{t("summary.mealRate")}</span>
                     <span className={styles.summaryValue}>
-                        {loading ? "—" : formatCurrency(mealRate, locale)}
+                        {loading ? "—" : formatCurrency(mealRate)}
                     </span>
                 </div>
                 <div className={styles.summaryCard}>
@@ -260,13 +402,9 @@ export default function MatrixPage() {
             <Card noPadding>
                 <div className={styles.tableWrap}>
                     {loading ? (
-                        <div style={{ padding: "var(--space-8)", color: "var(--color-text-muted)", textAlign: "center" }}>
-                            Loading…
-                        </div>
+                        <div className={styles.emptyState}>Loading…</div>
                     ) : !matrix || matrix.members.length === 0 ? (
-                        <div style={{ padding: "var(--space-8)", color: "var(--color-text-muted)", textAlign: "center" }}>
-                            No data for {selectedMonth}.
-                        </div>
+                        <div className={styles.emptyState}>No data for {selectedMonth}.</div>
                     ) : (
                         <table className={styles.table}>
                             <thead>

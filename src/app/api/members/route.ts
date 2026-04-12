@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { monthRange, countMealSlots } from '@/lib/financial'
+import { monthRange, countMealSlots, calculateMemberBalance } from '@/lib/financial'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         name: member.name,
         phone: member.phone,
         role: member.role,
-        balance: contributed - memberMeals * mealRate,
+        balance: calculateMemberBalance(contributed, memberMeals, mealRate),
         telegram_linked: member.telegramLinked,
         is_guest: member.isGuest,
         guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,

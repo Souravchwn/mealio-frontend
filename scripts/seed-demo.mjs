@@ -29,7 +29,7 @@ async function seed() {
       id: DEMO_MESS_ID,
       name: 'Demo Mess',
       inviteCode: 'MESS-DEMO',
-      cutOffTime: '21:00',
+      cutOffTime: new Date('1970-01-01T21:00:00Z'), // only time part stored (@db.Time)
       estimatedMonthlyBudget: 15000,
       isActive: true,
     },

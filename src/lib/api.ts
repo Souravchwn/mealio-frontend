@@ -270,5 +270,71 @@ export const api = {
                 body: data,
                 token,
             }),
+        editMeal: (
+            data: { memberId: string; date: string; slot: "breakfast" | "lunch" | "dinner"; value: boolean },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean; logId: string }>("/api/admin/meals", {
+                method: "PUT",
+                body: data,
+                token,
+            }),
+        noCook: (
+            data: { action: "on" | "off"; date?: string; reason?: string },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean; membersUpdated: number; telegramNotified: number }>(
+                "/api/admin/no-cook",
+                { method: "POST", body: data, token }
+            ),
+        updateMember: (
+            memberId: string,
+            data: { role?: string; isActive?: boolean; guestFrom?: string | null; guestUntil?: string | null },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean }>(`/api/members/${memberId}`, {
+                method: "PUT",
+                body: data,
+                token,
+            }),
+        getAuditLog: (params: { page?: number; limit?: number; action?: string }, token: string) =>
+            fetcher<{
+                entries: Array<{
+                    id: string;
+                    actorName: string;
+                    action: string;
+                    targetTable: string | null;
+                    oldValue: unknown;
+                    newValue: unknown;
+                    createdAt: string;
+                }>;
+                total: number;
+                page: number;
+                pages: number;
+            }>("/api/admin/audit", { method: "GET", params, token }),
+        updateExpense: (
+            id: string,
+            data: { amount?: number; category?: string; description?: string; date?: string },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean }>(`/api/expenses/${id}`, {
+                method: "PUT",
+                body: data,
+                token,
+            }),
+        deleteExpense: (id: string, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/expenses/${id}`, {
+                method: "DELETE",
+                token,
+            }),
+        updateSettings: (
+            data: { name?: string; cutOffTime?: string; estimatedMonthlyBudget?: number },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean }>("/api/mess/settings", {
+                method: "PUT",
+                body: data,
+                token,
+            }),
     },
 };

@@ -2,17 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/auth-utils'
+import { getLoginRateLimiter } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
+  // Rate limiting — keyed by IP to prevent brute-force
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const limiter = getLoginRateLimiter()
+  const rateCheck = limiter.check(ip)
+  if (!rateCheck.allowed) {
+    const retryAfterSecs = Math.ceil((rateCheck.retryAfterMs ?? 0) / 1000)
+    return NextResponse.json(
+      { detail: `Too many login attempts. Try again in ${retryAfterSecs}s.` },
+      { status: 429, headers: { 'Retry-After': String(retryAfterSecs) } },
+    )
+  }
+
   try {
     const { email, password } = await req.json()
 
-    if (!email || !password) {
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
       return NextResponse.json({ detail: 'Email and password are required' }, { status: 400 })
     }
 
     const member = await prisma.member.findUnique({
-      where: { email: (email as string).toLowerCase().trim() },
+      where: { email: email.toLowerCase().trim() },
       select: { id: true, name: true, email: true, role: true, messId: true, passwordHash: true, isActive: true },
     })
 
@@ -29,11 +42,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: 'Invalid email or password' }, { status: 401 })
     }
 
-    const mess = member.messId
-      ? await prisma.mess.findUnique({ where: { id: member.messId }, select: { name: true } })
-      : null
+    if (!member.messId) {
+      return NextResponse.json({ detail: 'Account is not assigned to a mess' }, { status: 403 })
+    }
 
-    const token = await signToken({ sub: member.id, messId: member.messId!, role: member.role })
+    const [mess, token] = await Promise.all([
+      prisma.mess.findUnique({ where: { id: member.messId }, select: { name: true } }),
+      signToken({ sub: member.id, messId: member.messId, role: member.role }),
+    ])
 
     return NextResponse.json({
       access_token: token,

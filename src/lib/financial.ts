@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE } from './constants'
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -27,6 +28,54 @@ export function countMealSlots(logs: MealSlotData[]): number {
     (s, l) => s + (l.breakfast ? 1 : 0) + (l.lunch ? 1 : 0) + (l.dinner ? 1 : 0) + l.guestCount,
     0
   )
+}
+
+// ─── Cutoff helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Extract HH:MM string from a Prisma @db.Time field.
+ * Prisma stores Time as a DateTime with date 1970-01-01, so we slice the ISO string.
+ */
+export function extractCutoffTime(cutOffTime: Date | null | undefined): string {
+  return cutOffTime ? cutOffTime.toISOString().slice(11, 16) : DEFAULT_CUTOFF_TIME
+}
+
+/**
+ * Check whether the cutoff has passed for a given date in the mess's timezone.
+ * Uses Intl — no external library needed.
+ *
+ * Returns false for any date other than today (past/future dates have no cutoff).
+ */
+export function isCutoffPassed(
+  cutoffHHMM: string,
+  checkDate: string,
+  timezone: string = DEFAULT_TIMEZONE,
+): boolean {
+  const todayInTz = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date())
+  if (checkDate !== todayInTz) return false
+
+  const nowTimeInTz = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: timezone,
+    hour12: false,
+  }).format(new Date())
+
+  return nowTimeInTz >= cutoffHHMM
+}
+
+// ─── Balance helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Single source of truth for member balance.
+ * balance = amount contributed − meals eaten × meal rate
+ */
+export function calculateMemberBalance(
+  contributed: number,
+  memberMeals: number,
+  mealRate: number,
+): number {
+  return contributed - memberMeals * mealRate
 }
 
 // ─── Rate calculation ─────────────────────────────────────────────────────────
@@ -110,7 +159,7 @@ export async function closeMonth(
         memberId: member.id,
         entryType: 'DEDUCTION',
         amount: -(memberMeals * mealRate),
-        note: `Meal deduction for ${yearMonth}: ${memberMeals} meals × ৳${mealRate.toFixed(2)}`,
+        note: `Meal deduction for ${yearMonth}: ${memberMeals} meals \u00d7 \u09f3${mealRate.toFixed(2)}`,
         createdBy: adminId,
       }
     })

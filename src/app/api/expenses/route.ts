@@ -54,6 +54,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'mess_id, amount, category and date are required' }, { status: 400 })
   }
 
+  const numAmount = Number(amount)
+  if (isNaN(numAmount) || numAmount <= 0) {
+    return NextResponse.json({ detail: 'Amount must be a positive number' }, { status: 400 })
+  }
+
   const yearMonth = (date as string).slice(0, 7)
 
   try {

@@ -5,7 +5,6 @@ import { useLocale } from "next-intl";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
-import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -79,7 +78,6 @@ export default function RegisterPage() {
             <div className={styles.formSide}>
                 <div className={styles.switcherWrap} style={{ display: 'flex', gap: '0.5rem' }}>
                     <ThemeToggle />
-                    <LocaleSwitcher />
                 </div>
 
                 <div className={styles.formContainer}>

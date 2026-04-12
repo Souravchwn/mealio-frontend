@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
-import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import styles from "./landing.module.css";
 import { cn } from "@/lib/utils";
@@ -92,7 +91,6 @@ export default function LandingPage() {
 
                     <div className={styles.navActions}>
                         <ThemeToggle />
-                        <LocaleSwitcher />
                         <Link href={`/${locale}/login`} className={styles.navSignIn}>
                             <Button variant="ghost" size="small">
                                 {t("hero.cta") === "Get Started Free" ? "Sign In" : "সাইন ইন"}
