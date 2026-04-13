@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const [myLogs, myExpenses, allExpenses, allLogs] = await Promise.all([
     prisma.dailyLog.findMany({
       where: { memberId: payload.sub, logDate: { gte: start, lte: end } },
-      select: { breakfast: true, lunch: true, dinner: true, guestCount: true },
+      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
     }),
     prisma.expense.findMany({
       where: { addedBy: payload.sub, expenseDate: { gte: start, lte: end } },
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.dailyLog.findMany({
       where: { messId: payload.messId, logDate: { gte: start, lte: end } },
-      select: { breakfast: true, lunch: true, dinner: true, guestCount: true },
+      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
     }),
   ])
 

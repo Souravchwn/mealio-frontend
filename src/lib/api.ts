@@ -19,6 +19,7 @@ import type {
     MealToggleRequest,
     GuestUpdateRequest,
     MessSwitchResponse,
+    MealConfig,
 } from "@/types";
 
 // Empty base URL = relative paths (Next.js API routes)
@@ -172,6 +173,10 @@ export const api = {
                 id: string;
                 memberId: string;
                 date: string;
+                breakfastCount: number;
+                lunchCount: number;
+                dinnerCount: number;
+                /** Convenience boolean: count > 0 */
                 breakfast: boolean;
                 lunch: boolean;
                 dinner: boolean;
@@ -193,6 +198,44 @@ export const api = {
         updateGuest: (data: GuestUpdateRequest, token: string) =>
             fetcher<unknown>("/api/meals/guest", {
                 method: "POST",
+                body: data,
+                token,
+            }),
+    },
+
+    mealPreferences: {
+        getAll: (token: string) =>
+            fetcher<{
+                preferences: Array<{
+                    mealType: string
+                    dayType: string
+                    enabled: boolean
+                    defaultCount: number
+                }>
+            }>("/api/members/meal-preferences", { method: "GET", token }),
+        update: (
+            data: { mealType: string; dayType: string; enabled: boolean; defaultCount?: number },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean }>("/api/members/meal-preferences", {
+                method: "PUT",
+                body: data,
+                token,
+            }),
+    },
+
+    mealConfigs: {
+        list: (token: string) =>
+            fetcher<{ mealConfigs: MealConfig[] }>("/api/mess/meal-configs", {
+                method: "GET",
+                token,
+            }),
+        update: (
+            data: { mealType: string; cutoffTime?: string; enabled?: boolean; maxCount?: number },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean }>("/api/mess/meal-configs", {
+                method: "PUT",
                 body: data,
                 token,
             }),

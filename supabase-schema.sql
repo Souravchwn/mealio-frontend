@@ -164,6 +164,82 @@ CREATE POLICY "No anon access" ON mess_months FOR ALL TO anon USING (false);
 CREATE POLICY "No anon access" ON audit_log FOR ALL TO anon USING (false);
 
 -- ============================================================
+-- DEFAULT-DRIVEN MEAL SYSTEM — additive migrations
+-- Run these on existing databases (safe to run multiple times).
+-- ============================================================
+
+-- ── daily_logs: migrate from boolean to integer counts ──────────────────────
+-- Step 1: Add new count columns
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS breakfast_count INTEGER DEFAULT 1;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS lunch_count     INTEGER DEFAULT 1;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS dinner_count    INTEGER DEFAULT 1;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS is_override     BOOLEAN DEFAULT false;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS override_type   TEXT CHECK (override_type IN ('USER','ADMIN','SYSTEM'));
+
+-- Step 2: Migrate existing boolean data to counts (run once)
+UPDATE daily_logs
+  SET breakfast_count = CASE WHEN breakfast THEN 1 ELSE 0 END,
+      lunch_count     = CASE WHEN lunch     THEN 1 ELSE 0 END,
+      dinner_count    = CASE WHEN dinner    THEN 1 ELSE 0 END
+  WHERE breakfast_count = 1 AND lunch_count = 1 AND dinner_count = 1
+    AND (breakfast = false OR lunch = false OR dinner = false);
+
+-- Note: old boolean columns (breakfast, lunch, dinner) are kept for safety.
+-- They are ignored by the Prisma schema and can be dropped after confirming
+-- the new system is stable:
+--   ALTER TABLE daily_logs DROP COLUMN breakfast, DROP COLUMN lunch, DROP COLUMN dinner;
+
+-- ── USER MEAL PREFERENCES ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_meal_preferences (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id     UUID REFERENCES members(id) ON DELETE CASCADE,
+  mess_id       UUID REFERENCES messes(id) ON DELETE CASCADE,
+  meal_type     TEXT NOT NULL CHECK (meal_type IN ('BREAKFAST','LUNCH','DINNER')),
+  day_type      TEXT NOT NULL CHECK (day_type IN ('WEEKDAY','WEEKEND')),
+  enabled       BOOLEAN NOT NULL DEFAULT true,
+  default_count INTEGER NOT NULL DEFAULT 1 CHECK (default_count >= 0),
+  updated_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(member_id, mess_id, meal_type, day_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_meal_prefs_member_mess ON user_meal_preferences(member_id, mess_id);
+
+ALTER TABLE user_meal_preferences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "No anon access" ON user_meal_preferences FOR ALL TO anon USING (false);
+
+-- ── MEAL CONFIGS (per-meal, per-mess cutoff + enabled) ───────────────────────
+-- Drives dynamic time-based meal targeting. Replaces the single mess.cut_off_time
+-- approach. Seed three rows per mess on creation.
+CREATE TABLE IF NOT EXISTS meal_configs (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id     UUID REFERENCES messes(id) ON DELETE CASCADE,
+  meal_type   TEXT NOT NULL CHECK (meal_type IN ('BREAKFAST','LUNCH','DINNER')),
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  cutoff_time TIME NOT NULL,
+  max_count   INTEGER NOT NULL DEFAULT 10 CHECK (max_count > 0),
+  updated_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(mess_id, meal_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_meal_configs_mess ON meal_configs(mess_id);
+
+ALTER TABLE meal_configs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "No anon access" ON meal_configs FOR ALL TO anon USING (false);
+
+-- Seed default meal configs for the demo mess (and any existing messes)
+INSERT INTO meal_configs (mess_id, meal_type, cutoff_time, enabled, max_count)
+SELECT id, 'BREAKFAST', '08:30', true, 10 FROM messes
+ON CONFLICT (mess_id, meal_type) DO NOTHING;
+
+INSERT INTO meal_configs (mess_id, meal_type, cutoff_time, enabled, max_count)
+SELECT id, 'LUNCH', '13:00', true, 10 FROM messes
+ON CONFLICT (mess_id, meal_type) DO NOTHING;
+
+INSERT INTO meal_configs (mess_id, meal_type, cutoff_time, enabled, max_count)
+SELECT id, 'DINNER', '21:00', true, 10 FROM messes
+ON CONFLICT (mess_id, meal_type) DO NOTHING;
+
+-- ============================================================
 -- DEMO MESS SEED
 -- ============================================================
 INSERT INTO messes (id, name, invite_code, cut_off_time, estimated_monthly_budget)

@@ -68,11 +68,25 @@ export interface DailyLog {
     id: string;
     memberId: string;
     date: string;
+    breakfastCount: number;
+    lunchCount: number;
+    dinnerCount: number;
+    /** Convenience booleans: count > 0 */
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
     guestCount: number;
     frozen: boolean;
+    overrideType?: string | null;
+}
+
+export interface MealConfig {
+    id: string;
+    messId: string;
+    mealType: "BREAKFAST" | "LUNCH" | "DINNER";
+    enabled: boolean;
+    cutoffTime: string; // HH:MM
+    maxCount: number;
 }
 
 export interface Expense {
@@ -179,6 +193,9 @@ export interface DayEntry {
     memberId: string;
     memberName: string;
     date: string;
+    breakfastCount: number;
+    lunchCount: number;
+    dinnerCount: number;
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
@@ -214,7 +231,10 @@ export interface MealToggleRequest {
     memberId: string;
     date: string;
     slot: MealSlot;
-    status: boolean;
+    /** Integer count: 0 = off, 1 = normal, 2+ = extra. Preferred over `status`. */
+    count?: number;
+    /** Legacy boolean — converted to count 0/1 on the server. */
+    status?: boolean;
 }
 
 export interface GuestUpdateRequest {

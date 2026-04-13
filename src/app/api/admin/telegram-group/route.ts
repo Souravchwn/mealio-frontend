@@ -1,12 +1,31 @@
 /**
- * POST /api/admin/telegram-group
- * Register or update a Telegram group → mess mapping.
- * Body: { chat_id, chat_name, timezone? }
+ * GET  /api/admin/telegram-group — Returns the current active Telegram group for the mess.
+ * POST /api/admin/telegram-group — Register or update a Telegram group → mess mapping.
+ *   Body: { chat_id, chat_name, timezone? }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { groupRepo } from '@/lib/telegram'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(req: NextRequest) {
+  const token = extractToken(req)
+  if (!token) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+  const payload = await verifyToken(token)
+  if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+  if (payload.role !== 'ADMIN') return NextResponse.json({ detail: 'Admin only' }, { status: 403 })
+
+  try {
+    const group = await prisma.telegramGroup.findFirst({
+      where: { messId: payload.messId, isActive: true },
+      select: { chatId: true, chatName: true, timezone: true },
+    })
+    return NextResponse.json({ group: group ? { chatId: group.chatId, chatName: group.chatName, timezone: group.timezone } : null })
+  } catch {
+    return NextResponse.json({ group: null })
+  }
+}
 
 export async function POST(req: NextRequest) {
   const token = extractToken(req)

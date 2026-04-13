@@ -2,142 +2,515 @@
 
 Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- Node.js 20+ 
-- npm or yarn
+## Table of Contents
 
-### Installation
-
-```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 🎭 Demo Accounts
-
-The app is currently running with **mock data** for demonstration. Use these credentials to explore different user roles:
-
-| Role | Email | Password | Access Level |
-|------|-------|----------|--------------|
-| **Admin** | `admin@demo.com` | `admin123` | Full access to all features including matrix, members, audit logs |
-| **Manager** | `manager@demo.com` | `manager123` | Can manage expenses, view headcount, toggle meals |
-| **Member** | `member@demo.com` | `member123` | Can toggle own meals, view headcount |
-
-### Features by Role
-
-**Admin:**
-- View monthly matrix with all member meal data
-- Manage members and settings
-- Close monthly accounts
-- View audit trails
-- All manager and member features
-
-**Manager:**
-- Add and view expenses
-- View headcount for cooking
-- Toggle meals for all members
-- View overview dashboard
-
-**Member:**
-- Toggle own meals (breakfast, lunch, dinner)
-- Add guest counts
-- View personal balance
-- View headcount
-
-## 🎨 Features
-
-- **Meal Toggle** — Mark meals on/off before cutoff time
-- **Expense Tracking** — Categorized expense management
-- **Headcount** — Real-time meal planning for cooks
-- **Monthly Matrix** — Complete meal and expense breakdown
-- **Multi-language** — English & Bengali (বাংলা)
-- **Dark Mode** — Beautiful light/dark themes
-- **Responsive** — Works on mobile, tablet, and desktop
-
-## 🔧 Configuration
-
-### Enable/Disable Mock Data
-
-Edit `.env.local`:
-
-```bash
-# Use mock data (for demo/development)
-NEXT_PUBLIC_USE_MOCK_DATA=true
-
-# Use real API (for production)
-NEXT_PUBLIC_USE_MOCK_DATA=false
-API_BASE_URL=http://your-api-url:8080
-```
-
-### Mock Data Location
-
-All mock data is in `src/lib/mockData.ts`. You can customize:
-- Demo user accounts
-- Sample expenses
-- Monthly matrix data
-- Headcount information
-
-## 📁 Project Structure
-
-```
-src/
-├── app/
-│   └── [locale]/
-│       ├── (auth)/          # Login, Register
-│       ├── (dashboard)/     # Protected dashboard pages
-│       └── page.tsx         # Landing page
-├── components/
-│   ├── ui/                  # Reusable UI components
-│   └── composed/            # Complex composed components
-├── contexts/
-│   └── AuthContext.tsx      # Authentication state management
-├── lib/
-│   ├── api.ts              # API client with mock fallback
-│   ├── mockData.ts         # Demo data
-│   └── utils.ts            # Utility functions
-└── types/
-    └── index.ts            # TypeScript type definitions
-```
-
-## 🌐 Internationalization
-
-Switch between English and Bengali using the language switcher in the navbar.
-
-Translation files: `messages/en.json` and `messages/bn.json`
-
-## 🎯 Production Deployment
-
-1. Set up your backend API
-2. Update `.env.local` with production API URL
-3. Set `NEXT_PUBLIC_USE_MOCK_DATA=false`
-4. Build and deploy:
-
-```bash
-npm run build
-npm start
-```
-
-## 🛠 Tech Stack
-
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** CSS Modules
-- **i18n:** next-intl
-- **UI:** Custom design system
-- **State:** React Context API
-- **Icons:** Lucide React
-
-## 📝 License
-
-Private project for mess management.
+1. [What is Mealio?](#what-is-mealio)
+2. [Tech Stack](#tech-stack)
+3. [Architecture Overview](#architecture-overview)
+4. [Default-Driven Meal System](#default-driven-meal-system)
+5. [Meal Counts vs Booleans](#meal-counts-vs-booleans)
+6. [Meal Configs & Dynamic Cutoffs](#meal-configs--dynamic-cutoffs)
+7. [Quick Start](#quick-start)
+8. [Environment Variables](#environment-variables)
+9. [Database Setup](#database-setup)
+10. [Telegram Bot Setup](#telegram-bot-setup)
+11. [API Reference](#api-reference)
+12. [Roles & Permissions](#roles--permissions)
+13. [Cron Jobs](#cron-jobs)
+14. [Deployment (Vercel)](#deployment-vercel)
+15. [Project Structure](#project-structure)
 
 ---
 
-Made with 🍽 for Bangladesh 🇧🇩 and India 🇮🇳
+## What is Mealio?
+
+Mealio replaces the WhatsApp group chaos of "who's eating today" with a structured system:
+
+- **Members** set their default meal preferences once. The system auto-generates daily logs — no daily interaction needed unless plans change.
+- **Exception commands** (`/meal off`, `/meal on`) handle edge cases via Telegram.
+- **Admins** close months, track expenses, and view full analytics.
+- **Cooks** see a real-time headcount dashboard with accurate portion counts.
+- **The ledger** auto-calculates who owes what at month end.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Database | Supabase Postgres |
+| ORM | Prisma v7 (`@prisma/adapter-pg`) |
+| Auth | JWT via `jose` (30-day expiry) |
+| Bot | Telegram Bot API (webhook) |
+| i18n | `next-intl` (English + Bengali) |
+| Theming | `next-themes` (light / dark) |
+| Styling | CSS Modules |
+| Deployment | Vercel (including cron jobs) |
+
+---
+
+## Architecture Overview
+
+```
+Browser / Telegram
+      │
+      ▼
+Next.js API Routes  (/src/app/api/)
+      │
+      ▼
+Prisma ORM  (prisma/schema.prisma)
+      │
+      ▼
+Supabase Postgres
+```
+
+There is **no separate backend server**. All business logic lives in Next.js API routes and shared lib files.
+
+**Key lib files:**
+
+| File | Purpose |
+|---|---|
+| `src/lib/prisma.ts` | Prisma client singleton (server only) |
+| `src/lib/auth-utils.ts` | JWT sign/verify with `jose` |
+| `src/lib/financial.ts` | Meal rate, cutoff helpers, month close logic |
+| `src/lib/meal-preferences.ts` | Default meal resolution from `user_meal_preferences` |
+| `src/lib/constants.ts` | App-wide constants (`MEAL_TYPES`, `DEFAULT_MEAL_CONFIGS`, roles) |
+| `src/lib/api.ts` | Frontend fetch client (auto camelCase ↔ snake_case) |
+| `src/lib/audit.ts` | Audit log helper |
+| `src/lib/telegram/` | Full Telegram bot (dispatcher, handlers, services, repos) |
+
+---
+
+## Default-Driven Meal System
+
+Mealio uses a **default-driven model** — the system works automatically; commands are exceptions.
+
+### How it works
+
+1. **Each member sets preferences once** (Settings page → My Default Meal Preferences):
+   - Weekday defaults (Mon–Fri): breakfast ON/OFF, lunch ON/OFF, dinner ON/OFF
+   - Weekend defaults (Sat–Sun): same three toggles
+   - `default_count` per preference: how many portions to restore when re-enabling (e.g. 2 for a member who always eats double)
+   - If never set, all meals default to enabled with `default_count = 1`
+
+2. **Every night at 00:05** the cron job `generate-daily-meals` runs:
+   - For each active mess, determines "today" in that mess's timezone
+   - For every active member without a `DailyLog` for today, creates one using their stored preferences
+   - Uses `INSERT ... ON CONFLICT DO NOTHING` — safe to re-run
+
+3. **Exception commands** (Telegram or web) let members deviate:
+   - `/meal off` — turns off the **next upcoming meal** (time-based auto-detection)
+   - `/meal on` — turns on the **next upcoming meal**, restoring to `default_count`
+   - `/meal breakfast` / `/meal lunch` / `/meal dinner` — toggle a specific slot
+   - `/meal lunch 3` — set an explicit count for a specific slot
+   - `/meal guest 2` — add guest meals
+
+4. **`isOverride` flag** on `DailyLog`:
+   - `false` — auto-generated by cron from preferences (`overrideType = null`)
+   - `true` — manually changed; `overrideType` is `USER`, `ADMIN`, or `SYSTEM`
+
+5. **Admin override**:
+   - `/nomeal` — sets all members' meal counts to 0 for a date; broadcasts Telegram notification
+   - `/mealon` — restores each member to their **own `default_count` preferences** (not a blanket all-1)
+
+### Key tables
+
+```
+user_meal_preferences
+  member_id, mess_id, meal_type, day_type, enabled, default_count
+  (one row per meal × day_type; missing row = enabled=true, count=1)
+
+meal_configs
+  mess_id, meal_type, enabled, cutoff_time, max_count
+  (one row per meal type per mess; drives dynamic time-based targeting)
+
+daily_logs
+  member_id, mess_id, log_date,
+  breakfast_count, lunch_count, dinner_count, guest_count,
+  is_override, override_type (USER | ADMIN | SYSTEM)
+```
+
+---
+
+## Meal Counts vs Booleans
+
+Meal slots are **integers**, not booleans:
+
+| Count | Meaning |
+|---|---|
+| `0` | Member is skipping this meal |
+| `1` | Normal single portion (default) |
+| `2+` | Extra portions (family, guests, double eater) |
+
+This directly feeds the financial calculation: `meal_rate = total_expenses / sum(all counts)`. A member eating double counts as 2 meal slots.
+
+**Convenience booleans** (`breakfast`, `lunch`, `dinner`) are computed as `count > 0` and returned alongside counts in API responses for backward compatibility with the UI.
+
+---
+
+## Meal Configs & Dynamic Cutoffs
+
+Each mess has a `meal_configs` table with one row per meal type (BREAKFAST, LUNCH, DINNER). This replaces the old single `cut_off_time` approach.
+
+### Time-based meal targeting algorithm
+
+For `/meal on` and `/meal off`, the system determines the **next upcoming meal**:
+
+1. Fetch all enabled `meal_configs` for the mess, sorted by `cutoff_time` ASC
+2. Find the **first** meal where `now (in mess timezone) < cutoff_time`
+3. That is the target meal — toggle its count
+4. If all cutoffs have passed → command rejected
+
+**Example with defaults:**
+
+| Time | Target |
+|---|---|
+| Before 08:30 | BREAKFAST |
+| 08:30 – 12:59 | LUNCH |
+| 13:00 – 20:59 | DINNER |
+| 21:00+ | Rejected |
+
+Admins can configure these cutoffs per mess via `PUT /api/mess/meal-configs`.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- A Supabase project (free tier works)
+- npm
+
+### Install & run
+
+```bash
+npm install
+cp .env.local.example .env.local
+# fill in .env.local (see below)
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Environment Variables
+
+Copy `.env.local.example` to `.env.local` and fill in:
+
+```bash
+# ── Database ────────────────────────────────────────────────────────────────
+# Supabase Dashboard → Settings → Database → Connection string (Transaction mode)
+DATABASE_URL=postgresql://postgres.[ref]:[PASSWORD]@aws-1-[region].pooler.supabase.com:6543/postgres?pgbouncer=true
+
+# Direct connection — used by Prisma CLI for migrations
+DIRECT_URL=postgresql://postgres.[ref]:[PASSWORD]@aws-1-[region].pooler.supabase.com:5432/postgres
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+# Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+JWT_SECRET=your-super-secret-jwt-key-min-32-chars
+
+# ── Telegram Bot ─────────────────────────────────────────────────────────────
+# Token from @BotFather
+TELEGRAM_BOT_TOKEN=123456789:ABCDefGhIJKlmNoPQRsTUVwxyZ
+# Optional but strongly recommended
+TELEGRAM_WEBHOOK_SECRET=your-random-webhook-secret
+
+# ── Cron Jobs ─────────────────────────────────────────────────────────────────
+# Vercel cron sends: Authorization: Bearer <CRON_SECRET>
+CRON_SECRET=your-random-cron-secret
+
+# ── Public ────────────────────────────────────────────────────────────────────
+NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+NEXT_PUBLIC_DEFAULT_LOCALE=en
+NEXT_PUBLIC_USE_MOCK_DATA=false
+```
+
+---
+
+## Database Setup
+
+### 1. Create tables
+
+Run `supabase-schema.sql` in your **Supabase SQL Editor**. This creates all tables, indexes, RLS policies, and seeds default `meal_configs` for any existing messes.
+
+> **Existing database?** Run only the migration block at the bottom of `supabase-schema.sql` (the `ALTER TABLE`, `CREATE TABLE IF NOT EXISTS`, and seed `INSERT` statements). This is safe to run multiple times — all statements use `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`.
+
+### 2. Seed demo accounts
+
+```bash
+npm run seed
+```
+
+Demo credentials:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@demo.com` | `admin123` |
+| Manager | `manager@demo.com` | `manager123` |
+| Member | `member@demo.com` | `member123` |
+
+### 3. Prisma client
+
+After any schema change, regenerate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+---
+
+## Telegram Bot Setup
+
+See [`TELEGRAM_SETUP.md`](./TELEGRAM_SETUP.md) for the full guide.
+
+Quick version:
+
+```bash
+# 1. Get your token from @BotFather and add to .env.local
+
+# 2. Deploy to Vercel, then register the webhook:
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://your-app.vercel.app/api/telegram/webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+
+# 3. Link your Mealio account in the bot:
+/link +880XXXXXXXXXX
+/verify 123456
+```
+
+### Telegram command reference
+
+| Command | Who | Description |
+|---|---|---|
+| `/meal` | All | Show today's meal status (counts) |
+| `/meal on` | All | Enable the next upcoming meal (auto-detected by time) |
+| `/meal off` | All | Disable the next upcoming meal |
+| `/meal breakfast` | All | Toggle breakfast (0 ↔ default count) |
+| `/meal lunch` | All | Toggle lunch |
+| `/meal dinner` | All | Toggle dinner |
+| `/meal lunch 3` | All | Set lunch to 3 portions explicitly |
+| `/meal guest 2` | All | Add 2 guest meals for today |
+| `/status` | All | Alias for `/meal` |
+| `/nomeal` | Admin/Manager | Set all members' meals to 0; broadcast notification |
+| `/mealon` | Admin/Manager | Restore all members to their preference defaults |
+| `/rate` | All | Today's live meal rate |
+| `/balance` | All | Your monthly balance |
+| `/announce <msg>` | Admin/Manager | Broadcast a message to all linked members |
+
+---
+
+## API Reference
+
+### Auth
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/auth/login` | Email/password login → JWT |
+| `POST` | `/api/auth/register` | Register with mess invite code |
+
+### Meals
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/meals/today` | Get (or create from preferences) today's meal log |
+| `POST` | `/api/meals/toggle` | Set a meal slot count (`count` integer or legacy `status` boolean) |
+| `POST` | `/api/meals/guest` | Update guest count |
+| `GET` | `/api/members/meal-preferences` | Get current user's 6 default preferences (with `default_count`) |
+| `PUT` | `/api/members/meal-preferences` | Update one preference + sync today's log immediately |
+
+**`POST /api/meals/toggle` body:**
+```json
+{ "member_id": "...", "date": "2026-04-13", "slot": "lunch", "count": 2 }
+```
+Or legacy boolean form:
+```json
+{ "member_id": "...", "date": "2026-04-13", "slot": "lunch", "status": true }
+```
+
+### Expenses
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/expenses` | List expenses by month |
+| `POST` | `/api/expenses` | Add expense |
+| `PUT` | `/api/expenses/[id]` | Edit expense (Admin/Manager) |
+| `DELETE` | `/api/expenses/[id]` | Delete expense (Admin/Manager) |
+| `GET` | `/api/expenses/meal-rate` | Live meal rate for a month |
+
+### Members
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/members` | List all members with balances |
+| `GET` | `/api/members/me` | Current user's monthly summary |
+| `PUT` | `/api/members/[id]` | Update member role/status (Admin) |
+
+### Cook
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/cook/headcount` | Today's lunch headcount (sums `lunch_count` per member) |
+
+### Admin
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/admin/matrix` | Full monthly matrix (members × days, with counts) |
+| `POST` | `/api/admin/close-month` | Freeze month and compute balances |
+| `PUT` | `/api/admin/meals` | Set any member's meal slot count |
+| `POST` | `/api/admin/no-cook` | Toggle all meals on/off with Telegram broadcast |
+| `GET` | `/api/admin/audit` | Paginated audit log |
+
+### Mess
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/mess` | List messes the current user belongs to |
+| `POST` | `/api/mess` | Create a new mess (auto-seeds `meal_configs`) |
+| `GET` | `/api/mess/[id]/switch` | Switch active mess |
+| `PUT` | `/api/mess/settings` | Update mess name, cutoff time |
+| `GET` | `/api/mess/meal-configs` | Get per-meal cutoff configuration |
+| `PUT` | `/api/mess/meal-configs` | Update a meal config (Admin/Manager) |
+
+### Telegram Webhook
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/telegram/webhook` | Receives all Telegram updates |
+| `POST` | `/api/admin/telegram-group` | Link a Telegram group to a mess |
+
+### Cron Jobs (protected by `CRON_SECRET`)
+
+| Method | Route | Schedule | Description |
+|---|---|---|---|
+| `GET` | `/api/cron/generate-daily-meals` | 00:05 daily | Auto-create DailyLogs from preferences |
+| `GET` | `/api/cron/deactivate-guests` | 00:00 daily | Deactivate expired guest members |
+| `GET` | `/api/cron/cutoff-warning` | Hourly | Send Telegram reminder before cutoff |
+| `GET` | `/api/cron/month-end-reminder` | 20:00 on days 28–31 | Remind admin to close the month |
+
+---
+
+## Roles & Permissions
+
+| Feature | MEMBER | MANAGER | ADMIN |
+|---|---|---|---|
+| Toggle own meals | ✅ | ✅ | ✅ |
+| Set meal preferences | ✅ | ✅ | ✅ |
+| Add guest count | ✅ | ✅ | ✅ |
+| View headcount | ✅ | ✅ | ✅ |
+| Add expenses | — | ✅ | ✅ |
+| Edit/delete expenses | — | ✅ | ✅ |
+| `/nomeal` / `/mealon` | — | ✅ | ✅ |
+| Configure meal cutoffs | — | ✅ | ✅ |
+| Edit any member's meals | — | — | ✅ |
+| View month matrix | — | ✅ | ✅ |
+| Close month | — | — | ✅ |
+| Manage members | — | — | ✅ |
+| View audit trail | — | — | ✅ |
+| Mess settings | — | ✅ | ✅ |
+
+---
+
+## Cron Jobs
+
+Cron schedules are defined in `vercel.json`. All routes require `Authorization: Bearer <CRON_SECRET>`.
+
+### `generate-daily-meals` (00:05 daily)
+
+Core of the default-driven system. For each active mess:
+
+1. Determines "today" using the mess's Telegram group timezone (fallback: `Asia/Dhaka`)
+2. Finds active members without a `DailyLog` for today
+3. Reads each member's `user_meal_preferences` for the correct day type (WEEKDAY/WEEKEND)
+4. Bulk-creates `DailyLog` rows with integer counts (`breakfast_count`, `lunch_count`, `dinner_count`) and `is_override = false`
+5. Uses `skipDuplicates: true` — safe to re-run
+
+If a member has no preferences, all three meals default to count `1`.
+
+---
+
+## Deployment (Vercel)
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+```
+
+Set all environment variables in the Vercel dashboard (Settings → Environment Variables).
+
+After deploying, register the Telegram webhook:
+
+```bash
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://your-app.vercel.app/api/telegram/webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+```
+
+Cron jobs run automatically via Vercel Cron (defined in `vercel.json`). They require the `CRON_SECRET` environment variable.
+
+---
+
+## Project Structure
+
+```
+mealio-frontend/
+├── prisma/
+│   ├── schema.prisma              # Database schema (integer counts, MealConfig model)
+│   └── seed.ts                    # Demo account seeder
+├── prisma.config.ts               # Prisma CLI config (DIRECT_URL)
+├── messages/
+│   ├── en.json                    # English translations
+│   └── bn.json                    # Bengali translations
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── auth/              # login, register
+│   │   │   ├── meals/             # today, toggle, guest
+│   │   │   ├── members/           # list, me, [id], meal-preferences
+│   │   │   ├── expenses/          # list, add, [id], meal-rate
+│   │   │   ├── cook/              # headcount
+│   │   │   ├── admin/             # matrix, close-month, meals, no-cook, audit
+│   │   │   ├── mess/              # list, create, [id]/switch, settings, meal-configs
+│   │   │   ├── telegram/          # webhook
+│   │   │   └── cron/              # generate-daily-meals, deactivate-guests, …
+│   │   └── [locale]/
+│   │       ├── (auth)/            # login, register pages
+│   │       └── (dashboard)/       # protected pages
+│   ├── components/
+│   │   ├── ui/                    # Button, Card
+│   │   └── composed/              # ThemeToggle, LocaleSwitcher, ThemeProvider
+│   ├── contexts/
+│   │   └── AuthContext.tsx        # JWT auth state, stored in localStorage
+│   ├── lib/
+│   │   ├── prisma.ts              # Prisma client singleton
+│   │   ├── auth-utils.ts          # JWT sign/verify
+│   │   ├── financial.ts           # Cutoff helpers, meal rate, close month
+│   │   ├── meal-preferences.ts    # Default meal resolution — integer counts (server only)
+│   │   ├── api.ts                 # Frontend API client
+│   │   ├── audit.ts               # Audit log helper
+│   │   ├── constants.ts           # MEAL_TYPES, DEFAULT_MEAL_CONFIGS, roles, etc.
+│   │   └── telegram/              # Full Telegram bot implementation
+│   │       ├── commands/          # dispatcher + per-command handlers
+│   │       ├── repositories/      # DB layer (group, member, meal, meal-config, preference, otp)
+│   │       ├── services/          # Business logic (meal, nomeal, linking, report, announce)
+│   │       └── infrastructure/    # sender, rate-limiter, idempotency
+│   ├── i18n/                      # next-intl routing & request config
+│   └── types/
+│       └── index.ts               # Shared TypeScript types (DailyLog with counts, MealConfig)
+├── supabase-schema.sql            # Full DB schema + migration additions + meal_configs seed
+├── vercel.json                    # Cron job schedules
+└── TELEGRAM_SETUP.md              # Telegram bot setup guide
+```
+
+---
+
+Made with care for the mess culture of Bangladesh and India.

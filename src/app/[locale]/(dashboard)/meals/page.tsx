@@ -41,10 +41,11 @@ export default function MealsPage() {
         if (!user || !token) return;
         try {
             const log = await api.meals.getToday(user.id, token, today);
+            // count > 0 = meal is active
             setMeals({
-                breakfast: log.breakfast,
-                lunch: log.lunch,
-                dinner: log.dinner,
+                breakfast: log.breakfastCount > 0,
+                lunch: log.lunchCount > 0,
+                dinner: log.dinnerCount > 0,
             });
             setGuestCount(log.guestCount);
             setCutoffPassed(log.cutOffPassed);

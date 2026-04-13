@@ -297,15 +297,63 @@
         "active": "Active guest"
     },
     "settings": {
-        "title": "Mess Settings",
-        "subtitle": "Configure your mess preferences",
+        "title": "Settings",
+        "subtitle": "Configure your mess and personal meal preferences",
         "messName": "Mess Name",
-        "cutoffTime": "Meal Cut-off Time",
-        "cutoffHelp": "Members cannot toggle meals after this time",
+        "cutoffTime": "Dinner Cut-off Time",
+        "cutoffHelp": "Members cannot toggle dinner after this time",
+        "lunchCutoffTime": "Lunch Cut-off Time",
+        "lunchCutoffHelp": "Before this time /meal off targets lunch; after it targets dinner",
         "inviteCode": "Invite Code",
         "regenerateCode": "Regenerate Code",
         "saveChanges": "Save Changes",
         "dangerZone": "Danger Zone",
-        "deleteMess": "Delete Mess"
+        "deleteMess": "Delete Mess",
+        "mealPreferences": {
+            "title": "My Default Meal Preferences",
+            "subtitle": "Choose which meals are ON by default. You can always override for a specific day.",
+            "weekday": "Weekdays (Mon–Fri)",
+            "weekend": "Weekend (Sat–Sun)",
+            "breakfast": "Breakfast",
+            "lunch": "Lunch",
+            "dinner": "Dinner",
+            "saved": "Preferences saved"
+        },
+        "inviteCard": {
+            "title": "Member Invite Code",
+            "description": "Share this code with new members to join your mess",
+            "copy": "Copy",
+            "copied": "Copied!"
+        },
+        "telegramGroup": {
+            "title": "Telegram Group",
+            "description": "Link a Telegram group to enable bot commands and meal notifications",
+            "chatId": "Telegram Chat ID",
+            "chatIdHelp": "Run /start in your group with the Mealio bot to get the chat ID",
+            "chatName": "Group Name (optional)",
+            "timezone": "Timezone",
+            "link": "Link Group",
+            "linking": "Linking...",
+            "linked": "Linked",
+            "unlinked": "No group linked yet"
+        }
+    },
+    "createMess": {
+        "title": "Create New Mess",
+        "subtitle": "Set up a new shared mess for your group",
+        "name": "Mess Name",
+        "namePlaceholder": "e.g. Bashundhara Mess",
+        "budget": "Estimated Monthly Budget (৳)",
+        "budgetPlaceholder": "Optional",
+        "cutoffTime": "Dinner Cut-off Time",
+        "creating": "Creating...",
+        "create": "Create Mess",
+        "inviteReady": "Mess created!",
+        "inviteLabel": "Invite code — share with your members:",
+        "goToDashboard": "Go to Dashboard"
+    },
+    "messSwitcher": {
+        "label": "Switch Mess",
+        "switching": "Switching..."
     }
 }

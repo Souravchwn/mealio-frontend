@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { getMemberMealDefaults } from '@/lib/meal-preferences'
 
 export async function POST(req: NextRequest) {
   const token = extractToken(req)
@@ -27,14 +28,15 @@ export async function POST(req: NextRequest) {
   })
 
   if (!log) {
+    const defaults = await getMemberMealDefaults(targetMemberId, payload.messId, date as string)
     await prisma.dailyLog.create({
       data: {
         memberId: targetMemberId,
         messId: payload.messId,
         logDate: logDateObj,
-        breakfast: true,
-        lunch: true,
-        dinner: true,
+        breakfastCount: defaults.breakfastCount,
+        lunchCount: defaults.lunchCount,
+        dinnerCount: defaults.dinnerCount,
         guestCount: guest_count,
         frozen: false,
       },

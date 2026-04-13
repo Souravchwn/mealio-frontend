@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/generate-daily-meals",
+      "schedule": "5 0 * * *"
+    },
+    {
       "path": "/api/cron/deactivate-guests",
       "schedule": "0 0 * * *"
     },

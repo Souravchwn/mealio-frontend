@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -10,31 +11,45 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const messId = searchParams.get('mess_id') || payload.messId
-  const today = new Date().toISOString().slice(0, 10)
+
+  // Resolve today in the mess's timezone
+  const mess = await prisma.mess.findUnique({
+    where: { id: messId },
+    select: {
+      name: true,
+      telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 },
+    },
+  })
+  const timezone = mess?.telegramGroups[0]?.timezone ?? DEFAULT_TIMEZONE
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date())
   const todayObj = new Date(`${today}T00:00:00.000Z`)
 
-  const [mess, allMembers, logs] = await Promise.all([
-    prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),
-    // All active non-guest members
+  const [allMembers, logs] = await Promise.all([
     prisma.member.findMany({
       where: { messId, isActive: true, isGuest: false },
       select: { id: true },
     }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: todayObj },
-      select: { memberId: true, lunch: true, guestCount: true },
+      select: { memberId: true, lunchCount: true, guestCount: true },
     }),
   ])
 
   const logByMember = new Map(logs.map((l) => [l.memberId, l]))
 
-  // A member is counted if they have no log (default ON) OR their log has lunch = true
+  // A member counts if they have no log (default ON = 1) OR their log has lunchCount > 0
   const memberCount = allMembers.filter((m) => {
     const log = logByMember.get(m.id)
-    return log ? log.lunch : true
+    return log ? log.lunchCount > 0 : true
   }).length
 
-  // Guest count only from explicit log entries
+  // Sum up lunchCount for members with logs (> 0), plus default 1 for members without logs
+  const totalMemberPortions = allMembers.reduce((sum, m) => {
+    const log = logByMember.get(m.id)
+    if (!log) return sum + 1 // default
+    return sum + log.lunchCount
+  }, 0)
+
   const guestCount = logs.reduce((s, l) => s + l.guestCount, 0)
 
   return NextResponse.json({
@@ -42,7 +57,7 @@ export async function GET(req: NextRequest) {
     date: today,
     member_count: memberCount,
     guest_count: guestCount,
-    total_headcount: memberCount + guestCount,
+    total_headcount: totalMemberPortions + guestCount,
     source: 'database',
   })
 }

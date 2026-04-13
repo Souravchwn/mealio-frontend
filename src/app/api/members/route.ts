@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { memberId: true, breakfast: true, lunch: true, dinner: true, guestCount: true },
+      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
     }),
   ])
 

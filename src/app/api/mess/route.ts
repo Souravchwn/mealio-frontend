@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { DEFAULT_MEAL_CONFIGS } from '@/lib/constants'
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -93,6 +94,18 @@ export async function POST(req: NextRequest) {
 
     await prisma.messMembership.create({
       data: { memberId: payload.sub, messId: mess.id, role: 'ADMIN', isActive: true },
+    })
+
+    // Seed default meal configs (BREAKFAST 08:30, LUNCH 13:00, DINNER 21:00)
+    await prisma.mealConfig.createMany({
+      data: DEFAULT_MEAL_CONFIGS.map((cfg) => ({
+        messId: mess.id,
+        mealType: cfg.mealType,
+        cutoffTime: new Date(`1970-01-01T${cfg.cutoffTime}:00.000Z`),
+        enabled: true,
+        maxCount: 10,
+      })),
+      skipDuplicates: true,
     })
 
     return NextResponse.json({

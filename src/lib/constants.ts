@@ -6,9 +6,21 @@
 export const DEFAULT_CUTOFF_TIME = '21:00' as const
 export const DEFAULT_TIMEZONE = 'Asia/Dhaka' as const
 
-export const VALID_ROLES = ['ADMIN', 'MANAGER', 'MEMBER', 'GUEST'] as const
+/** Canonical meal type values — used in meal_configs and user_meal_preferences. */
+export const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER'] as const
+export type MealTypeUpper = (typeof MEAL_TYPES)[number]
+
+/** Default per-mess meal configs seeded on creation. */
+export const DEFAULT_MEAL_CONFIGS: Array<{ mealType: MealTypeUpper; cutoffTime: string }> = [
+  { mealType: 'BREAKFAST', cutoffTime: '08:30' },
+  { mealType: 'LUNCH',     cutoffTime: '13:00' },
+  { mealType: 'DINNER',    cutoffTime: '21:00' },
+]
+
+export const VALID_ROLES = ['SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'MEMBER', 'GUEST'] as const
 export type MemberRole = (typeof VALID_ROLES)[number]
 
+/** Lowercase slot names used in API toggle requests. */
 export const VALID_MEAL_SLOTS = ['breakfast', 'lunch', 'dinner'] as const
 export type MealSlot = (typeof VALID_MEAL_SLOTS)[number]
 

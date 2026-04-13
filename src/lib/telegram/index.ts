@@ -16,6 +16,8 @@ import { GroupRepository } from './repositories/group.repository'
 import { MemberRepository } from './repositories/member.repository'
 import { MealRepository } from './repositories/meal.repository'
 import { OtpRepository } from './repositories/otp.repository'
+import { PreferenceRepository } from './repositories/preference.repository'
+import { MealConfigRepository } from './repositories/meal-config.repository'
 
 import { AccountLinkingService } from './services/linking.service'
 import { MealService } from './services/meal.service'
@@ -41,6 +43,8 @@ const groupRepo = new GroupRepository()
 const memberRepo = new MemberRepository()
 const mealRepo = new MealRepository()
 const otpRepo = new OtpRepository()
+const prefRepo = new PreferenceRepository()
+const mealConfigRepo = new MealConfigRepository()
 
 // ── Services ────────────────────────────────────────────────────────────────
 function buildDispatcher(): CommandDispatcher {
@@ -48,7 +52,7 @@ function buildDispatcher(): CommandDispatcher {
 
   const linkingService = new AccountLinkingService(otpRepo, memberRepo, sender)
   const mealService = new MealService(mealRepo)
-  const noMealService = new NoMealService(mealRepo, memberRepo, sender)
+  const noMealService = new NoMealService(mealRepo, memberRepo, prefRepo, sender)
   const announceService = new AnnounceService(memberRepo, sender)
   const reportService = new ReportService(mealRepo)
 
@@ -56,7 +60,7 @@ function buildDispatcher(): CommandDispatcher {
     new StartCommandHandler(sender),
     new LinkCommandHandler(linkingService, sender),
     new VerifyCommandHandler(linkingService, sender),
-    new MealCommandHandler(mealService, memberRepo, sender),
+    new MealCommandHandler(mealService, mealConfigRepo, prefRepo, sender),
     new StatusCommandHandler(mealService, sender),
     new NoMealCommandHandler(noMealService, sender),
     new MealOnCommandHandler(noMealService, sender),

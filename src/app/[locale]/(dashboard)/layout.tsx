@@ -23,6 +23,7 @@ import {
     BarChart2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
+import { MessSwitcher } from "@/components/composed/MessSwitcher/MessSwitcher";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./dashboard.module.css";
@@ -261,6 +262,7 @@ export default function DashboardLayout({
                     </div>
 
                     <div className={styles.topbarRight}>
+                        <MessSwitcher />
                         <ThemeToggle />
                         <button
                             className={styles.menuButton}

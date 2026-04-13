@@ -52,6 +52,7 @@ export class MemberRepository {
     })
   }
 
+  /** @deprecated Use MealConfigRepository.getTargetMeal() for time-based targeting. */
   async getMessCutoff(messId: string): Promise<string> {
     const mess = await prisma.mess.findUnique({
       where: { id: messId },

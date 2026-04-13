@@ -20,12 +20,20 @@ export function monthRange(yearMonth: string): { start: Date; end: Date } {
 
 // ─── Meal counting ────────────────────────────────────────────────────────────
 
-type MealSlotData = { breakfast: boolean; lunch: boolean; dinner: boolean; guestCount: number }
+type MealSlotData = {
+  breakfastCount: number
+  lunchCount: number
+  dinnerCount: number
+  guestCount: number
+}
 
-/** Count total meal slots (breakfast + lunch + dinner + guests) across all log rows. */
+/**
+ * Sum all meal portions (breakfastCount + lunchCount + dinnerCount + guestCount)
+ * across all log rows. Uses integer counts — 0 means not eating, 1+ means portions.
+ */
 export function countMealSlots(logs: MealSlotData[]): number {
   return logs.reduce(
-    (s, l) => s + (l.breakfast ? 1 : 0) + (l.lunch ? 1 : 0) + (l.dinner ? 1 : 0) + l.guestCount,
+    (s, l) => s + l.breakfastCount + l.lunchCount + l.dinnerCount + l.guestCount,
     0
   )
 }
@@ -94,7 +102,7 @@ export async function calculateMealRate(messId: string, yearMonth: string): Prom
     }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { breakfast: true, lunch: true, dinner: true, guestCount: true },
+      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
     }),
   ])
 
@@ -127,7 +135,7 @@ export async function closeMonth(
     prisma.member.findMany({ where: { messId, isActive: true }, select: { id: true } }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { memberId: true, breakfast: true, lunch: true, dinner: true, guestCount: true },
+      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
     }),
     prisma.expense.findMany({
       where: { messId, expenseDate: { gte: start, lte: end } },

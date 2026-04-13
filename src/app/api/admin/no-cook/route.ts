@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { getMemberMealDefaults } from '@/lib/meal-preferences'
 
 // Shared helper — also used by the Telegram webhook
 export async function broadcastTelegram(
@@ -57,30 +58,68 @@ export async function POST(req: NextRequest) {
   }
 
   const dateObj = new Date(`${date}T00:00:00.000Z`)
-  const mealValues = action === 'off'
-    ? { breakfast: false, lunch: false, dinner: false }
-    : { breakfast: true, lunch: true, dinner: true }
 
   const members = await prisma.member.findMany({
     where: { messId, isActive: true },
     select: { id: true },
   })
 
-  await Promise.all(members.map(m =>
-    prisma.dailyLog.upsert({
-      where: { messId_memberId_logDate: { messId, memberId: m.id, logDate: dateObj } },
-      create: { memberId: m.id, messId, logDate: dateObj, ...mealValues, guestCount: 0, frozen: false },
-      update: mealValues,
-    }),
-  ))
+  if (action === 'off') {
+    // Set all meal counts to 0 (ADMIN override)
+    await Promise.all(members.map(m =>
+      prisma.dailyLog.upsert({
+        where: { messId_memberId_logDate: { messId, memberId: m.id, logDate: dateObj } },
+        create: {
+          memberId: m.id,
+          messId,
+          logDate: dateObj,
+          breakfastCount: 0,
+          lunchCount: 0,
+          dinnerCount: 0,
+          guestCount: 0,
+          frozen: false,
+          isOverride: true,
+          overrideType: 'ADMIN',
+        },
+        update: { breakfastCount: 0, lunchCount: 0, dinnerCount: 0, isOverride: true, overrideType: 'ADMIN' },
+      }),
+    ))
+  } else {
+    // Restore each member to their preference defaults
+    await Promise.all(members.map(async (m) => {
+      const defaults = await getMemberMealDefaults(m.id, messId, date)
+      await prisma.dailyLog.upsert({
+        where: { messId_memberId_logDate: { messId, memberId: m.id, logDate: dateObj } },
+        create: {
+          memberId: m.id,
+          messId,
+          logDate: dateObj,
+          breakfastCount: defaults.breakfastCount,
+          lunchCount: defaults.lunchCount,
+          dinnerCount: defaults.dinnerCount,
+          guestCount: 0,
+          frozen: false,
+          isOverride: false,
+          overrideType: null,
+        },
+        update: {
+          breakfastCount: defaults.breakfastCount,
+          lunchCount: defaults.lunchCount,
+          dinnerCount: defaults.dinnerCount,
+          isOverride: false,
+          overrideType: null,
+        },
+      })
+    }))
+  }
 
-  // Telegram broadcast
+  // Telegram broadcast (non-blocking)
   let broadcastMsg: string
   if (action === 'off') {
     const reasonLine = reason ? `\n📝 *Reason:* ${reason}` : ''
     broadcastMsg = `🚫 *No Meals — ${date}*\n\nAll meals have been turned *OFF* for ${date}.${reasonLine}\n\n_Turn individual meals back on with \`/meal on\` if needed._`
   } else {
-    broadcastMsg = `✅ *Meals Restored — ${date}*\n\nAll meals have been turned *ON* for ${date}.\n\nAdjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\``
+    broadcastMsg = `✅ *Meals Restored — ${date}*\n\nMeals have been restored to your personal defaults for ${date}.\n\nAdjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\``
   }
 
   const notified = await broadcastTelegram(messId, broadcastMsg)
