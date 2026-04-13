@@ -25,7 +25,7 @@
         "hero": {
             "title": "Your Mess,",
             "titleHighlight": "Simplified.",
-            "subtitle": "Stop scrolling WhatsApp for meal counts. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
+            "subtitle": "Stop chasing meal counts in endless group chats. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
             "cta": "Get Started Free",
             "ctaSecondary": "See How It Works"
         },
@@ -103,7 +103,9 @@
             "submit": "Sign In",
             "forgotPassword": "Forgot password?",
             "noAccount": "Don't have an account?",
-            "register": "Create one"
+            "register": "Create one",
+            "success": "Logged in successfully!",
+            "error": "Login failed. Please check your credentials."
         },
         "register": {
             "title": "Join Mealio",
@@ -117,7 +119,10 @@
             "messCodeHelp": "Ask your mess admin for the invite code",
             "submit": "Create Account",
             "hasAccount": "Already have an account?",
-            "login": "Sign in"
+            "login": "Sign in",
+            "success": "Account created successfully!",
+            "error": "Registration failed. Please try again.",
+            "passwordMismatch": "Passwords do not match"
         }
     },
     "nav": {
@@ -127,6 +132,7 @@
         "expenses": "Expenses",
         "expenseAnalytics": "Analytics",
         "headcount": "Headcount",
+        "mySummary": "My Summary",
         "matrix": "Month Matrix",
         "members": "Members",
         "audit": "Audit Trail",
@@ -248,7 +254,8 @@
         "roles": {
             "ADMIN": "Admin",
             "MANAGER": "Manager",
-            "MEMBER": "Member"
+            "MEMBER": "Member",
+            "GUEST": "Guest"
         }
     },
     "audit": {
@@ -263,16 +270,90 @@
         "newValue": "New Value",
         "noEntries": "No audit entries yet"
     },
+    "mySummary": {
+        "title": "My Monthly Summary",
+        "subtitle": "Personal breakdown for {month}",
+        "mealRate": "Meal Rate",
+        "totalMeals": "Meals (Last 7 Days)",
+        "contributed": "Contributed",
+        "mealCost": "Meal Cost",
+        "balance": "Balance",
+        "mealBreakdown": "Meal Breakdown",
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "guestMeals": "Guest Meals",
+        "times": "times",
+        "last7Days": "Last 7 Days",
+        "financialSummary": "Financial Summary",
+        "telegramStatus": "Telegram",
+        "telegramLinked": "Linked",
+        "telegramNotLinked": "Not linked — use /link in the bot"
+    },
+    "guest": {
+        "badge": "Guest",
+        "dateRange": "Guest from {from} to {until}",
+        "expired": "Guest period ended",
+        "active": "Active guest"
+    },
     "settings": {
-        "title": "Mess Settings",
-        "subtitle": "Configure your mess preferences",
+        "title": "Settings",
+        "subtitle": "Configure your mess and personal meal preferences",
         "messName": "Mess Name",
-        "cutoffTime": "Meal Cut-off Time",
-        "cutoffHelp": "Members cannot toggle meals after this time",
+        "cutoffTime": "Dinner Cut-off Time",
+        "cutoffHelp": "Members cannot toggle dinner after this time",
+        "lunchCutoffTime": "Lunch Cut-off Time",
+        "lunchCutoffHelp": "Before this time /meal off targets lunch; after it targets dinner",
         "inviteCode": "Invite Code",
         "regenerateCode": "Regenerate Code",
         "saveChanges": "Save Changes",
         "dangerZone": "Danger Zone",
-        "deleteMess": "Delete Mess"
+        "deleteMess": "Delete Mess",
+        "mealPreferences": {
+            "title": "My Default Meal Preferences",
+            "subtitle": "Choose which meals are ON by default. You can always override for a specific day.",
+            "weekday": "Weekdays (Mon–Fri)",
+            "weekend": "Weekend (Sat–Sun)",
+            "breakfast": "Breakfast",
+            "lunch": "Lunch",
+            "dinner": "Dinner",
+            "saved": "Preferences saved"
+        },
+        "inviteCard": {
+            "title": "Member Invite Code",
+            "description": "Share this code with new members to join your mess",
+            "copy": "Copy",
+            "copied": "Copied!"
+        },
+        "telegramGroup": {
+            "title": "Telegram Group",
+            "description": "Link a Telegram group to enable bot commands and meal notifications",
+            "chatId": "Telegram Chat ID",
+            "chatIdHelp": "Run /start in your group with the Mealio bot to get the chat ID",
+            "chatName": "Group Name (optional)",
+            "timezone": "Timezone",
+            "link": "Link Group",
+            "linking": "Linking...",
+            "linked": "Linked",
+            "unlinked": "No group linked yet"
+        }
+    },
+    "createMess": {
+        "title": "Create New Mess",
+        "subtitle": "Set up a new shared mess for your group",
+        "name": "Mess Name",
+        "namePlaceholder": "e.g. Bashundhara Mess",
+        "budget": "Estimated Monthly Budget (৳)",
+        "budgetPlaceholder": "Optional",
+        "cutoffTime": "Dinner Cut-off Time",
+        "creating": "Creating...",
+        "create": "Create Mess",
+        "inviteReady": "Mess created!",
+        "inviteLabel": "Invite code — share with your members:",
+        "goToDashboard": "Go to Dashboard"
+    },
+    "messSwitcher": {
+        "label": "Switch Mess",
+        "switching": "Switching..."
     }
 }

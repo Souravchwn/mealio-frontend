@@ -156,6 +156,18 @@
     color: var(--color-text);
 }
 
+.guestBadge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    background: #f59e0b22;
+    color: #d97706;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
 .dayHeader {
     min-width: 32px;
 }
@@ -242,6 +254,128 @@
     text-transform: uppercase;
     margin-left: 2px;
     opacity: 0.7;
+}
+
+/* Edit mode */
+.editBanner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.dayCellEditable .cellDot {
+    cursor: pointer;
+}
+
+.dayCellEditable .cellDot:hover {
+    outline: 2px solid var(--color-primary);
+    transform: scale(1.15);
+}
+
+.cellDefault {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-muted);
+    opacity: 0.5;
+}
+
+.cellActive {
+    outline: 2px solid var(--color-primary);
+}
+
+.emptyState {
+    padding: var(--space-8);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* Cell popover */
+.dayCell {
+    position: relative;
+}
+
+.popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-3);
+    min-width: 160px;
+    animation: fadeInUp 0.15s ease;
+}
+
+.popoverHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.popoverName {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.popoverDate {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.popoverSlots {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.slotBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-subtle);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    width: 100%;
+}
+
+.slotBtn:hover {
+    background: var(--color-bg-card);
+    border-color: var(--color-text-muted);
+}
+
+.slotBtnOn {
+    background: var(--color-success-light);
+    border-color: var(--color-success);
+    color: var(--color-success-dark);
+}
+
+.slotBtnOn:hover {
+    background: var(--color-success-light);
+    opacity: 0.8;
+}
+
+.slotStatus {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
 }
 
 @media (max-width: 768px) {

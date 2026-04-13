@@ -1,0 +1,22 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/telegram/health
+  body: none
+  auth: none
+}
+
+docs {
+  # Telegram Bot Health Check
+
+  Simple liveness probe — no auth required.
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 200  | `"Mealio Telegram Bot is live ✅"` |
+}

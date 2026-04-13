@@ -8,6 +8,8 @@
 
 /* ===== CSS CUSTOM PROPERTIES ===== */
 :root {
+  color-scheme: light;
+
   /* Brand */
   --color-primary: #6366f1;
   --color-primary-hover: #4f46e5;
@@ -131,6 +133,7 @@
 
 /* ===== DARK MODE ===== */
 [data-theme="dark"] {
+  color-scheme: dark;
   --color-bg: #0a0818;
   --color-bg-subtle: #110e24;
   --color-bg-card: #16132e;
@@ -180,7 +183,10 @@ body {
   background-color: var(--color-bg);
   line-height: var(--leading-normal);
   min-height: 100vh;
+  min-height: 100dvh;
   transition: background-color var(--transition-base), color var(--transition-base);
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
 }
 
 /* Bangla locale override */
@@ -191,6 +197,7 @@ html[lang="bn"] body {
 a {
   color: inherit;
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button {
@@ -199,6 +206,8 @@ button {
   background: none;
   font-family: inherit;
   font-size: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 input,
@@ -454,6 +463,18 @@ ol {
 
 .stagger-6 {
   animation-delay: 0.3s;
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Scrollbar styling */

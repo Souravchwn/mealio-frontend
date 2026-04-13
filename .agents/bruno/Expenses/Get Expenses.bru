@@ -1,0 +1,36 @@
+meta {
+  name: Get Expenses
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/expenses?messId={{messId}}&yearMonth=2026-03
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+params:query {
+  messId: {{messId}}
+  yearMonth: 2026-03
+}
+
+docs {
+  # Get Expenses
+
+  Returns all expenses for a given mess in a given month.
+
+  - `messId` — UUID of the mess (required)
+  - `yearMonth` — format `YYYY-MM` (optional, defaults to current month)
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 200  | Array of `ExpenseResponse` |
+  | 401  | Missing or invalid token |
+  | 404  | Mess not found |
+}

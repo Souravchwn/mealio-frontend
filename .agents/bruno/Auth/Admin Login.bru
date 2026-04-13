@@ -1,0 +1,52 @@
+meta {
+  name: Admin Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "sysadmin",
+    "password": "ChangeMe_Prod!"
+  }
+}
+
+script:post-response {
+  // Automatically save the token to the environment variable
+  if (res.status === 200) {
+    const data = res.body;
+    bru.setVar("accessToken", data.accessToken);
+    console.log("✅ Token saved to accessToken variable.");
+  } else {
+    console.error("❌ Login failed:", res.body);
+  }
+}
+
+docs {
+  # Admin Login
+
+  Issues a signed HS256 JWT for the system admin account.
+
+  **No registration flow exists.** Credentials are configured via environment variables:
+  - `JWT_ADMIN_USERNAME` (default: `sysadmin`)
+  - `JWT_ADMIN_PASSWORD` (default: `ChangeMe_Prod!`)
+
+  On success, this request's post-response script automatically saves the `accessToken`
+  to the Bruno environment variable so all other requests pick it up automatically.
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 200  | Login successful — JWT in body |
+  | 401  | Invalid credentials |
+}

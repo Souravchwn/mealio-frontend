@@ -1,0 +1,47 @@
+meta {
+  name: Add Expense
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/expenses
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "messId": "{{messId}}",
+    "memberId": "{{memberId}}",
+    "amount": 350.00,
+    "category": "PROTEIN",
+    "description": "Chicken from the bazaar",
+    "date": "2026-03-02"
+  }
+}
+
+docs {
+  # Add Expense
+
+  Records a new bazaar expense for the mess.
+
+  ## Categories
+  `PROTEIN` | `CARB` | `VEGETABLE` | `SPICE` | `OIL` | `UTILITY` | `OTHER`
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 201  | Expense created — returns `ExpenseResponse` |
+  | 400  | Validation error |
+  | 401  | Missing or invalid token |
+  | 404  | Mess or Member not found |
+}

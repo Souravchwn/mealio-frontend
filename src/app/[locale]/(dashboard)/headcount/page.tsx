@@ -1,45 +1,61 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Users, UserPlus, ChefHat, RefreshCw } from "lucide-react";
+import { Users, UserPlus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import type { HeadcountResponse } from "@/types";
 import styles from "./headcount.module.css";
-
-const MOCK_HEADCOUNT = {
-    memberCount: 14,
-    guestCount: 2,
-    totalHeadcount: 16,
-    messName: "Bashundhara Mess",
-    date: "2026-03-15",
-};
 
 export default function HeadcountPage() {
     const t = useTranslations("headcount");
-    const [data, setData] = useState(MOCK_HEADCOUNT);
+    const { user, token } = useAuth();
+
+    const [data, setData] = useState<HeadcountResponse | null>(null);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [timeSinceUpdate, setTimeSinceUpdate] = useState(0);
+
+    const fetchHeadcount = useCallback(async () => {
+        if (!user || !token) return;
+        try {
+            const result = await api.cook.getHeadcount(user.messId, token);
+            setData(result);
+            setLastUpdated(new Date());
+        } catch {
+            // silently fail on background refresh
+        }
+    }, [user, token]);
+
+    useEffect(() => {
+        const id = setTimeout(fetchHeadcount, 0);
+        return () => clearTimeout(id);
+    }, [fetchHeadcount]);
+
+    // Tick every second to keep timeSinceUpdate fresh
+    useEffect(() => {
+        const ticker = setInterval(() => {
+            setTimeSinceUpdate(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+        }, 1000);
+        return () => clearInterval(ticker);
+    }, [lastUpdated]);
 
     // Auto-refresh every 30 seconds
     useEffect(() => {
-        const interval = setInterval(() => {
-            setLastUpdated(new Date());
-        }, 30000);
+        const interval = setInterval(fetchHeadcount, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchHeadcount]);
 
-    function handleRefresh() {
+    async function handleRefresh() {
         setRefreshing(true);
-        setTimeout(() => {
-            setLastUpdated(new Date());
-            setRefreshing(false);
-        }, 800);
+        await fetchHeadcount();
+        setRefreshing(false);
     }
 
-    const timeSinceUpdate = Math.floor(
-        (Date.now() - lastUpdated.getTime()) / 1000
-    );
     const isStale = timeSinceUpdate > 60;
+    const total = data?.totalHeadcount ?? 0;
 
     return (
         <div className={styles.page}>
@@ -58,10 +74,10 @@ export default function HeadcountPage() {
 
                 <div className={styles.bigNumberWrap}>
                     <span className={cn(styles.bigNumber, isStale && styles.stale)}>
-                        {data.totalHeadcount}
+                        {data ? total : "—"}
                     </span>
                     <span className={styles.bigLabel}>
-                        {t("preparing")} <strong>{data.totalHeadcount}</strong>{" "}
+                        {t("preparing")} <strong>{data ? total : "—"}</strong>{" "}
                         {t("people")}
                     </span>
                 </div>
@@ -73,7 +89,7 @@ export default function HeadcountPage() {
                         </div>
                         <div className={styles.breakdownInfo}>
                             <span className={styles.breakdownValue}>
-                                {data.memberCount}
+                                {data?.memberCount ?? "—"}
                             </span>
                             <span className={styles.breakdownLabel}>{t("members")}</span>
                         </div>
@@ -82,14 +98,12 @@ export default function HeadcountPage() {
                     <div className={styles.breakdownDivider} />
 
                     <div className={styles.breakdownItem}>
-                        <div
-                            className={cn(styles.breakdownIcon, styles.breakdownIconAccent)}
-                        >
+                        <div className={cn(styles.breakdownIcon, styles.breakdownIconAccent)}>
                             <UserPlus size={24} />
                         </div>
                         <div className={styles.breakdownInfo}>
                             <span className={styles.breakdownValue}>
-                                {data.guestCount}
+                                {data?.guestCount ?? "—"}
                             </span>
                             <span className={styles.breakdownLabel}>{t("guests")}</span>
                         </div>

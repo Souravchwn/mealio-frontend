@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
     Utensils,
     LayoutDashboard,
@@ -19,17 +20,13 @@ import {
     Menu,
     X,
     Bell,
+    BarChart2,
 } from "lucide-react";
-import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
+import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
+import { MessSwitcher } from "@/components/composed/MessSwitcher/MessSwitcher";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./dashboard.module.css";
-
-// Mock user — replace with auth context later
-const MOCK_USER = {
-    name: "Sourav",
-    role: "ADMIN" as const,
-    messName: "Bashundhara Mess",
-};
 
 interface NavItem {
     key: string;
@@ -46,7 +43,38 @@ export default function DashboardLayout({
     const t = useTranslations("nav");
     const locale = useLocale();
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, logout, isAuthenticated, isLoading } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Redirect to login if not authenticated (wait for localStorage hydration first)
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            router.push(`/${locale}/login`);
+        }
+    }, [isAuthenticated, isLoading, locale, router]);
+
+    if (isLoading) {
+        return (
+            <div className={styles.loadingScreen}>
+                <div className={styles.loadingLogo}>
+                    <Utensils size={22} color="white" />
+                </div>
+            </div>
+        );
+    }
+
+    const handleLogout = () => {
+        logout();
+        router.push(`/${locale}/login`);
+    };
+
+    // Use actual user data or fallback to mock
+    const currentUser = user || {
+        name: "Guest User",
+        role: "MEMBER" as const,
+        messName: "Demo Mess",
+    };
 
     const basePath = `/${locale}`;
 
@@ -73,6 +101,12 @@ export default function DashboardLayout({
             key: "headcount",
             href: `${basePath}/headcount`,
             icon: <ChefHat size={20} />,
+            roles: ["ADMIN", "MANAGER", "MEMBER"],
+        },
+        {
+            key: "mySummary",
+            href: `${basePath}/my-summary`,
+            icon: <BarChart2 size={20} />,
             roles: ["ADMIN", "MANAGER", "MEMBER"],
         },
     ];
@@ -104,7 +138,7 @@ export default function DashboardLayout({
         },
     ];
 
-    const userRole = MOCK_USER.role;
+    const userRole = currentUser.role;
     const filteredMain = mainNav.filter((item) =>
         item.roles.includes(userRole)
     );
@@ -120,8 +154,8 @@ export default function DashboardLayout({
     );
     const pageTitle = currentNavItem ? t(currentNavItem.key) : t("overview");
 
-    // Bottom nav items (max 5 for mobile)
-    const bottomNavItems = filteredMain.slice(0, 4);
+    // Bottom nav — show all filtered main items (up to 5)
+    const bottomNavItems = filteredMain.slice(0, 5);
 
     return (
         <div className={styles.layout}>
@@ -142,7 +176,7 @@ export default function DashboardLayout({
                     <div className={styles.sidebarBrand}>
                         <span className={styles.sidebarTitle}>Mealio</span>
                         <span className={styles.sidebarMessName}>
-                            {MOCK_USER.messName}
+                            {currentUser.messName}
                         </span>
                     </div>
                 </div>
@@ -188,13 +222,26 @@ export default function DashboardLayout({
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userCard}>
                         <div className={styles.userAvatar}>
-                            {getInitials(MOCK_USER.name)}
+                            {getInitials(currentUser.name)}
                         </div>
                         <div className={styles.userInfo}>
-                            <div className={styles.userName}>{MOCK_USER.name}</div>
-                            <div className={styles.userRole}>{MOCK_USER.role}</div>
+                            <div className={styles.userName}>{currentUser.name}</div>
+                            <div className={styles.userRole}>{currentUser.role}</div>
                         </div>
-                        <LogOut size={16} style={{ opacity: 0.5, cursor: "pointer" }} />
+                        <button
+                            onClick={handleLogout}
+                            aria-label="Logout"
+                            style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                opacity: 0.5
+                            }}
+                        >
+                            <LogOut size={16} />
+                        </button>
                     </div>
                 </div>
             </aside>
@@ -215,7 +262,8 @@ export default function DashboardLayout({
                     </div>
 
                     <div className={styles.topbarRight}>
-                        <LocaleSwitcher />
+                        <MessSwitcher />
+                        <ThemeToggle />
                         <button
                             className={styles.menuButton}
                             style={{ display: "flex" }}

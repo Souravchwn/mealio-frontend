@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
@@ -19,40 +20,102 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card/Card";
 import { cn, formatCurrency, getTimeOfDay, getCategoryColor } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import styles from "./overview.module.css";
 
-// Mock data — replace with real API calls
-const MOCK_STATS = {
-    mealRate: 87.5,
-    balance: 1250.0,
-    totalMembers: 14,
-    monthExpense: 45000.0,
-    totalMeals: 514,
-    headcount: 16,
-};
+interface TodayMeals {
+    breakfast: boolean;
+    lunch: boolean;
+    dinner: boolean;
+}
 
-const MOCK_TODAY_MEALS = {
-    breakfast: true,
-    lunch: true,
-    dinner: false,
-};
+interface RecentExpense {
+    id: string;
+    description: string;
+    amount: number;
+    category: string;
+    date: string;
+}
 
-const MOCK_RECENT_EXPENSES = [
-    { id: "1", desc: "Rui Fish — Karwan Bazar", amount: 850, category: "PROTEIN" as const, date: "2026-03-14" },
-    { id: "2", desc: "Rice (25kg)", amount: 1400, category: "CARB" as const, date: "2026-03-14" },
-    { id: "3", desc: "Mixed Vegetables", amount: 450, category: "VEGETABLE" as const, date: "2026-03-13" },
-    { id: "4", desc: "Cooking Oil (5L)", amount: 680, category: "OIL" as const, date: "2026-03-13" },
-];
+interface Stats {
+    mealRate: number;
+    balance: number;
+    monthExpense: number;
+    headcount: number;
+}
 
 export default function OverviewPage() {
     const t = useTranslations("overview");
     const tc = useTranslations("common");
     const locale = useLocale();
     const timeOfDay = getTimeOfDay();
+    const { user, token } = useAuth();
+
+    const [stats, setStats] = useState<Stats>({
+        mealRate: 0,
+        balance: 0,
+        monthExpense: 0,
+        headcount: 0,
+    });
+    const [todayMeals, setTodayMeals] = useState<TodayMeals>({
+        breakfast: true,
+        lunch: true,
+        dinner: false,
+    });
+    const [recentExpenses, setRecentExpenses] = useState<RecentExpense[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user || !token) return;
+
+        const today = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+        Promise.allSettled([
+            api.expenses.getMealRate(user.messId, today, token),
+            api.expenses.getExpenses(user.messId, today, token),
+            api.cook.getHeadcount(user.messId, token),
+            api.meals.getToday(user.id, token),
+            api.members.me(token, today),
+        ]).then(([rateRes, expensesRes, headcountRes, mealsRes, meRes]) => {
+            if (rateRes.status === "fulfilled") {
+                setStats((s) => ({ ...s, mealRate: Number(rateRes.value.mealRate) }));
+            }
+            if (expensesRes.status === "fulfilled") {
+                const exps = expensesRes.value;
+                const total = exps.reduce((sum, e) => sum + Number(e.amount), 0);
+                setStats((s) => ({ ...s, monthExpense: total }));
+                setRecentExpenses(
+                    exps.slice(0, 5).map((e) => ({
+                        id: e.id,
+                        description: e.description || "",
+                        amount: Number(e.amount),
+                        category: e.category,
+                        date: e.date,
+                    }))
+                );
+            }
+            if (headcountRes.status === "fulfilled") {
+                setStats((s) => ({ ...s, headcount: headcountRes.value.totalHeadcount }));
+            }
+            if (mealsRes.status === "fulfilled") {
+                const m = mealsRes.value;
+                setTodayMeals({
+                    breakfast: m.breakfast,
+                    lunch: m.lunch,
+                    dinner: m.dinner,
+                });
+            }
+            if (meRes.status === "fulfilled") {
+                setStats((s) => ({ ...s, balance: Number(meRes.value.balance) }));
+            }
+            setLoading(false);
+        });
+    }, [user, token]);
 
     const greeting = t("greeting", {
         timeOfDay: t(timeOfDay),
-        name: "Sourav",
+        name: user?.name?.split(" ")[0] ?? "Friend",
     });
 
     const mealIcons = {
@@ -61,80 +124,55 @@ export default function OverviewPage() {
         dinner: <Moon size={24} />,
     };
 
-    const stats = [
+    const statItems = [
         {
             key: "mealRate",
             label: t("mealRate"),
-            value: formatCurrency(MOCK_STATS.mealRate, locale),
+            value: formatCurrency(stats.mealRate),
             icon: <TrendingUp size={22} />,
             iconClass: styles.statIconPrimary,
-            trend: "+2.3%",
-            trendDir: "up",
+            trend: null,
         },
         {
             key: "balance",
             label: t("yourBalance"),
-            value: formatCurrency(MOCK_STATS.balance, locale),
+            value: formatCurrency(stats.balance),
             icon: <Wallet size={22} />,
             iconClass: styles.statIconSuccess,
             trend: null,
-            trendDir: null,
         },
         {
             key: "monthExpense",
             label: t("monthExpense"),
-            value: formatCurrency(MOCK_STATS.monthExpense, locale),
+            value: formatCurrency(stats.monthExpense),
             icon: <Receipt size={22} />,
             iconClass: styles.statIconAccent,
-            trend: "+12%",
-            trendDir: "up",
+            trend: null,
         },
         {
             key: "headcount",
             label: t("headcountToday"),
-            value: String(MOCK_STATS.headcount),
+            value: String(stats.headcount),
             icon: <Users size={22} />,
             iconClass: styles.statIconInfo,
-            trend: "-1",
-            trendDir: "down",
+            trend: null,
         },
     ];
 
     const quickActions = [
-        {
-            key: "toggleMeals",
-            label: t("toggleMeals"),
-            icon: <UtensilsCrossed size={20} />,
-            href: `/${locale}/meals`,
-        },
-        {
-            key: "addExpense",
-            label: t("addExpense"),
-            icon: <Receipt size={20} />,
-            href: `/${locale}/expenses`,
-        },
-        {
-            key: "viewMatrix",
-            label: t("viewMatrix"),
-            icon: <Grid3X3 size={20} />,
-            href: `/${locale}/matrix`,
-        },
-        {
-            key: "viewHeadcount",
-            label: t("viewHeadcount"),
-            icon: <ChefHat size={20} />,
-            href: `/${locale}/headcount`,
-        },
+        { key: "toggleMeals", label: t("toggleMeals"), icon: <UtensilsCrossed size={20} />, href: `/${locale}/meals` },
+        { key: "addExpense", label: t("addExpense"), icon: <Receipt size={20} />, href: `/${locale}/expenses` },
+        { key: "viewMatrix", label: t("viewMatrix"), icon: <Grid3X3 size={20} />, href: `/${locale}/matrix` },
+        { key: "viewHeadcount", label: t("viewHeadcount"), icon: <ChefHat size={20} />, href: `/${locale}/headcount` },
     ];
 
     return (
         <div className={styles.page}>
-            {/* Greeting */}
             <h2 className={styles.greeting}>{greeting}</h2>
 
             {/* Stats Grid */}
             <div className={styles.statsGrid}>
-                {stats.map((stat, idx) => (
+                {statItems.map((stat, idx) => (
                     <div
                         key={stat.key}
                         className={styles.statCard}
@@ -145,14 +183,11 @@ export default function OverviewPage() {
                         </div>
                         <div className={styles.statContent}>
                             <div className={styles.statLabel}>{stat.label}</div>
-                            <div className={styles.statValue}>{stat.value}</div>
+                            <div className={styles.statValue}>
+                                {loading ? "—" : stat.value}
+                            </div>
                             {stat.trend && (
-                                <div
-                                    className={cn(
-                                        styles.statTrend,
-                                        stat.trendDir === "up" ? styles.trendUp : styles.trendDown
-                                    )}
-                                >
+                                <div className={cn(styles.statTrend, styles.trendUp)}>
                                     <ArrowUpRight size={12} />
                                     {stat.trend} {tc("thisMonth")}
                                 </div>
@@ -181,24 +216,22 @@ export default function OverviewPage() {
                                     key={slot}
                                     className={cn(
                                         styles.mealSlot,
-                                        MOCK_TODAY_MEALS[slot] && styles.mealSlotActive
+                                        todayMeals[slot] && styles.mealSlotActive
                                     )}
                                 >
                                     <span className={styles.mealSlotIcon}>
                                         {mealIcons[slot]}
                                     </span>
                                     <span className={styles.mealSlotLabel}>
-                                        {t(slot === "breakfast" ? "todayMeals" : slot === "lunch" ? "mealRate" : "yourBalance").split(" ")[0]}
+                                        {slot.charAt(0).toUpperCase() + slot.slice(1)}
                                     </span>
                                     <span
                                         className={cn(
                                             styles.mealSlotStatus,
-                                            MOCK_TODAY_MEALS[slot]
-                                                ? styles.mealStatusOn
-                                                : styles.mealStatusOff
+                                            todayMeals[slot] ? styles.mealStatusOn : styles.mealStatusOff
                                         )}
                                     >
-                                        {MOCK_TODAY_MEALS[slot] ? "ON" : "OFF"}
+                                        {todayMeals[slot] ? "ON" : "OFF"}
                                     </span>
                                 </div>
                             ))}
@@ -213,12 +246,8 @@ export default function OverviewPage() {
                             {quickActions.map((action) => (
                                 <Link key={action.key} href={action.href}>
                                     <div className={styles.quickAction}>
-                                        <div className={styles.quickActionIcon}>
-                                            {action.icon}
-                                        </div>
-                                        <span className={styles.quickActionLabel}>
-                                            {action.label}
-                                        </span>
+                                        <div className={styles.quickActionIcon}>{action.icon}</div>
+                                        <span className={styles.quickActionLabel}>{action.label}</span>
                                     </div>
                                 </Link>
                             ))}
@@ -237,23 +266,31 @@ export default function OverviewPage() {
                     </div>
 
                     <div className={styles.expenseList}>
-                        {MOCK_RECENT_EXPENSES.map((expense) => (
-                            <div key={expense.id} className={styles.expenseItem}>
-                                <span
-                                    className={styles.expenseDot}
-                                    style={{
-                                        backgroundColor: getCategoryColor(expense.category),
-                                    }}
-                                />
-                                <div className={styles.expenseInfo}>
-                                    <div className={styles.expenseDesc}>{expense.desc}</div>
-                                    <div className={styles.expenseDate}>{expense.date}</div>
+                        {loading ? (
+                            <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-sm)" }}>
+                                Loading…
+                            </p>
+                        ) : recentExpenses.length === 0 ? (
+                            <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-sm)" }}>
+                                No expenses this month.
+                            </p>
+                        ) : (
+                            recentExpenses.map((expense) => (
+                                <div key={expense.id} className={styles.expenseItem}>
+                                    <span
+                                        className={styles.expenseDot}
+                                        style={{ backgroundColor: getCategoryColor(expense.category as never) }}
+                                    />
+                                    <div className={styles.expenseInfo}>
+                                        <div className={styles.expenseDesc}>{expense.description}</div>
+                                        <div className={styles.expenseDate}>{expense.date}</div>
+                                    </div>
+                                    <div className={styles.expenseAmount}>
+                                        {formatCurrency(expense.amount)}
+                                    </div>
                                 </div>
-                                <div className={styles.expenseAmount}>
-                                    {formatCurrency(expense.amount, locale)}
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </Card>
             </div>

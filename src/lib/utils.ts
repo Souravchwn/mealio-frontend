@@ -3,13 +3,7 @@ import { ExpenseCategory } from "@/types";
 /**
  * Format a number as BDT currency
  */
-export function formatCurrency(
-    amount: number,
-    locale: string = "en"
-): string {
-    if (locale === "bn") {
-        return `৳ ${toBanglaNumber(amount.toFixed(2))}`;
-    }
+export function formatCurrency(amount: number): string {
     return `৳ ${amount.toLocaleString("en-BD", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -17,19 +11,10 @@ export function formatCurrency(
 }
 
 /**
- * Convert a number to Bangla numerals
- */
-export function toBanglaNumber(num: string | number): string {
-    const banglaDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-    return String(num).replace(/[0-9]/g, (d) => banglaDigits[parseInt(d)]);
-}
-
-/**
  * Format a date string
  */
 export function formatDate(
     dateStr: string,
-    locale: string = "en",
     format: "short" | "long" | "day" = "long"
 ): string {
     const date = new Date(dateStr);
@@ -40,8 +25,7 @@ export function formatDate(
                 ? { weekday: "short", month: "short", day: "numeric" }
                 : { year: "numeric", month: "long", day: "numeric" };
 
-    const loc = locale === "bn" ? "bn-BD" : "en-US";
-    return date.toLocaleDateString(loc, options);
+    return date.toLocaleDateString("en-US", options);
 }
 
 /**

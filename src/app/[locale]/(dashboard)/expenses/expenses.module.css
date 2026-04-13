@@ -209,16 +209,143 @@
     white-space: nowrap;
 }
 
+/* Expense action icons */
+.expenseActions {
+    display: flex;
+    gap: var(--space-1);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.expenseRow:hover .expenseActions {
+    opacity: 1;
+}
+
+.iconBtn {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.iconBtn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.iconBtnDanger:hover {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+}
+
+/* Inline edit row */
+.expenseRowEditing {
+    background: var(--color-bg-subtle);
+    flex-wrap: wrap;
+}
+
+.editInline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.editInput {
+    height: 32px;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-card);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    flex: 1;
+    min-width: 80px;
+}
+
+.editInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.editSelect {
+    height: 32px;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-card);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    flex: 1;
+    min-width: 100px;
+    cursor: pointer;
+}
+
+.editSelect:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.editActions {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.iconBtnSave {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-success);
+    background: var(--color-success-light, #d1fae5);
+    color: var(--color-success-dark, #065f46);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.iconBtnCancel {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
 @media (max-width: 640px) {
     .formRow {
         grid-template-columns: 1fr;
     }
 
-    .statsRow {
-        grid-template-columns: 1fr;
-    }
-
     .expenseRow {
         padding: var(--space-3) var(--space-4);
+    }
+
+    .listHeader {
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .title {
+        font-size: var(--text-xl);
+    }
+
+    .miniStatValue {
+        font-size: var(--text-xl);
     }
 }
