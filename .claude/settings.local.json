@@ -6,20 +6,7 @@
       "Bash(npm run:*)",
       "Bash(npx eslint:*)",
       "Bash(npm uninstall:*)",
-      "Bash(npx prisma:*)",
-      "Bash(DATABASE_URL=\"postgresql://placeholder:placeholder@localhost:5432/placeholder\" DIRECT_URL=\"postgresql://placeholder:placeholder@localhost:5432/placeholder\" npx prisma generate)",
-      "Bash(node -e \"import\\('./prisma.config.ts'\\)\")",
-      "Bash(ls node_modules/prisma/build/*.js)",
-      "Bash(DIRECT_URL=\"postgresql://placeholder:placeholder@localhost:5432/db\" DATABASE_URL=\"postgresql://placeholder:placeholder@localhost:5432/db\" npx prisma generate)",
-      "Bash(rm src/lib/supabase.ts src/utils/supabase/client.ts src/utils/supabase/server.ts src/utils/supabase/middleware.ts)",
-      "Bash(rmdir src/utils/supabase)",
-      "Bash(find:*)",
-      "Bash(grep -n \"calculateMealRate\\\\|recalculateMealRate\\\\|getMemberBalance\\\\|closeMonth\" /d/code/code/mealio/mealio-frontend/src/app/api/**/*.ts)",
-      "Bash(grep -n \"\\\\.toISOString\" /d/code/code/mealio/mealio-frontend/src/app/api/**/*.ts)",
-      "Bash(grep -n \"import.*AuditTrail\\\\|import.*MonthlySnapshot\\\\|import.*HeadcountResponse\" /d/code/code/mealio/mealio-frontend/src/**/*.ts*)",
-      "Bash(grep -v \"^$\")",
-      "Bash(node:*)",
-      "Bash(npx next:*)"
+      "Bash(npx prisma:*)"
     ]
   }
 }
