@@ -4,6 +4,7 @@ export const Role = {
     ADMIN: "ADMIN",
     MANAGER: "MANAGER",
     MEMBER: "MEMBER",
+    GUEST: "GUEST",
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];
@@ -41,7 +42,10 @@ export type MonthStatus = (typeof MonthStatus)[keyof typeof MonthStatus];
 export interface Mess {
     id: string;
     name: string;
+    inviteCode: string;
     cutOffTime: string;
+    isActive: boolean;
+    estimatedMonthlyBudget?: number;
     createdAt: string;
 }
 
@@ -50,8 +54,10 @@ export interface Member {
     messId: string;
     name: string;
     phone?: string;
-    telegramUserId?: string;
+    telegramUid?: number;
+    telegramLinked: boolean;
     role: Role;
+    isActive: boolean;
     balance: number;
 }
 
@@ -59,17 +65,34 @@ export interface DailyLog {
     id: string;
     memberId: string;
     date: string;
+    breakfastCount: number;
+    lunchCount: number;
+    dinnerCount: number;
+    /** Convenience booleans: count > 0 */
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
-    guestCount: number;
+    /** Per-slot guest counts, billed to the host member. */
+    guestBreakfastCount: number;
+    guestLunchCount: number;
+    guestDinnerCount: number;
     frozen: boolean;
+    overrideType?: string | null;
+}
+
+export interface MealConfig {
+    id: string;
+    messId: string;
+    mealType: "BREAKFAST" | "LUNCH" | "DINNER";
+    enabled: boolean;
+    cutoffTime: string; // HH:MM
+    maxCount: number;
 }
 
 export interface Expense {
     id: string;
     messId: string;
-    memberId: string;
+    memberId: string | null;
     memberName?: string;
     amount: number;
     category: ExpenseCategory;
@@ -85,7 +108,7 @@ export interface MonthlySnapshot {
     totalExpense: number;
     mealRate: number;
     totalMeals: number;
-    status: MonthStatus;
+    isClosed: boolean;
     closedAt?: string;
 }
 
@@ -120,25 +143,38 @@ export interface AuthResponse {
 
 /* API Responses */
 
+export interface MealHeadcount {
+    memberCount: number;
+    guestCount: number;
+    total: number;
+}
+
 export interface HeadcountResponse {
     messName: string;
     date: string;
-    memberCount: number;
-    guestCount: number;
-    totalHeadcount: number;
-    source: "firebase" | "database";
+    meals: {
+        breakfast: MealHeadcount;
+        lunch: MealHeadcount;
+        dinner: MealHeadcount;
+    };
+    source: "database";
 }
 
 export interface ExpenseResponse {
     id: string;
+    messId: string;
+    memberId: string;
+    memberName: string;
     amount: number;
     category: ExpenseCategory;
-    description: string;
+    description: string | null;
     date: string;
+    createdAt: string;
     liveMealRate: number;
 }
 
 export interface MonthMatrixResponse {
+    messId: string;
     messName: string;
     yearMonth: string;
     mealRate: number;
@@ -150,6 +186,7 @@ export interface MonthMatrixResponse {
 export interface MemberMatrixRow {
     memberId: string;
     memberName: string;
+    memberRole: string;
     days: DayEntry[];
     totalMeals: number;
     totalAmount: number;
@@ -157,12 +194,20 @@ export interface MemberMatrixRow {
 }
 
 export interface DayEntry {
+    logId: string;
+    memberId: string;
+    memberName: string;
     date: string;
+    breakfastCount: number;
+    lunchCount: number;
+    dinnerCount: number;
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
-    guestCount: number;
-    totalMeals: number;
+    guestBreakfastCount: number;
+    guestLunchCount: number;
+    guestDinnerCount: number;
+    frozen: boolean;
 }
 
 /* API Requests */
@@ -182,7 +227,7 @@ export interface RegisterRequest {
 
 export interface ExpenseRequest {
     messId: string;
-    memberId: string;
+    memberId?: string;
     amount: number;
     category: ExpenseCategory;
     description: string;
@@ -193,12 +238,16 @@ export interface MealToggleRequest {
     memberId: string;
     date: string;
     slot: MealSlot;
-    status: boolean;
+    /** Integer count: 0 = off, 1 = normal, 2+ = extra. Preferred over `status`. */
+    count?: number;
+    /** Legacy boolean — converted to count 0/1 on the server. */
+    status?: boolean;
 }
 
 export interface GuestUpdateRequest {
     memberId: string;
     date: string;
+    slot: MealSlot;
     guestCount: number;
 }
 
@@ -206,4 +255,10 @@ export interface CloseMonthRequest {
     messId: string;
     adminId: string;
     yearMonth: string;
+}
+
+export interface MessSwitchResponse {
+    accessToken: string;
+    refreshToken: string;
+    mess: { id: string; name: string };
 }

@@ -1,0 +1,64 @@
+meta {
+  name: Telegram Webhook
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/telegram/webhook
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "update_id": 123456789,
+    "message": {
+      "message_id": 42,
+      "from": {
+        "id": 987654321,
+        "is_bot": false,
+        "first_name": "Rahul",
+        "username": "rahuldev",
+        "language_code": "en"
+      },
+      "chat": {
+        "id": -1001234567890,
+        "title": "Dhaka Mess Group",
+        "type": "supergroup"
+      },
+      "date": 1740921600,
+      "text": "/meal on"
+    }
+  }
+}
+
+docs {
+  # Telegram Webhook
+
+  Receives Telegram Update payloads forwarded by the Telegram Bot API.
+  **This endpoint is public** — Telegram sends no Authorization header.
+
+  Register your webhook:
+  ```
+  curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain/api/telegram/webhook"
+  ```
+
+  Supported bot commands (sent as message text):
+  | Command | Effect |
+  |---------|--------|
+  | `/meal on` | Mark all 3 meals for today |
+  | `/meal off` | Mark no meals for today |
+  | `/meal breakfast` | Toggle breakfast only |
+  | `/meal lunch` | Toggle lunch only |
+  | `/meal dinner` | Toggle dinner only |
+  | `/meal guest 2` | Add 2 guest meals |
+
+  ## Responses
+  This endpoint **always returns HTTP 200** to prevent Telegram retry storms.
+  Error messages are sent back to the chat via the bot reply port.
+}

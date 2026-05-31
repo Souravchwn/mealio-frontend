@@ -1,0 +1,39 @@
+meta {
+  name: Get Headcount
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/cook/headcount?messId={{messId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+params:query {
+  messId: {{messId}}
+}
+
+docs {
+  # Get Headcount
+
+  Returns today's headcount for the cook's dashboard. Data is served from
+  Firebase Realtime Database (cache) with database fallback.
+
+  Response fields:
+  - `memberCount` — members with ≥ 1 meal today
+  - `guestCount` — total guest meals today
+  - `totalHeadcount` — memberCount + guestCount
+  - `source` — `"firebase"` or `"database"` (fallback indicator)
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 200  | `HeadcountResponse` |
+  | 401  | Missing or invalid token |
+  | 404  | Mess not found |
+}

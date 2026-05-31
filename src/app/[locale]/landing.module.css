@@ -8,19 +8,24 @@
     right: 0;
     z-index: var(--z-fixed);
     padding: var(--space-4) var(--space-6);
+    background: var(--color-bg);
     transition: all var(--transition-base);
 }
 
 .navbarScrolled {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--color-border);
     box-shadow: var(--shadow-sm);
 }
 
+[data-theme="dark"] .navbar {
+    background: var(--color-bg);
+}
+
 [data-theme="dark"] .navbarScrolled {
-    background: rgba(10, 8, 24, 0.85);
+    background: rgba(10, 8, 24, 0.95);
 }
 
 .navInner {
@@ -58,14 +63,19 @@
     gap: var(--space-3);
 }
 
+/* Sign-in link — hidden on small screens to save navbar space */
+.navSignIn {
+    display: flex;
+}
+
 /* Hero Section */
 .hero {
-    min-height: 100vh;
+    min-height: 100svh;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: var(--space-24) var(--space-6) var(--space-16);
+    padding: var(--space-24) var(--space-5) var(--space-12);
     position: relative;
     overflow: hidden;
 }
@@ -143,8 +153,10 @@
 .statsBar {
     display: flex;
     justify-content: center;
-    gap: clamp(var(--space-6), 5vw, var(--space-16));
-    margin-top: var(--space-16);
+    gap: clamp(var(--space-5), 5vw, var(--space-16));
+    margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
     animation: fadeInUp 0.8s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -169,7 +181,7 @@
 
 /* Section base */
 .section {
-    padding: var(--space-24) var(--space-6);
+    padding: var(--space-20) var(--space-5);
     max-width: var(--max-content-width);
     margin: 0 auto;
 }
@@ -196,8 +208,8 @@
 /* Features Grid */
 .featuresGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: var(--space-6);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-5);
 }
 
 .featureCard {
@@ -303,7 +315,7 @@
 /* Roles Section */
 .rolesBg {
     background: var(--color-bg-subtle);
-    padding: var(--space-24) var(--space-6);
+    padding: var(--space-20) var(--space-5);
 }
 
 .rolesGrid {
@@ -349,7 +361,7 @@
 /* CTA section */
 .ctaSection {
     text-align: center;
-    padding: var(--space-24) var(--space-6);
+    padding: var(--space-20) var(--space-5);
     position: relative;
     overflow: hidden;
 }
@@ -382,6 +394,61 @@
     font-size: var(--text-lg);
 }
 
+/* Demo accounts section */
+.demoSection {
+    margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+}
+
+.demoTitle {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.demoGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.demoCard {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    text-align: left;
+}
+
+.demoRole {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+    color: var(--color-text);
+}
+
+.demoCredentials {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.demoCredentials code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    background: var(--color-bg-subtle);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-primary);
+    border: 1px solid var(--color-border);
+}
+
 /* Footer */
 .footer {
     border-top: 1px solid var(--color-border);
@@ -409,13 +476,37 @@
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+    .sectionHeader {
+        margin-bottom: var(--space-10);
+    }
+}
+
 @media (max-width: 640px) {
+    .hero {
+        padding: var(--space-20) var(--space-4) var(--space-10);
+    }
+
     .featuresGrid {
         grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+
+    .featureCard {
+        padding: var(--space-6);
     }
 
     .rolesGrid {
         grid-template-columns: 1fr 1fr;
+        gap: var(--space-4);
+    }
+
+    .roleCard {
+        padding: var(--space-5);
+    }
+
+    .roleEmoji {
+        font-size: 36px;
     }
 
     .statsBar {
@@ -425,19 +516,49 @@
     .heroActions {
         flex-direction: column;
         width: 100%;
+        gap: var(--space-3);
     }
 
-    .heroActions>* {
+    .heroActions > * {
         width: 100%;
     }
 
     .navbar {
         padding: var(--space-3) var(--space-4);
     }
+
+    .navActions {
+        gap: var(--space-2);
+    }
+
+    /* Hide sign-in ghost button — CTA is enough on mobile */
+    .navSignIn {
+        display: none;
+    }
+
+    .section {
+        padding: var(--space-16) var(--space-4);
+    }
+
+    .rolesBg {
+        padding: var(--space-16) var(--space-4);
+    }
+
+    .ctaSection {
+        padding: var(--space-16) var(--space-4);
+    }
 }
 
 @media (max-width: 480px) {
     .rolesGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .demoGrid {
         grid-template-columns: 1fr;
+    }
+
+    .heroSubtitle {
+        font-size: var(--text-sm);
     }
 }

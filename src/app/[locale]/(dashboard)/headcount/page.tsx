@@ -1,51 +1,74 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Users, UserPlus, ChefHat, RefreshCw } from "lucide-react";
+import { Users, UserPlus, RefreshCw, Sun, CloudSun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import type { HeadcountResponse, MealHeadcount } from "@/types";
 import styles from "./headcount.module.css";
 
-const MOCK_HEADCOUNT = {
-    memberCount: 14,
-    guestCount: 2,
-    totalHeadcount: 16,
-    messName: "Bashundhara Mess",
-    date: "2026-03-15",
-};
+type SlotKey = "breakfast" | "lunch" | "dinner";
 
 export default function HeadcountPage() {
     const t = useTranslations("headcount");
-    const [data, setData] = useState(MOCK_HEADCOUNT);
+    const tm = useTranslations("meals");
+    const { user, token } = useAuth();
+
+    const [data, setData] = useState<HeadcountResponse | null>(null);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [timeSinceUpdate, setTimeSinceUpdate] = useState(0);
+
+    const fetchHeadcount = useCallback(async () => {
+        if (!user || !token) return;
+        try {
+            const result = await api.cook.getHeadcount(user.messId, token);
+            setData(result);
+            setLastUpdated(new Date());
+        } catch {
+            // silently fail on background refresh
+        }
+    }, [user, token]);
+
+    useEffect(() => {
+        const id = setTimeout(fetchHeadcount, 0);
+        return () => clearTimeout(id);
+    }, [fetchHeadcount]);
+
+    // Tick every second to keep timeSinceUpdate fresh
+    useEffect(() => {
+        const ticker = setInterval(() => {
+            setTimeSinceUpdate(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+        }, 1000);
+        return () => clearInterval(ticker);
+    }, [lastUpdated]);
 
     // Auto-refresh every 30 seconds
     useEffect(() => {
-        const interval = setInterval(() => {
-            setLastUpdated(new Date());
-        }, 30000);
+        const interval = setInterval(fetchHeadcount, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchHeadcount]);
 
-    function handleRefresh() {
+    async function handleRefresh() {
         setRefreshing(true);
-        setTimeout(() => {
-            setLastUpdated(new Date());
-            setRefreshing(false);
-        }, 800);
+        await fetchHeadcount();
+        setRefreshing(false);
     }
 
-    const timeSinceUpdate = Math.floor(
-        (Date.now() - lastUpdated.getTime()) / 1000
-    );
     const isStale = timeSinceUpdate > 60;
+
+    const slots: { key: SlotKey; icon: React.ReactNode; label: string }[] = [
+        { key: "breakfast", icon: <Sun size={28} strokeWidth={1.75} />, label: tm("breakfast") },
+        { key: "lunch", icon: <CloudSun size={28} strokeWidth={1.75} />, label: tm("lunch") },
+        { key: "dinner", icon: <Moon size={28} strokeWidth={1.75} />, label: tm("dinner") },
+    ];
 
     return (
         <div className={styles.page}>
-            {/* Big Number */}
-            <div className={styles.bigNumberCard}>
-                <div className={styles.bigNumberHeader}>
+            <div className={styles.card}>
+                <div className={styles.header}>
                     <h2 className={styles.title}>{t("title")}</h2>
                     <button
                         className={cn(styles.refreshBtn, refreshing && styles.refreshing)}
@@ -56,44 +79,42 @@ export default function HeadcountPage() {
                     </button>
                 </div>
 
-                <div className={styles.bigNumberWrap}>
-                    <span className={cn(styles.bigNumber, isStale && styles.stale)}>
-                        {data.totalHeadcount}
-                    </span>
-                    <span className={styles.bigLabel}>
-                        {t("preparing")} <strong>{data.totalHeadcount}</strong>{" "}
-                        {t("people")}
-                    </span>
-                </div>
+                <div className={styles.mealGrid}>
+                    {slots.map((slot) => {
+                        const m: MealHeadcount | undefined = data?.meals[slot.key];
+                        return (
+                            <div
+                                key={slot.key}
+                                className={cn(styles.mealCard, isStale && styles.stale)}
+                            >
+                                <div className={styles.mealCardHead}>
+                                    <span className={styles.mealIcon}>{slot.icon}</span>
+                                    <span className={styles.mealName}>{slot.label}</span>
+                                </div>
 
-                <div className={styles.breakdown}>
-                    <div className={styles.breakdownItem}>
-                        <div className={styles.breakdownIcon}>
-                            <Users size={24} />
-                        </div>
-                        <div className={styles.breakdownInfo}>
-                            <span className={styles.breakdownValue}>
-                                {data.memberCount}
-                            </span>
-                            <span className={styles.breakdownLabel}>{t("members")}</span>
-                        </div>
-                    </div>
+                                <span className={styles.bigNumber}>
+                                    {m ? m.total : "—"}
+                                </span>
 
-                    <div className={styles.breakdownDivider} />
-
-                    <div className={styles.breakdownItem}>
-                        <div
-                            className={cn(styles.breakdownIcon, styles.breakdownIconAccent)}
-                        >
-                            <UserPlus size={24} />
-                        </div>
-                        <div className={styles.breakdownInfo}>
-                            <span className={styles.breakdownValue}>
-                                {data.guestCount}
-                            </span>
-                            <span className={styles.breakdownLabel}>{t("guests")}</span>
-                        </div>
-                    </div>
+                                <div className={styles.breakdown}>
+                                    <div className={styles.breakdownItem}>
+                                        <Users size={16} />
+                                        <span className={styles.breakdownValue}>
+                                            {m?.memberCount ?? "—"}
+                                        </span>
+                                        <span className={styles.breakdownLabel}>{t("members")}</span>
+                                    </div>
+                                    <div className={styles.breakdownItem}>
+                                        <UserPlus size={16} />
+                                        <span className={styles.breakdownValue}>
+                                            {m?.guestCount ?? "—"}
+                                        </span>
+                                        <span className={styles.breakdownLabel}>{t("guests")}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <div className={styles.lastUpdated}>

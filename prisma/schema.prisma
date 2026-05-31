@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Mess {
+  id                     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                   String
+  inviteCode             String   @unique @map("invite_code")
+  /// Legacy dinner cutoff — used as fallback when meal_configs are absent.
+  /// Prefer querying meal_configs for per-meal cutoff enforcement.
+  cutOffTime             DateTime @map("cut_off_time") @db.Time(6)
+  estimatedMonthlyBudget Decimal? @map("estimated_monthly_budget") @db.Decimal(10, 2)
+  isActive               Boolean  @default(true) @map("is_active")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  members         Member[]
+  messMonths      MessMonth[]
+  dailyLogs       DailyLog[]
+  expenses        Expense[]
+  ledgerEntries   LedgerEntry[]
+  auditLogs       AuditLog[]
+  memberships     MessMembership[]
+  telegramGroups  TelegramGroup[]
+  mealPreferences UserMealPreference[]
+  mealConfigs     MealConfig[]
+
+  @@map("messes")
+}
+
+model Member {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId         String?   @map("mess_id") @db.Uuid
+  name           String
+  email          String    @unique
+  phone          String?
+  passwordHash   String    @map("password_hash")
+  /// SYSTEM_ADMIN | ADMIN | MANAGER | MEMBER | GUEST
+  role           String    @default("MEMBER")
+  telegramUid    BigInt?   @unique @map("telegram_uid")
+  telegramLinked Boolean   @default(false) @map("telegram_linked")
+  isActive       Boolean   @default(true) @map("is_active")
+  invitedBy      String?   @map("invited_by") @db.Uuid
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  mess           Mess?           @relation(fields: [messId], references: [id], onDelete: Cascade)
+  inviter        Member?         @relation("InvitedBy", fields: [invitedBy], references: [id])
+  invitees       Member[]        @relation("InvitedBy")
+  dailyLogs      DailyLog[]
+  addedExpenses  Expense[]       @relation("AddedBy")
+  ledgerEntries  LedgerEntry[]   @relation("MemberLedger")
+  createdLedgers LedgerEntry[]   @relation("CreatedBy")
+  auditLogs      AuditLog[]
+  memberships    MessMembership[]
+  mealPreferences UserMealPreference[]
+
+  @@index([messId], map: "idx_members_mess")
+  @@index([telegramUid], map: "idx_members_telegram")
+  @@map("members")
+}
+
+model MessMonth {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId       String    @map("mess_id") @db.Uuid
+  yearMonth    String    @map("year_month")
+  isClosed     Boolean   @default(false) @map("is_closed")
+  closedAt     DateTime? @map("closed_at") @db.Timestamptz(6)
+  mealRate     Decimal?  @map("meal_rate") @db.Decimal(10, 4)
+  totalExpense Decimal   @default(0) @map("total_expense") @db.Decimal(10, 2)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess          Mess          @relation(fields: [messId], references: [id], onDelete: Cascade)
+  ledgerEntries LedgerEntry[]
+
+  @@unique([messId, yearMonth])
+  @@map("mess_months")
+}
+
+/// Integer-count based daily meal log.
+/// breakfastCount/lunchCount/dinnerCount represent the number of portions a
+/// member eats themselves (0 = not eating, 1 = normal, 2+ = extra / family).
+/// guestBreakfastCount/guestLunchCount/guestDinnerCount are the guests the host
+/// brings for that slot — billed to the host. Billed portions for a slot =
+/// own slot count + that slot's guest count.
+/// override_type: null = auto-generated | USER = member command | ADMIN = admin command | SYSTEM = cron
+model DailyLog {
+  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId              String   @map("mess_id") @db.Uuid
+  memberId            String   @map("member_id") @db.Uuid
+  logDate             DateTime @map("log_date") @db.Date
+  breakfastCount      Int      @default(1) @map("breakfast_count")
+  lunchCount          Int      @default(1) @map("lunch_count")
+  dinnerCount         Int      @default(1) @map("dinner_count")
+  guestBreakfastCount Int      @default(0) @map("guest_breakfast_count")
+  guestLunchCount     Int      @default(0) @map("guest_lunch_count")
+  guestDinnerCount    Int      @default(0) @map("guest_dinner_count")
+  /// @deprecated Legacy single per-day guest count — superseded by the three
+  /// per-slot guest columns above. Retained for one release for safe rollback;
+  /// dropped in a later migration. No longer read by application code.
+  guestCount          Int      @default(0) @map("guest_count")
+  frozen              Boolean  @default(false)
+  isOverride          Boolean  @default(false) @map("is_override")
+  /// null | USER | ADMIN | SYSTEM
+  overrideType        String?  @map("override_type")
+  toggledAt           DateTime @default(now()) @map("toggled_at") @db.Timestamptz(6)
+
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([messId, memberId, logDate])
+  @@index([messId, logDate], map: "idx_daily_logs_mess_date")
+  @@index([memberId, logDate], map: "idx_daily_logs_member_date")
+  @@map("daily_logs")
+}
+
+/// Per-meal, per-mess configuration: enabled flag and cutoff time.
+/// This drives the dynamic time-based meal targeting:
+///   sort by cutoff_time ASC → find first meal where now < cutoff_time.
+/// Seed three rows (BREAKFAST/LUNCH/DINNER) on mess creation.
+model MealConfig {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId     String   @map("mess_id") @db.Uuid
+  /// BREAKFAST | LUNCH | DINNER
+  mealType   String   @map("meal_type")
+  enabled    Boolean  @default(true)
+  cutoffTime DateTime @map("cutoff_time") @db.Time(6)
+  /// Maximum allowed count per member per meal (for validation)
+  maxCount   Int      @default(10) @map("max_count")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@unique([messId, mealType])
+  @@index([messId], map: "idx_meal_configs_mess")
+  @@map("meal_configs")
+}
+
+model Expense {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String   @map("mess_id") @db.Uuid
+  addedBy     String?  @map("added_by") @db.Uuid
+  amount      Decimal  @db.Decimal(10, 2)
+  category    String
+  description String?
+  expenseDate DateTime @map("expense_date") @db.Date
+  yearMonth   String   @map("year_month")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess          Mess    @relation(fields: [messId], references: [id], onDelete: Cascade)
+  addedByMember Member? @relation("AddedBy", fields: [addedBy], references: [id])
+
+  @@index([messId, yearMonth], map: "idx_expenses_mess_month")
+  @@map("expenses")
+}
+
+model LedgerEntry {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String   @map("mess_id") @db.Uuid
+  messMonthId String?  @map("mess_month_id") @db.Uuid
+  memberId    String   @map("member_id") @db.Uuid
+  entryType   String   @map("entry_type")
+  amount      Decimal  @db.Decimal(10, 2)
+  note        String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess      Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  messMonth MessMonth? @relation(fields: [messMonthId], references: [id])
+  member    Member     @relation("MemberLedger", fields: [memberId], references: [id], onDelete: Cascade)
+  creator   Member?    @relation("CreatedBy", fields: [createdBy], references: [id])
+
+  @@index([memberId, messMonthId], map: "idx_ledger_member_month")
+  @@map("ledger_entries")
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String?  @map("mess_id") @db.Uuid
+  actorId     String?  @map("actor_id") @db.Uuid
+  action      String
+  targetTable String?  @map("target_table")
+  targetId    String?  @map("target_id") @db.Uuid
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess  Mess?   @relation(fields: [messId], references: [id])
+  actor Member? @relation(fields: [actorId], references: [id])
+
+  @@map("audit_log")
+}
+
+model TelegramGroup {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chatId    String   @unique @map("chat_id")
+  chatName  String?  @map("chat_name")
+  messId    String   @map("mess_id") @db.Uuid
+  timezone  String   @default("Asia/Dhaka")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_groups")
+}
+
+model TelegramOtp {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  telegramId String   @map("telegram_id")
+  phone      String
+  otp        String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([telegramId], map: "idx_telegram_otps_uid")
+  @@map("telegram_otps")
+}
+
+model ProcessedUpdate {
+  updateId    BigInt   @id @map("update_id")
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_updates")
+}
+
+model MessMembership {
+  id       String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  memberId String   @map("member_id") @db.Uuid
+  messId   String   @map("mess_id") @db.Uuid
+  role     String
+  isActive Boolean  @default(true) @map("is_active")
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, messId])
+  @@map("mess_memberships")
+}
+
+/// Per-user, per-mess default meal preferences.
+/// defaultCount: how many portions to restore when re-enabling a meal (usually 1).
+/// Missing row → enabled=true, defaultCount=1.
+model UserMealPreference {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  memberId     String   @map("member_id") @db.Uuid
+  messId       String   @map("mess_id") @db.Uuid
+  /// BREAKFAST | LUNCH | DINNER
+  mealType     String   @map("meal_type")
+  /// WEEKDAY | WEEKEND
+  dayType      String   @map("day_type")
+  enabled      Boolean  @default(true)
+  defaultCount Int      @default(1) @map("default_count")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, messId, mealType, dayType])
+  @@index([memberId, messId], map: "idx_meal_prefs_member_mess")
+  @@map("user_meal_preferences")
+}

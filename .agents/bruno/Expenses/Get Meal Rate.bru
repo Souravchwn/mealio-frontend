@@ -1,0 +1,33 @@
+meta {
+  name: Get Meal Rate
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/expenses/meal-rate?messId={{messId}}&yearMonth=2026-03
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+params:query {
+  messId: {{messId}}
+  yearMonth: 2026-03
+}
+
+docs {
+  # Get Meal Rate
+
+  Returns the current live meal rate (total expense ÷ total meals) for the given
+  mess and month.
+
+  ## Responses
+  | Code | Meaning |
+  |------|---------|
+  | 200  | `MealRateResponse` with `messId`, `yearMonth`, `mealRate` |
+  | 401  | Missing or invalid token |
+}

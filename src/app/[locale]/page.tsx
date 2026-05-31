@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
-import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
+import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import styles from "./landing.module.css";
 import { cn } from "@/lib/utils";
 
@@ -90,8 +90,8 @@ export default function LandingPage() {
                     </div>
 
                     <div className={styles.navActions}>
-                        <LocaleSwitcher />
-                        <Link href={`/${locale}/login`}>
+                        <ThemeToggle />
+                        <Link href={`/${locale}/login`} className={styles.navSignIn}>
                             <Button variant="ghost" size="small">
                                 {t("hero.cta") === "Get Started Free" ? "Sign In" : "সাইন ইন"}
                             </Button>
@@ -216,6 +216,34 @@ export default function LandingPage() {
                             <ArrowRight size={20} />
                         </Button>
                     </Link>
+
+                    {/* Demo Accounts */}
+                    <div className={styles.demoSection}>
+                        <p className={styles.demoTitle}>Try Demo Accounts:</p>
+                        <div className={styles.demoGrid}>
+                            <div className={styles.demoCard}>
+                                <div className={styles.demoRole}>👑 Admin</div>
+                                <div className={styles.demoCredentials}>
+                                    <code>admin@demo.com</code>
+                                    <code>admin123</code>
+                                </div>
+                            </div>
+                            <div className={styles.demoCard}>
+                                <div className={styles.demoRole}>🛒 Manager</div>
+                                <div className={styles.demoCredentials}>
+                                    <code>manager@demo.com</code>
+                                    <code>manager123</code>
+                                </div>
+                            </div>
+                            <div className={styles.demoCard}>
+                                <div className={styles.demoRole}>👤 Member</div>
+                                <div className={styles.demoCredentials}>
+                                    <code>member@demo.com</code>
+                                    <code>member123</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
