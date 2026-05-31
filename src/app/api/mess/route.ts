@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   const messes = await prisma.mess.findMany({
     where: { id: { in: Array.from(messIds) }, isActive: true },
-    select: { id: true, name: true, inviteCode: true, cutOffTime: true, isActive: true },
+    select: { id: true, name: true, inviteCode: true, cutOffTime: true, estimatedMonthlyBudget: true, isActive: true },
   })
 
   const roleMap: Record<string, string> = {}
@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
       name: mess.name,
       invite_code: mess.inviteCode,
       cut_off_time: mess.cutOffTime.toISOString().slice(11, 16),
+      estimated_monthly_budget: mess.estimatedMonthlyBudget ? Number(mess.estimatedMonthlyBudget) : null,
       is_current: mess.id === payload.messId,
       role: roleMap[mess.id] ?? 'MEMBER',
     })),

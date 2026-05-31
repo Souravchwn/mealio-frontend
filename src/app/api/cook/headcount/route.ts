@@ -26,38 +26,65 @@ export async function GET(req: NextRequest) {
 
   const [allMembers, logs] = await Promise.all([
     prisma.member.findMany({
-      where: { messId, isActive: true, isGuest: false },
+      where: { messId, isActive: true },
       select: { id: true },
     }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: todayObj },
-      select: { memberId: true, lunchCount: true, guestCount: true },
+      select: {
+        memberId: true,
+        breakfastCount: true, lunchCount: true, dinnerCount: true,
+        guestBreakfastCount: true, guestLunchCount: true, guestDinnerCount: true,
+      },
     }),
   ])
 
   const logByMember = new Map(logs.map((l) => [l.memberId, l]))
 
-  // A member counts if they have no log (default ON = 1) OR their log has lunchCount > 0
-  const memberCount = allMembers.filter((m) => {
-    const log = logByMember.get(m.id)
-    return log ? log.lunchCount > 0 : true
-  }).length
+  type Slot = 'breakfast' | 'lunch' | 'dinner'
+  const SLOT_COUNT: Record<Slot, 'breakfastCount' | 'lunchCount' | 'dinnerCount'> = {
+    breakfast: 'breakfastCount',
+    lunch:     'lunchCount',
+    dinner:    'dinnerCount',
+  }
+  const SLOT_GUEST: Record<Slot, 'guestBreakfastCount' | 'guestLunchCount' | 'guestDinnerCount'> = {
+    breakfast: 'guestBreakfastCount',
+    lunch:     'guestLunchCount',
+    dinner:    'guestDinnerCount',
+  }
 
-  // Sum up lunchCount for members with logs (> 0), plus default 1 for members without logs
-  const totalMemberPortions = allMembers.reduce((sum, m) => {
-    const log = logByMember.get(m.id)
-    if (!log) return sum + 1 // default
-    return sum + log.lunchCount
-  }, 0)
+  function breakdown(slot: Slot) {
+    const countField = SLOT_COUNT[slot]
+    const guestField = SLOT_GUEST[slot]
 
-  const guestCount = logs.reduce((s, l) => s + l.guestCount, 0)
+    // Member portions: members with a log use their count; members without a
+    // log default to 1 (meal ON by default).
+    let memberPortions = 0
+    let memberCount = 0
+    for (const m of allMembers) {
+      const log = logByMember.get(m.id)
+      const count = log ? log[countField] : 1
+      if (count > 0) memberCount += 1
+      memberPortions += count
+    }
+
+    const guestCount = logs.reduce((s, l) => s + l[guestField], 0)
+
+    return {
+      member_count: memberCount,
+      guest_count: guestCount,
+      total: memberPortions + guestCount,
+    }
+  }
 
   return NextResponse.json({
     mess_name: mess?.name ?? '',
     date: today,
-    member_count: memberCount,
-    guest_count: guestCount,
-    total_headcount: totalMemberPortions + guestCount,
+    meals: {
+      breakfast: breakdown('breakfast'),
+      lunch: breakdown('lunch'),
+      dinner: breakdown('dinner'),
+    },
     source: 'database',
   })
 }

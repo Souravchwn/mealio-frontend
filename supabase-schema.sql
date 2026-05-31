@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS members (
   telegram_uid    BIGINT UNIQUE,
   telegram_linked BOOLEAN DEFAULT false,
   is_active       BOOLEAN DEFAULT true,
-  -- GUEST-specific fields
+  -- DEPRECATED guest-as-member fields. No longer used by application code
+  -- (guests are per-slot counts on daily_logs, attached to a host member).
+  -- Retained for backward compatibility; drop in a later migration.
   is_guest        BOOLEAN DEFAULT false,
   guest_from      DATE,
   guest_until     DATE,
@@ -68,7 +70,12 @@ CREATE TABLE IF NOT EXISTS daily_logs (
   breakfast       BOOLEAN DEFAULT true,
   lunch           BOOLEAN DEFAULT true,
   dinner          BOOLEAN DEFAULT true,
+  -- DEPRECATED single per-day guest count — superseded by per-slot columns below.
   guest_count     INTEGER DEFAULT 0 CHECK (guest_count >= 0),
+  -- Per-slot guest counts (billed to the host member).
+  guest_breakfast_count INTEGER DEFAULT 0 CHECK (guest_breakfast_count >= 0),
+  guest_lunch_count     INTEGER DEFAULT 0 CHECK (guest_lunch_count >= 0),
+  guest_dinner_count    INTEGER DEFAULT 0 CHECK (guest_dinner_count >= 0),
   frozen          BOOLEAN DEFAULT false,
   toggled_at      TIMESTAMPTZ DEFAULT now(),
   UNIQUE(mess_id, member_id, log_date)

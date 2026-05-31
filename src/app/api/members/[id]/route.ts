@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const existing = await prisma.member.findFirst({
     where: { id, messId: payload.messId },
-    select: { id: true, role: true, isActive: true, isGuest: true },
+    select: { id: true, role: true, isActive: true },
   })
   if (!existing) {
     return NextResponse.json({ detail: 'Member not found' }, { status: 404 })
@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ detail: 'You cannot modify your own role or status' }, { status: 400 })
   }
 
-  const { role, is_active, guest_from, guest_until } = await req.json()
+  const { role, is_active } = await req.json()
   const updateData: Record<string, unknown> = {}
 
   if (role !== undefined) {
@@ -39,17 +39,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       )
     }
     updateData.role = role
-    updateData.isGuest = role === 'GUEST'
   }
 
   if (is_active !== undefined) updateData.isActive = is_active
-
-  if (guest_from !== undefined) {
-    updateData.guestFrom = guest_from ? new Date(`${guest_from as string}T00:00:00.000Z`) : null
-  }
-  if (guest_until !== undefined) {
-    updateData.guestUntil = guest_until ? new Date(`${guest_until as string}T00:00:00.000Z`) : null
-  }
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ detail: 'No fields to update' }, { status: 400 })

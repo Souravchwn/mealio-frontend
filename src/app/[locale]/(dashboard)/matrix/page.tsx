@@ -196,13 +196,16 @@ export default function MatrixPage() {
                                 breakfast: slot === "breakfast" ? value : true,
                                 lunch: slot === "lunch" ? value : true,
                                 dinner: slot === "dinner" ? value : true,
-                                guestCount: 0,
+                                guestBreakfastCount: 0,
+                                guestLunchCount: 0,
+                                guestDinnerCount: 0,
                                 frozen: false,
                             },
                         ];
                     }
                     const totalMeals = newDays.reduce(
-                        (s, d) => s + (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0) + d.guestCount,
+                        (s, d) => s + (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0)
+                            + d.guestBreakfastCount + d.guestLunchCount + d.guestDinnerCount,
                         0
                     );
                     return { ...m, days: newDays, totalMeals };
@@ -228,15 +231,15 @@ export default function MatrixPage() {
             <tr key={member.memberId} className={styles.row}>
                 <td className={styles.stickyCol}>
                     <span className={styles.memberName}>{member.memberName}</span>
-                    {member.isGuest && (
-                        <span className={styles.guestBadge}>Guest</span>
-                    )}
                 </td>
                 {Array.from({ length: numDays }, (_, i) => {
                     const dayStr = `${selectedMonth}-${String(i + 1).padStart(2, "0")}`;
                     const day = member.days.find((d) => d.date === dayStr);
                     const mealsOn = day
                         ? (day.breakfast ? 1 : 0) + (day.lunch ? 1 : 0) + (day.dinner ? 1 : 0)
+                        : 0;
+                    const dayGuests = day
+                        ? day.guestBreakfastCount + day.guestLunchCount + day.guestDinnerCount
                         : 0;
                     const isActive = activeCell?.memberId === member.memberId && activeCell?.date === dayStr;
 
@@ -249,12 +252,12 @@ export default function MatrixPage() {
                                     mealsOn > 0 && mealsOn < 3 && styles.cellPartial,
                                     mealsOn === 0 && day && styles.cellOff,
                                     !day && styles.cellDefault,
-                                    !!(day?.guestCount && day.guestCount > 0) && styles.cellGuest,
+                                    dayGuests > 0 && styles.cellGuest,
                                     isActive && styles.cellActive
                                 )}
                                 title={
                                     day
-                                        ? `B:${day.breakfast ? "✓" : "✗"} L:${day.lunch ? "✓" : "✗"} D:${day.dinner ? "✓" : "✗"}${day.guestCount > 0 ? ` G:${day.guestCount}` : ""}`
+                                        ? `B:${day.breakfast ? "✓" : "✗"} L:${day.lunch ? "✓" : "✗"} D:${day.dinner ? "✓" : "✗"}${dayGuests > 0 ? ` G:${dayGuests}` : ""}`
                                         : "Default ON"
                                 }
                                 onClick={() => {

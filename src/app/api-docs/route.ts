@@ -56,10 +56,20 @@ const spec = {
           breakfast: { type: 'boolean' },
           lunch: { type: 'boolean' },
           dinner: { type: 'boolean' },
-          guest_count: { type: 'integer', minimum: 0 },
+          guest_breakfast_count: { type: 'integer', minimum: 0 },
+          guest_lunch_count: { type: 'integer', minimum: 0 },
+          guest_dinner_count: { type: 'integer', minimum: 0 },
           frozen: { type: 'boolean' },
           cut_off_time: { type: 'string', example: '21:00' },
           cut_off_passed: { type: 'boolean' },
+        },
+      },
+      MealHeadcount: {
+        type: 'object',
+        properties: {
+          member_count: { type: 'integer', example: 8 },
+          guest_count: { type: 'integer', example: 2 },
+          total: { type: 'integer', example: 10 },
         },
       },
       Expense: {
@@ -96,7 +106,9 @@ const spec = {
           breakfast: { type: 'boolean' },
           lunch: { type: 'boolean' },
           dinner: { type: 'boolean' },
-          guest_count: { type: 'integer' },
+          guest_breakfast_count: { type: 'integer' },
+          guest_lunch_count: { type: 'integer' },
+          guest_dinner_count: { type: 'integer' },
           frozen: { type: 'boolean' },
         },
       },
@@ -223,7 +235,7 @@ const spec = {
     '/meals/guest': {
       post: {
         tags: ['Meals'],
-        summary: 'Update the guest count for a meal log',
+        summary: 'Set the guest count for a specific meal slot (billed to the host member)',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -231,9 +243,11 @@ const spec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['log_id', 'guest_count'],
+                required: ['date', 'slot', 'guest_count'],
                 properties: {
-                  log_id: { type: 'string', format: 'uuid' },
+                  member_id: { type: 'string', format: 'uuid', description: 'Defaults to the caller' },
+                  date: { type: 'string', format: 'date' },
+                  slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner'] },
                   guest_count: { type: 'integer', minimum: 0 },
                 },
               },
@@ -322,24 +336,29 @@ const spec = {
     '/cook/headcount': {
       get: {
         tags: ['Cook'],
-        summary: "Today's lunch headcount for the cook",
+        summary: "Today's per-meal headcount for the cook",
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'mess_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         responses: {
           200: {
-            description: 'Headcount breakdown',
+            description: 'Per-meal headcount breakdown (member_count + guest_count + total)',
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
                   properties: {
-                    mess_id: { type: 'string' },
+                    mess_name: { type: 'string' },
                     date: { type: 'string', format: 'date' },
-                    members: { type: 'integer', example: 8 },
-                    guests: { type: 'integer', example: 2 },
-                    total: { type: 'integer', example: 10 },
+                    meals: {
+                      type: 'object',
+                      properties: {
+                        breakfast: { $ref: '#/components/schemas/MealHeadcount' },
+                        lunch: { $ref: '#/components/schemas/MealHeadcount' },
+                        dinner: { $ref: '#/components/schemas/MealHeadcount' },
+                      },
+                    },
                     source: { type: 'string', enum: ['database'] },
                   },
                 },
@@ -441,7 +460,7 @@ const spec = {
         tags: ['Telegram Bot'],
         summary: 'Telegram Bot webhook endpoint',
         description:
-          'Receives Update payloads from the Telegram Bot API. This endpoint is **public** — Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Mealio member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest N` — set guest count\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
+          'Receives Update payloads from the Telegram Bot API. This endpoint is **public** — Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Mealio member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest <slot> N` — set guests for a specific meal\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
         requestBody: {
           required: true,
           content: {

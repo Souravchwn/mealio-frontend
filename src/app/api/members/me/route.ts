@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
   const [myLogs, myExpenses, allExpenses, allLogs] = await Promise.all([
     prisma.dailyLog.findMany({
       where: { memberId: payload.sub, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: {
+        breakfastCount: true, lunchCount: true, dinnerCount: true,
+        guestBreakfastCount: true, guestLunchCount: true, guestDinnerCount: true,
+      },
     }),
     prisma.expense.findMany({
       where: { addedBy: payload.sub, expenseDate: { gte: start, lte: end } },
@@ -28,7 +31,10 @@ export async function GET(req: NextRequest) {
     }),
     prisma.dailyLog.findMany({
       where: { messId: payload.messId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: {
+        breakfastCount: true, lunchCount: true, dinnerCount: true,
+        guestBreakfastCount: true, guestLunchCount: true, guestDinnerCount: true,
+      },
     }),
   ])
 
@@ -40,11 +46,24 @@ export async function GET(req: NextRequest) {
   const contributed = myExpenses.reduce((s, e) => s + Number(e.amount), 0)
   const mealCost = myMealCount * mealRate
 
+  // Per-slot own meals + guest meals (for the personal breakdown)
+  const myBreakfast = myLogs.reduce((s, l) => s + l.breakfastCount, 0)
+  const myLunch = myLogs.reduce((s, l) => s + l.lunchCount, 0)
+  const myDinner = myLogs.reduce((s, l) => s + l.dinnerCount, 0)
+  const myGuestMeals = myLogs.reduce(
+    (s, l) => s + l.guestBreakfastCount + l.guestLunchCount + l.guestDinnerCount,
+    0,
+  )
+
   return NextResponse.json({
     member_id: payload.sub,
     year_month: yearMonth,
     meal_rate: mealRate,
     my_meal_count: myMealCount,
+    my_breakfast_count: myBreakfast,
+    my_lunch_count: myLunch,
+    my_dinner_count: myDinner,
+    my_guest_meals: myGuestMeals,
     contributed,
     meal_cost: mealCost,
     balance: calculateMemberBalance(contributed, myMealCount, mealRate),

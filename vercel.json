@@ -5,10 +5,6 @@
       "schedule": "5 0 * * *"
     },
     {
-      "path": "/api/cron/deactivate-guests",
-      "schedule": "0 0 * * *"
-    },
-    {
       "path": "/api/cron/cutoff-warning",
       "schedule": "0 * * * *"
     },

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
         take: 1,
       },
       members: {
-        where: { isActive: true, isGuest: false },
+        where: { isActive: true },
         select: { id: true },
       },
     },
@@ -84,7 +84,6 @@ export async function GET(req: NextRequest) {
         breakfastCount: prefs.breakfastCount,
         lunchCount: prefs.lunchCount,
         dinnerCount: prefs.dinnerCount,
-        guestCount: 0,
         frozen: false,
         isOverride: false,
         overrideType: null as string | null,

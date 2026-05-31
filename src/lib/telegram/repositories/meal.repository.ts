@@ -1,6 +1,7 @@
 /**
  * MealRepository — daily log persistence for the Telegram bot.
  * Uses integer meal counts: 0 = skip, 1 = normal portion, 2+ = extra.
+ * Guest counts are per-slot and billed to the host member.
  */
 
 import { prisma } from '@/lib/prisma'
@@ -10,7 +11,9 @@ export interface DailyLogRow {
   breakfastCount: number
   lunchCount: number
   dinnerCount: number
-  guestCount: number
+  guestBreakfastCount: number
+  guestLunchCount: number
+  guestDinnerCount: number
   frozen: boolean
 }
 
@@ -22,8 +25,30 @@ export interface LogSlotRow {
   breakfastCount: number
   lunchCount: number
   dinnerCount: number
-  guestCount: number
+  guestBreakfastCount: number
+  guestLunchCount: number
+  guestDinnerCount: number
 }
+
+const LOG_SELECT = {
+  id: true,
+  breakfastCount: true,
+  lunchCount: true,
+  dinnerCount: true,
+  guestBreakfastCount: true,
+  guestLunchCount: true,
+  guestDinnerCount: true,
+  frozen: true,
+} as const
+
+const SLOT_SELECT = {
+  breakfastCount: true,
+  lunchCount: true,
+  dinnerCount: true,
+  guestBreakfastCount: true,
+  guestLunchCount: true,
+  guestDinnerCount: true,
+} as const
 
 export class MealRepository {
   private dateObj(date: string): Date {
@@ -33,14 +58,7 @@ export class MealRepository {
   async findLog(memberId: string, messId: string, date: string): Promise<DailyLogRow | null> {
     return prisma.dailyLog.findFirst({
       where: { memberId, messId, logDate: this.dateObj(date) },
-      select: {
-        id: true,
-        breakfastCount: true,
-        lunchCount: true,
-        dinnerCount: true,
-        guestCount: true,
-        frozen: true,
-      },
+      select: LOG_SELECT,
     })
   }
 
@@ -52,7 +70,9 @@ export class MealRepository {
       breakfastCount: number
       lunchCount: number
       dinnerCount: number
-      guestCount: number
+      guestBreakfastCount: number
+      guestLunchCount: number
+      guestDinnerCount: number
       frozen: boolean
       overrideType: string | null
     }>,
@@ -61,19 +81,12 @@ export class MealRepository {
   ): Promise<DailyLogRow> {
     const dateObj = this.dateObj(date)
     const base = mealDefaults ?? { breakfastCount: 1, lunchCount: 1, dinnerCount: 1 }
-    const defaults = { ...base, guestCount: 0, frozen: false, isOverride: false, overrideType: null }
+    const defaults = { ...base, frozen: false, isOverride: false, overrideType: null }
     return prisma.dailyLog.upsert({
       where: { messId_memberId_logDate: { messId, memberId, logDate: dateObj } },
       create: { memberId, messId, logDate: dateObj, ...defaults, ...data },
       update: data,
-      select: {
-        id: true,
-        breakfastCount: true,
-        lunchCount: true,
-        dinnerCount: true,
-        guestCount: true,
-        frozen: true,
-      },
+      select: LOG_SELECT,
     })
   }
 
@@ -81,7 +94,9 @@ export class MealRepository {
     breakfastCount: number
     lunchCount: number
     dinnerCount: number
-    guestCount: number
+    guestBreakfastCount: number
+    guestLunchCount: number
+    guestDinnerCount: number
     isOverride: boolean
     overrideType: string | null
   }>): Promise<void> {
@@ -93,7 +108,14 @@ export class MealRepository {
     memberIds: string[],
     messId: string,
     date: string,
-    data: { breakfastCount: number; lunchCount: number; dinnerCount: number },
+    data: {
+      breakfastCount: number
+      lunchCount: number
+      dinnerCount: number
+      guestBreakfastCount?: number
+      guestLunchCount?: number
+      guestDinnerCount?: number
+    },
     overrideType: 'USER' | 'ADMIN' | 'SYSTEM' = 'ADMIN',
   ): Promise<void> {
     const dateObj = this.dateObj(date)
@@ -105,7 +127,6 @@ export class MealRepository {
             memberId,
             messId,
             logDate: dateObj,
-            guestCount: 0,
             frozen: false,
             isOverride: true,
             overrideType,
@@ -135,7 +156,6 @@ export class MealRepository {
             memberId,
             messId,
             logDate: dateObj,
-            guestCount: 0,
             frozen: false,
             isOverride: false,
             overrideType: null,
@@ -164,14 +184,14 @@ export class MealRepository {
   async getMonthLogs(messId: string, start: Date, end: Date): Promise<LogSlotRow[]> {
     return prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: SLOT_SELECT,
     })
   }
 
   async getMemberMonthLogs(memberId: string, start: Date, end: Date): Promise<LogSlotRow[]> {
     return prisma.dailyLog.findMany({
       where: { memberId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: SLOT_SELECT,
     })
   }
 }

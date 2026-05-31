@@ -1,30 +1,28 @@
 .page {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     min-height: calc(100dvh - var(--topbar-height) - var(--space-12));
     animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     padding: var(--space-4) 0;
 }
 
-.bigNumberCard {
+.card {
     width: 100%;
-    max-width: 560px;
-    padding: var(--space-12) var(--space-8);
+    max-width: 920px;
+    padding: var(--space-8);
     border-radius: var(--radius-2xl);
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-xl);
-    text-align: center;
 }
 
-.bigNumberHeader {
+.header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: var(--space-3);
     margin-bottom: var(--space-8);
-    position: relative;
 }
 
 .title {
@@ -34,8 +32,6 @@
 }
 
 .refreshBtn {
-    position: absolute;
-    right: 0;
     width: 40px;
     height: 40px;
     border-radius: var(--radius-full);
@@ -57,91 +53,81 @@
     animation: spin 0.8s linear infinite;
 }
 
-.bigNumberWrap {
-    margin-bottom: var(--space-10);
+/* Per-meal grid */
+.mealGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+    margin-bottom: var(--space-6);
+}
+
+.mealCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--space-6) var(--space-4);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+}
+
+.mealCardHead {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+.mealName {
+    font-size: var(--text-base);
+    font-weight: 700;
 }
 
 .bigNumber {
-    font-size: 120px;
+    font-size: 72px;
     font-weight: 900;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.04em;
     line-height: 1;
     background: linear-gradient(135deg, var(--color-primary), #7c3aed);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     display: block;
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
     animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .stale {
-    opacity: 0.5;
-    animation: pulse 2s infinite;
+    opacity: 0.55;
 }
 
-.bigLabel {
-    font-size: var(--text-lg);
-    color: var(--color-text-secondary);
-}
-
-.bigLabel strong {
-    color: var(--color-text);
-}
-
-/* Breakdown */
 .breakdown {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-8);
-    padding: var(--space-6) 0;
+    gap: var(--space-4);
+    padding-top: var(--space-4);
     border-top: 1px solid var(--color-border);
-    border-bottom: 1px solid var(--color-border);
-    margin-bottom: var(--space-6);
-}
-
-.breakdownDivider {
-    width: 1px;
-    height: 48px;
-    background: var(--color-border);
+    width: 100%;
 }
 
 .breakdownItem {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-}
-
-.breakdownIcon {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-}
-
-.breakdownIconAccent {
-    background: var(--color-accent-light);
-    color: var(--color-accent);
-}
-
-.breakdownInfo {
-    display: flex;
-    flex-direction: column;
+    gap: var(--space-1);
+    color: var(--color-text-muted);
 }
 
 .breakdownValue {
-    font-size: var(--text-2xl);
+    font-size: var(--text-lg);
     font-weight: 800;
-    line-height: 1.2;
+    color: var(--color-text);
 }
 
 .breakdownLabel {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
 }
 
@@ -165,25 +151,40 @@
 }
 
 @media (max-width: 640px) {
-    .bigNumberCard {
-        padding: var(--space-8) var(--space-5);
+    .card {
+        padding: var(--space-5);
         box-shadow: var(--shadow-md);
     }
 
+    .mealGrid {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+
+    .mealCard {
+        flex-direction: row;
+        justify-content: space-between;
+        text-align: left;
+        padding: var(--space-4) var(--space-5);
+    }
+
+    .mealCardHead {
+        margin-bottom: 0;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
     .bigNumber {
-        font-size: 96px;
+        font-size: 48px;
+        margin-bottom: 0;
     }
 
     .breakdown {
-        gap: var(--space-6);
-    }
-
-    .breakdownIcon {
-        width: 40px;
-        height: 40px;
-    }
-
-    .breakdownValue {
-        font-size: var(--text-xl);
+        width: auto;
+        border-top: none;
+        padding-top: 0;
+        flex-direction: column;
+        gap: var(--space-1);
+        align-items: flex-end;
     }
 }

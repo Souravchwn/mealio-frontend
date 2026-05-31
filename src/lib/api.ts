@@ -180,7 +180,9 @@ export const api = {
                 breakfast: boolean;
                 lunch: boolean;
                 dinner: boolean;
-                guestCount: number;
+                guestBreakfastCount: number;
+                guestLunchCount: number;
+                guestDinnerCount: number;
                 frozen: boolean;
                 cutOffTime: string;
                 cutOffPassed: boolean;
@@ -252,9 +254,6 @@ export const api = {
                     role: string;
                     balance: number;
                     telegramLinked: boolean;
-                    isGuest: boolean;
-                    guestFrom: string | null;
-                    guestUntil: string | null;
                 }>;
             }>("/api/members", {
                 method: "GET",
@@ -267,6 +266,10 @@ export const api = {
                 yearMonth: string;
                 mealRate: number;
                 myMealCount: number;
+                myBreakfastCount: number;
+                myLunchCount: number;
+                myDinnerCount: number;
+                myGuestMeals: number;
                 contributed: number;
                 mealCost: number;
                 balance: number;
@@ -286,6 +289,7 @@ export const api = {
                     name: string;
                     inviteCode: string;
                     cutOffTime: string;
+                    estimatedMonthlyBudget: number | null;
                     isCurrent: boolean;
                     role: string;
                 }>;
@@ -332,7 +336,7 @@ export const api = {
             ),
         updateMember: (
             memberId: string,
-            data: { role?: string; isActive?: boolean; guestFrom?: string | null; guestUntil?: string | null },
+            data: { role?: string; isActive?: boolean },
             token: string
         ) =>
             fetcher<{ ok: boolean }>(`/api/members/${memberId}`, {

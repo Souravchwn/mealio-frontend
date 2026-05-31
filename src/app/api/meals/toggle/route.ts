@@ -106,7 +106,6 @@ export async function POST(req: NextRequest) {
         breakfastCount: defaults.breakfastCount,
         lunchCount: defaults.lunchCount,
         dinnerCount: defaults.dinnerCount,
-        guestCount: 0,
         frozen: false,
         isOverride: false,
       },

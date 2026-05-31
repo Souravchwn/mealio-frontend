@@ -96,7 +96,9 @@ export default function OverviewPage() {
                 );
             }
             if (headcountRes.status === "fulfilled") {
-                setStats((s) => ({ ...s, headcount: headcountRes.value.totalHeadcount }));
+                const meals = headcountRes.value.meals;
+                const totalToday = meals.breakfast.total + meals.lunch.total + meals.dinner.total;
+                setStats((s) => ({ ...s, headcount: totalToday }));
             }
             if (mealsRes.status === "fulfilled") {
                 const m = mealsRes.value;

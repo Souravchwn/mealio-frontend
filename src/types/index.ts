@@ -58,9 +58,6 @@ export interface Member {
     telegramLinked: boolean;
     role: Role;
     isActive: boolean;
-    isGuest: boolean;
-    guestFrom?: string;
-    guestUntil?: string;
     balance: number;
 }
 
@@ -75,7 +72,10 @@ export interface DailyLog {
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
-    guestCount: number;
+    /** Per-slot guest counts, billed to the host member. */
+    guestBreakfastCount: number;
+    guestLunchCount: number;
+    guestDinnerCount: number;
     frozen: boolean;
     overrideType?: string | null;
 }
@@ -143,12 +143,20 @@ export interface AuthResponse {
 
 /* API Responses */
 
+export interface MealHeadcount {
+    memberCount: number;
+    guestCount: number;
+    total: number;
+}
+
 export interface HeadcountResponse {
     messName: string;
     date: string;
-    memberCount: number;
-    guestCount: number;
-    totalHeadcount: number;
+    meals: {
+        breakfast: MealHeadcount;
+        lunch: MealHeadcount;
+        dinner: MealHeadcount;
+    };
     source: "database";
 }
 
@@ -179,9 +187,6 @@ export interface MemberMatrixRow {
     memberId: string;
     memberName: string;
     memberRole: string;
-    isGuest: boolean;
-    guestFrom?: string;
-    guestUntil?: string;
     days: DayEntry[];
     totalMeals: number;
     totalAmount: number;
@@ -199,7 +204,9 @@ export interface DayEntry {
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
-    guestCount: number;
+    guestBreakfastCount: number;
+    guestLunchCount: number;
+    guestDinnerCount: number;
     frozen: boolean;
 }
 
@@ -240,6 +247,7 @@ export interface MealToggleRequest {
 export interface GuestUpdateRequest {
     memberId: string;
     date: string;
+    slot: MealSlot;
     guestCount: number;
 }
 

@@ -78,7 +78,6 @@ export async function PUT(req: NextRequest) {
         breakfastCount: defaults.breakfastCount,
         lunchCount: defaults.lunchCount,
         dinnerCount: defaults.dinnerCount,
-        guestCount: 0,
         frozen: false,
         isOverride: true,
         overrideType: 'ADMIN',

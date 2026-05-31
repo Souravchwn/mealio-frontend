@@ -18,6 +18,15 @@ type DayType = (typeof DAY_TYPES)[number];
 type PrefKey = `${MealType}_${DayType}`;
 type PrefMap = Record<PrefKey, boolean>;
 
+const MEAL_TYPES_UPPER = ["BREAKFAST", "LUNCH", "DINNER"] as const;
+type MealTypeUpper = (typeof MEAL_TYPES_UPPER)[number];
+
+interface MealConfigState {
+    mealType: MealTypeUpper;
+    enabled: boolean;
+    cutoffTime: string; // HH:MM
+}
+
 function defaultPrefs(): PrefMap {
     const map = {} as PrefMap;
     for (const meal of MEAL_TYPES) {
@@ -34,11 +43,14 @@ export default function SettingsPage() {
 
     // ── Mess config ─────────────────────────────────────────────────────────
     const [name, setName] = useState("");
-    const [cutOffTime, setCutOffTime] = useState("21:00");
     const [budget, setBudget] = useState("");
     const [inviteCode, setInviteCode] = useState("");
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState(false);
+
+    // ── Per-meal configs (enabled + cutoff time) ─────────────────────────────
+    const [mealConfigs, setMealConfigs] = useState<MealConfigState[]>([]);
+    const [savingConfig, setSavingConfig] = useState<MealTypeUpper | null>(null);
 
     // ── Telegram group ───────────────────────────────────────────────────────
     const [linkedGroup, setLinkedGroup] = useState<{ chatId: string; chatName: string } | null>(null);
@@ -61,10 +73,25 @@ export default function SettingsPage() {
             const current = data.messes.find((m) => m.isCurrent);
             if (current) {
                 setName(current.name);
-                setCutOffTime(current.cutOffTime);
                 setInviteCode(current.inviteCode);
+                setBudget(current.estimatedMonthlyBudget != null ? String(current.estimatedMonthlyBudget) : "");
             }
         }).catch(() => {});
+
+        // Load per-meal configs (admin / manager only)
+        if (user?.role === "ADMIN" || user?.role === "MANAGER") {
+            api.mealConfigs.list(token).then((data) => {
+                const byType = new Map(data.mealConfigs.map((c) => [c.mealType, c]));
+                setMealConfigs(MEAL_TYPES_UPPER.map((mt) => {
+                    const cfg = byType.get(mt);
+                    return {
+                        mealType: mt,
+                        enabled: cfg?.enabled ?? true,
+                        cutoffTime: cfg?.cutoffTime ?? "21:00",
+                    };
+                }));
+            }).catch(() => {});
+        }
 
         // Load current Telegram group (ADMIN only)
         if (user?.role === "ADMIN") {
@@ -94,12 +121,35 @@ export default function SettingsPage() {
         if (!token) return;
         setSaving(true);
         try {
-            await api.admin.updateSettings({ name, cutOffTime }, token);
+            const trimmedBudget = budget.trim();
+            await api.admin.updateSettings(
+                {
+                    name,
+                    estimatedMonthlyBudget: trimmedBudget === "" ? undefined : Number(trimmedBudget),
+                },
+                token,
+            );
             toast.success("Settings saved");
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to save settings");
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function updateMealConfig(mealType: MealTypeUpper, patch: { enabled?: boolean; cutoffTime?: string }) {
+        if (!token) return;
+        const prev = mealConfigs;
+        setMealConfigs((cfgs) => cfgs.map((c) => c.mealType === mealType ? { ...c, ...patch } : c));
+        setSavingConfig(mealType);
+        try {
+            await api.mealConfigs.update({ mealType, ...patch }, token);
+            toast.success(t("mealConfigs.saved"));
+        } catch (err) {
+            setMealConfigs(prev); // revert on error
+            toast.error(err instanceof Error ? err.message : "Failed to update meal config");
+        } finally {
+            setSavingConfig(null);
         }
     }
 
@@ -220,25 +270,14 @@ export default function SettingsPage() {
                         </div>
 
                         <div className={styles.field}>
-                            <label className={styles.label}>{t("cutoffTime")}</label>
-                            <input
-                                className={styles.input}
-                                type="time"
-                                value={cutOffTime}
-                                onChange={(e) => setCutOffTime(e.target.value)}
-                            />
-                            <span className={styles.helpText}>{t("cutoffHelp")}</span>
-                        </div>
-
-                        <div className={styles.field}>
-                            <label className={styles.label}>Estimated Monthly Budget (৳)</label>
+                            <label className={styles.label}>{t("budget")}</label>
                             <input
                                 className={styles.input}
                                 type="number"
                                 min="0"
                                 value={budget}
                                 onChange={(e) => setBudget(e.target.value)}
-                                placeholder="Optional"
+                                placeholder={t("budgetPlaceholder")}
                             />
                         </div>
 
@@ -249,6 +288,61 @@ export default function SettingsPage() {
                             </Button>
                         </div>
                     </form>
+                </Card>
+            )}
+
+            {/* ── Per-Meal Times & Availability (admin / manager only) ── */}
+            {isAdmin && (
+                <Card>
+                    <div className={styles.prefHeader}>
+                        <h3 className={styles.sectionTitle}>{t("mealConfigs.title")}</h3>
+                        <p className={styles.helpText}>{t("mealConfigs.subtitle")}</p>
+                    </div>
+
+                    <div className={styles.mealConfigList}>
+                        {mealConfigs.map((cfg) => {
+                            const meal = cfg.mealType.toLowerCase() as MealType;
+                            const emoji = meal === "breakfast" ? "🍳" : meal === "lunch" ? "🍱" : "🌙";
+                            const busy = savingConfig === cfg.mealType;
+                            return (
+                                <div key={cfg.mealType} className={styles.mealConfigRow}>
+                                    <div className={styles.mealConfigName}>
+                                        <span className={styles.prefEmoji}>{emoji}</span>
+                                        <span className={styles.prefMealName}>
+                                            {t(`mealPreferences.${meal}`)}
+                                        </span>
+                                    </div>
+
+                                    <input
+                                        className={styles.mealConfigTime}
+                                        type="time"
+                                        value={cfg.cutoffTime}
+                                        disabled={!cfg.enabled || busy}
+                                        onChange={(e) =>
+                                            setMealConfigs((cfgs) => cfgs.map((c) =>
+                                                c.mealType === cfg.mealType ? { ...c, cutoffTime: e.target.value } : c
+                                            ))
+                                        }
+                                        onBlur={(e) => updateMealConfig(cfg.mealType, { cutoffTime: e.target.value })}
+                                        aria-label={`${t(`mealPreferences.${meal}`)} ${t("mealConfigs.cutoff")}`}
+                                    />
+
+                                    <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => updateMealConfig(cfg.mealType, { enabled: !cfg.enabled })}
+                                        className={`${styles.prefToggle} ${cfg.enabled ? styles.prefOn : styles.prefOff}`}
+                                        aria-label={`${t(`mealPreferences.${meal}`)} ${cfg.enabled ? "ON" : "OFF"}`}
+                                    >
+                                        <span className={styles.prefStatus}>
+                                            {cfg.enabled ? t("mealConfigs.enabled") : t("mealConfigs.disabled")}
+                                        </span>
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className={styles.helpText}>{t("mealConfigs.cutoffHelp")}</p>
                 </Card>
             )}
 

@@ -6,7 +6,8 @@
  *   /meal on|off       — enable/disable the NEXT upcoming meal (time-based)
  *   /meal breakfast|lunch|dinner       — toggle a specific slot (count 0 ↔ defaultCount)
  *   /meal breakfast|lunch|dinner <N>   — set explicit count (0 to disable)
- *   /meal guest <N>    — set guest count
+ *   /meal guest <slot> <N>             — set guests for a specific meal (billed to you)
+ *   /meal guest <N>                    — set guests for the next upcoming meal
  *
  * Cutoff enforcement lives here (via MealConfigRepository), not in MealService.
  */
@@ -133,28 +134,63 @@ export class MealCommandHandler implements CommandHandler {
       return
     }
 
-    // /meal guest <N>
+    // /meal guest <slot> <N>   or   /meal guest <N> (defaults to next meal)
     if (sub === 'guest') {
-      const count = parseInt(ctx.args[1] ?? '', 10)
+      let slot: Slot
+      let rawCount: string | undefined
 
-      // Use target meal check to enforce cutoff for guest changes too
-      const target = await this.mealConfigRepo.getTargetMeal(member.messId, timezone)
-      if (!target) {
+      const maybeSlot = ctx.args[1]?.toLowerCase()
+      if (maybeSlot && VALID_SLOTS.has(maybeSlot)) {
+        slot = maybeSlot as Slot
+        rawCount = ctx.args[2]
+      } else {
+        // No slot given — default to the current target meal (next by time)
+        const target = await this.mealConfigRepo.getTargetMeal(member.messId, timezone)
+        if (!target) {
+          await this.sender.sendMessage(
+            ctx.chatId,
+            `⏰ All meal cut-off times have passed. Specify a slot: \`/meal guest dinner 2\`.`,
+          )
+          return
+        }
+        slot = target.mealType.toLowerCase() as Slot
+        rawCount = ctx.args[1]
+      }
+
+      const count = parseInt(rawCount ?? '', 10)
+      if (isNaN(count) || count < 0) {
         await this.sender.sendMessage(
           ctx.chatId,
-          `⏰ All meal cut-off times have passed. Cannot update guest count.`,
+          `❌ Invalid guest count. Usage: \`/meal guest dinner 2\` (use 0 to clear)`,
         )
         return
       }
 
-      const result = await this.mealService.setGuestCount(member.id, member.messId, today, count)
+      // Enforce the named slot's cutoff (and that it's enabled)
+      const config = await this.mealConfigRepo.getMealConfig(member.messId, SLOT_UPPER[slot])
+      if (!config || !config.enabled) {
+        const label = slot.charAt(0).toUpperCase() + slot.slice(1)
+        await this.sender.sendMessage(ctx.chatId, `🚫 *${label}* is not available for guests.`)
+        return
+      }
+      const cutoffPassed = await this.mealConfigRepo.isCutoffPassed(member.messId, SLOT_UPPER[slot], timezone)
+      if (cutoffPassed) {
+        const label = slot.charAt(0).toUpperCase() + slot.slice(1)
+        await this.sender.sendMessage(
+          ctx.chatId,
+          `⏰ Cut-off time for *${label}* has passed. Cannot update guests for this meal.`,
+        )
+        return
+      }
+
+      const result = await this.mealService.setGuestCount(member.id, member.messId, today, slot, count)
       await this.sender.sendMessage(ctx.chatId, result.message)
       return
     }
 
     await this.sender.sendMessage(
       ctx.chatId,
-      `❓ Unknown meal sub-command.\n\n*Usage:*\n\`/meal on\` — enable next meal (auto-detected by time)\n\`/meal off\` — disable next meal (auto-detected by time)\n\`/meal breakfast\` \`/meal lunch\` \`/meal dinner\` — toggle a specific slot\n\`/meal lunch 2\` — set explicit count (0 to disable)\n\`/meal guest N\` — set guest count`,
+      `❓ Unknown meal sub-command.\n\n*Usage:*\n\`/meal on\` — enable next meal (auto-detected by time)\n\`/meal off\` — disable next meal (auto-detected by time)\n\`/meal breakfast\` \`/meal lunch\` \`/meal dinner\` — toggle a specific slot\n\`/meal lunch 2\` — set explicit count (0 to disable)\n\`/meal guest dinner 2\` — set guests for a specific meal`,
     )
   }
 }

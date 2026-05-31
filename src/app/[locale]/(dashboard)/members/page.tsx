@@ -18,24 +18,19 @@ interface MemberRow {
     role: string;
     balance: number;
     telegramLinked: boolean;
-    isGuest: boolean;
     isActive: boolean;
-    guestFrom: string | null;
-    guestUntil: string | null;
 }
 
-const ROLES = ["ADMIN", "MANAGER", "MEMBER", "GUEST"] as const;
+const ROLES = ["ADMIN", "MANAGER", "MEMBER"] as const;
 
 const roleColors: Record<string, string> = {
     ADMIN: "var(--color-primary)",
     MANAGER: "var(--color-accent)",
     MEMBER: "var(--color-text-muted)",
-    GUEST: "#f59e0b",
 };
 
 export default function MembersPage() {
     const t = useTranslations("members");
-    const tg = useTranslations("guest");
     const { user, token } = useAuth();
 
     const [members, setMembers] = useState<MemberRow[]>([]);
@@ -72,7 +67,7 @@ export default function MembersPage() {
             await api.admin.updateMember(member.id, { role: newRole }, token);
             toast.success(`${member.name} is now ${newRole}`);
             setMembers((prev) =>
-                prev.map((m) => m.id === member.id ? { ...m, role: newRole, isGuest: newRole === "GUEST" } : m)
+                prev.map((m) => m.id === member.id ? { ...m, role: newRole } : m)
             );
             setExpandedId(null);
         } catch (err) {
@@ -104,12 +99,6 @@ export default function MembersPage() {
         navigator.clipboard.writeText(inviteUrl).then(() => toast.success("Invite link copied"));
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-
-    function isGuestExpired(member: MemberRow): boolean {
-        return member.isGuest && !!member.guestUntil && member.guestUntil < today;
-    }
-
     const activeMembers = members.filter((m) => m.isActive !== false);
     const inactiveMembers = members.filter((m) => m.isActive === false);
 
@@ -129,11 +118,6 @@ export default function MembersPage() {
                     <div className={styles.memberInfo}>
                         <div className={styles.memberNameRow}>
                             <span className={styles.memberName}>{member.name}</span>
-                            {member.isGuest && (
-                                <span className={cn(styles.badge, styles.badgeGuest, isGuestExpired(member) && styles.badgeExpired)}>
-                                    {isGuestExpired(member) ? "Expired" : "Guest"}
-                                </span>
-                            )}
                             {member.telegramLinked && (
                                 <span className={styles.telegramBadge} title="Telegram linked">
                                     <Send size={10} />
@@ -160,12 +144,10 @@ export default function MembersPage() {
                     </div>
 
                     <div className={styles.memberRight}>
-                        {!member.isGuest && (
-                            <span className={cn(styles.balance, member.balance >= 0 ? styles.positive : styles.negative)}>
-                                {member.balance < 0 && "−"}
-                                {formatCurrency(Math.abs(member.balance))}
-                            </span>
-                        )}
+                        <span className={cn(styles.balance, member.balance >= 0 ? styles.positive : styles.negative)}>
+                            {member.balance < 0 && "−"}
+                            {formatCurrency(Math.abs(member.balance))}
+                        </span>
                         {isAdmin && !isSelf && (
                             <button
                                 className={cn(styles.expandBtn, isExpanded && styles.expandBtnOpen)}
@@ -215,11 +197,6 @@ export default function MembersPage() {
                                 }
                             </Button>
                         </div>
-                        {member.isGuest && member.guestFrom && member.guestUntil && (
-                            <p className={styles.guestDates}>
-                                Guest: {member.guestFrom} → {member.guestUntil}
-                            </p>
-                        )}
                     </div>
                 )}
             </div>

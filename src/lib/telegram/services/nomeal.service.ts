@@ -35,12 +35,16 @@ export class NoMealService {
   ): Promise<BulkMealResult> {
     const allMembers = await this.memberRepo.findAllActiveByMess(messId)
 
-    // Set all meal counts to 0 (ADMIN override)
+    // Set all meal counts to 0 (ADMIN override), including guests — a no-meal
+    // day means nobody (members or guests) eats.
     await this.mealRepo.bulkUpsertLogs(
       allMembers.map((m) => m.id),
       messId,
       date,
-      { breakfastCount: 0, lunchCount: 0, dinnerCount: 0 },
+      {
+        breakfastCount: 0, lunchCount: 0, dinnerCount: 0,
+        guestBreakfastCount: 0, guestLunchCount: 0, guestDinnerCount: 0,
+      },
       'ADMIN',
     )
 

@@ -76,12 +76,15 @@ export async function POST(req: NextRequest) {
           breakfastCount: 0,
           lunchCount: 0,
           dinnerCount: 0,
-          guestCount: 0,
           frozen: false,
           isOverride: true,
           overrideType: 'ADMIN',
         },
-        update: { breakfastCount: 0, lunchCount: 0, dinnerCount: 0, isOverride: true, overrideType: 'ADMIN' },
+        update: {
+          breakfastCount: 0, lunchCount: 0, dinnerCount: 0,
+          guestBreakfastCount: 0, guestLunchCount: 0, guestDinnerCount: 0,
+          isOverride: true, overrideType: 'ADMIN',
+        },
       }),
     ))
   } else {
@@ -97,7 +100,6 @@ export async function POST(req: NextRequest) {
           breakfastCount: defaults.breakfastCount,
           lunchCount: defaults.lunchCount,
           dinnerCount: defaults.dinnerCount,
-          guestCount: 0,
           frozen: false,
           isOverride: false,
           overrideType: null,

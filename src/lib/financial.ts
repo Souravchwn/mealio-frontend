@@ -24,16 +24,22 @@ type MealSlotData = {
   breakfastCount: number
   lunchCount: number
   dinnerCount: number
-  guestCount: number
+  guestBreakfastCount: number
+  guestLunchCount: number
+  guestDinnerCount: number
 }
 
 /**
- * Sum all meal portions (breakfastCount + lunchCount + dinnerCount + guestCount)
- * across all log rows. Uses integer counts — 0 means not eating, 1+ means portions.
+ * Sum all billed meal portions across all log rows.
+ * A host's billed portions for a slot = own slot count + that slot's guest count,
+ * so guests are billed to the host member (their counts live on the host's log).
+ * Uses integer counts — 0 means not eating, 1+ means portions.
  */
 export function countMealSlots(logs: MealSlotData[]): number {
   return logs.reduce(
-    (s, l) => s + l.breakfastCount + l.lunchCount + l.dinnerCount + l.guestCount,
+    (s, l) =>
+      s + l.breakfastCount + l.lunchCount + l.dinnerCount
+        + l.guestBreakfastCount + l.guestLunchCount + l.guestDinnerCount,
     0
   )
 }
@@ -102,7 +108,10 @@ export async function calculateMealRate(messId: string, yearMonth: string): Prom
     }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: {
+        breakfastCount: true, lunchCount: true, dinnerCount: true,
+        guestBreakfastCount: true, guestLunchCount: true, guestDinnerCount: true,
+      },
     }),
   ])
 
@@ -135,7 +144,10 @@ export async function closeMonth(
     prisma.member.findMany({ where: { messId, isActive: true }, select: { id: true } }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: {
+        memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true,
+        guestBreakfastCount: true, guestLunchCount: true, guestDinnerCount: true,
+      },
     }),
     prisma.expense.findMany({
       where: { messId, expenseDate: { gte: start, lte: end } },

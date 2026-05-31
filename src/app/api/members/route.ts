@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),
     prisma.member.findMany({
       where: { messId, isActive: true },
-      select: { id: true, name: true, phone: true, role: true, telegramLinked: true, isGuest: true, guestFrom: true, guestUntil: true },
+      select: { id: true, name: true, phone: true, role: true, telegramLinked: true },
       orderBy: { joinedAt: 'asc' },
     }),
     prisma.expense.findMany({
@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
     }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: end } },
-      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: {
+        memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true,
+        guestBreakfastCount: true, guestLunchCount: true, guestDinnerCount: true,
+      },
     }),
   ])
 
@@ -54,9 +57,6 @@ export async function GET(req: NextRequest) {
         role: member.role,
         balance: calculateMemberBalance(contributed, memberMeals, mealRate),
         telegram_linked: member.telegramLinked,
-        is_guest: member.isGuest,
-        guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,
-        guest_until: member.guestUntil?.toISOString().slice(0, 10) ?? null,
       }
     }),
   })

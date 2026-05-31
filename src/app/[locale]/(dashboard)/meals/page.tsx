@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Sun, CloudSun, Moon, Clock, Minus, Plus } from "lucide-react";
+import { Sun, CloudSun, Moon, Clock, Minus, Plus, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -19,23 +19,29 @@ const SLOT_MAP: Record<MealSlotKey, MealSlot> = {
     dinner: MealSlot.DINNER,
 };
 
+type SlotRecord<T> = Record<MealSlotKey, T>;
+
 export default function MealsPage() {
     const t = useTranslations("meals");
     const { user, token } = useAuth();
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const [meals, setMeals] = useState<Record<MealSlotKey, boolean>>({
+    const [meals, setMeals] = useState<SlotRecord<boolean>>({
         breakfast: false,
         lunch: false,
         dinner: false,
     });
-    const [guestCount, setGuestCount] = useState(0);
+    const [guests, setGuests] = useState<SlotRecord<number>>({
+        breakfast: 0,
+        lunch: 0,
+        dinner: 0,
+    });
     const [cutoffPassed, setCutoffPassed] = useState(false);
     const [cutoffTime, setCutoffTime] = useState("");
     const [loading, setLoading] = useState(true);
     const [toggling, setToggling] = useState<MealSlotKey | null>(null);
-    const [updatingGuest, setUpdatingGuest] = useState(false);
+    const [updatingGuest, setUpdatingGuest] = useState<MealSlotKey | null>(null);
 
     const loadToday = useCallback(async () => {
         if (!user || !token) return;
@@ -47,7 +53,11 @@ export default function MealsPage() {
                 lunch: log.lunchCount > 0,
                 dinner: log.dinnerCount > 0,
             });
-            setGuestCount(log.guestCount);
+            setGuests({
+                breakfast: log.guestBreakfastCount,
+                lunch: log.guestLunchCount,
+                dinner: log.guestDinnerCount,
+            });
             setCutoffPassed(log.cutOffPassed);
             setCutoffTime(log.cutOffTime);
         } catch (err) {
@@ -98,18 +108,23 @@ export default function MealsPage() {
         }
     }
 
-    async function changeGuest(delta: number) {
+    async function changeGuest(slot: MealSlotKey, delta: number) {
         if (cutoffPassed || updatingGuest || !user || !token) return;
-        const newCount = Math.max(0, guestCount + delta);
-        setGuestCount(newCount);
-        setUpdatingGuest(true);
+        const prev = guests[slot];
+        const newCount = Math.max(0, prev + delta);
+        if (newCount === prev) return;
+        setGuests((g) => ({ ...g, [slot]: newCount }));
+        setUpdatingGuest(slot);
         try {
-            await api.meals.updateGuest({ memberId: user.id, date: today, guestCount: newCount }, token);
+            await api.meals.updateGuest(
+                { memberId: user.id, date: today, slot: SLOT_MAP[slot], guestCount: newCount },
+                token
+            );
         } catch (err) {
-            setGuestCount(guestCount);
+            setGuests((g) => ({ ...g, [slot]: prev }));
             toast.error(err instanceof Error ? err.message : "Failed to update guest count");
         } finally {
-            setUpdatingGuest(false);
+            setUpdatingGuest(null);
         }
     }
 
@@ -186,7 +201,6 @@ export default function MealsPage() {
                             styles.mealCard,
                             meals[slot.key] && styles.mealCardActive
                         )}
-                        onClick={() => !cutoffPassed && !loading && toggleMeal(slot.key)}
                     >
                         <span className={styles.mealIcon}>{slot.icon}</span>
                         <div className={styles.mealCardContent}>
@@ -202,7 +216,7 @@ export default function MealsPage() {
                                         meals[slot.key] && styles.toggleActive,
                                         (cutoffPassed || toggling === slot.key) && styles.toggleDisabled
                                     )}
-                                    onClick={(e) => { e.stopPropagation(); toggleMeal(slot.key); }}
+                                    onClick={() => toggleMeal(slot.key)}
                                     disabled={cutoffPassed || toggling !== null || loading}
                                     role="switch"
                                     aria-checked={meals[slot.key]}
@@ -214,37 +228,39 @@ export default function MealsPage() {
                                     {t("on")}
                                 </span>
                             </div>
+
+                            {/* Per-slot guest stepper */}
+                            <div className={styles.guestRow}>
+                                <span className={styles.guestRowLabel}>
+                                    <UserPlus size={14} />
+                                    {t("guests")}
+                                </span>
+                                <div className={styles.guestStepper}>
+                                    <button
+                                        className={styles.guestBtn}
+                                        onClick={() => changeGuest(slot.key, -1)}
+                                        disabled={guests[slot.key] === 0 || cutoffPassed || updatingGuest !== null}
+                                        aria-label={`${t("removeGuest")} — ${slot.label}`}
+                                    >
+                                        <Minus size={16} />
+                                    </button>
+                                    <span className={styles.guestCount}>{guests[slot.key]}</span>
+                                    <button
+                                        className={styles.guestBtn}
+                                        onClick={() => changeGuest(slot.key, 1)}
+                                        disabled={cutoffPassed || updatingGuest !== null}
+                                        aria-label={`${t("addGuest")} — ${slot.label}`}
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Guest Section */}
-            <div className={styles.guestSection}>
-                <div className={styles.guestHeader}>
-                    <h3 className={styles.guestTitle}>{t("guestCount")}</h3>
-                </div>
-
-                <div className={styles.guestControls}>
-                    <button
-                        className={styles.guestBtn}
-                        onClick={() => changeGuest(-1)}
-                        disabled={guestCount === 0 || cutoffPassed || updatingGuest}
-                        aria-label={t("removeGuest")}
-                    >
-                        <Minus size={20} />
-                    </button>
-                    <span className={styles.guestCount}>{guestCount}</span>
-                    <button
-                        className={styles.guestBtn}
-                        onClick={() => changeGuest(1)}
-                        disabled={cutoffPassed || updatingGuest}
-                        aria-label={t("addGuest")}
-                    >
-                        <Plus size={20} />
-                    </button>
-                </div>
-            </div>
+            <p className={styles.guestHint}>{t("guestHint")}</p>
         </div>
     );
 }

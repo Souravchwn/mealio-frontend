@@ -49,15 +49,22 @@ export default function MySummaryPage() {
 
         const fetchData = async () => {
             try {
-                const [expensesRes, rateRes] = await Promise.allSettled([
-                    api.expenses.getExpenses(user.messId, currentMonth, token),
-                    api.expenses.getMealRate(user.messId, currentMonth, token),
-                ]);
+                // Authoritative monthly figures (full month, incl. per-slot guest meals)
+                const me = await api.members.me(token, currentMonth);
 
-                const expenses = expensesRes.status === "fulfilled" ? expensesRes.value : [];
-                const mealRate = rateRes.status === "fulfilled" ? Number(rateRes.value.mealRate) : 0;
+                setSummary({
+                    breakfastCount: me.myBreakfastCount,
+                    lunchCount: me.myLunchCount,
+                    dinnerCount: me.myDinnerCount,
+                    guestMeals: me.myGuestMeals,
+                    totalSlots: me.myMealCount,
+                    mealCost: Number(me.mealCost),
+                    contributed: Number(me.contributed),
+                    balance: Number(me.balance),
+                    mealRate: Number(me.mealRate),
+                });
 
-                // Fetch last 7 days of logs
+                // Fetch last 7 days of logs for the calendar strip
                 const today = new Date();
                 const weekLogPromises: Promise<WeekLog | null>[] = [];
 
@@ -91,32 +98,6 @@ export default function MySummaryPage() {
 
                 const resolvedLogs = (await Promise.all(weekLogPromises)).filter(Boolean) as WeekLog[];
                 setWeekLogs(resolvedLogs);
-
-                // Compute monthly totals from week logs context; use meal rate for cost
-                // For full month summary, we compute from matrix if available
-                const contributed = expenses
-                    .filter((e) => e.memberId === user.id)
-                    .reduce((s, e) => s + Number(e.amount), 0);
-
-                // Estimate from week logs (only last 7 days visible here)
-                const bfCount = resolvedLogs.filter((l) => l.breakfast).length;
-                const lunchCount = resolvedLogs.filter((l) => l.lunch).length;
-                const dinnerCount = resolvedLogs.filter((l) => l.dinner).length;
-                const totalSlots = bfCount + lunchCount + dinnerCount;
-                const mealCost = totalSlots * mealRate;
-                const balance = contributed - mealCost;
-
-                setSummary({
-                    breakfastCount: bfCount,
-                    lunchCount,
-                    dinnerCount,
-                    guestMeals: 0,
-                    totalSlots,
-                    mealCost,
-                    contributed,
-                    balance,
-                    mealRate,
-                });
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Failed to load summary");
             } finally {

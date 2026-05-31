@@ -22,6 +22,12 @@ const SLOT_FIELD: Record<Slot, 'breakfastCount' | 'lunchCount' | 'dinnerCount'> 
   dinner: 'dinnerCount',
 }
 
+const GUEST_SLOT_FIELD: Record<Slot, 'guestBreakfastCount' | 'guestLunchCount' | 'guestDinnerCount'> = {
+  breakfast: 'guestBreakfastCount',
+  lunch: 'guestLunchCount',
+  dinner: 'guestDinnerCount',
+}
+
 const SLOT_EMOJI: Record<Slot, string> = {
   breakfast: '🍳',
   lunch: '🍱',
@@ -71,17 +77,22 @@ export class MealService {
     memberId: string,
     messId: string,
     date: string,
+    slot: Slot,
     count: number,
   ): Promise<MealActionResult> {
     if (count < 0 || isNaN(count)) {
-      return { ok: false, message: `❌ Invalid guest count. Usage: \`/meal guest 2\`` }
+      return { ok: false, message: `❌ Invalid guest count. Usage: \`/meal guest dinner 2\`` }
     }
 
     const log = await this.mealRepo.upsertLog(memberId, messId, date, {})
     if (log.frozen) return { ok: false, message: `🔒 Today's meals are frozen.` }
 
-    await this.mealRepo.updateLog(log.id, { guestCount: count })
-    return { ok: true, message: `👥 Guest count set to *${count}*` }
+    const field = GUEST_SLOT_FIELD[slot]
+    await this.mealRepo.updateLog(log.id, { [field]: count })
+
+    const emoji = SLOT_EMOJI[slot]
+    const label = slot.charAt(0).toUpperCase() + slot.slice(1)
+    return { ok: true, message: `👥 ${emoji} *${label}* guests set to *${count}*` }
   }
 
   /** Fetch raw log counts — used by the handler for toggle-without-count logic. */
@@ -105,18 +116,20 @@ export class MealService {
       }
     }
 
-    function fmtSlot(emoji: string, label: string, count: number): string {
-      if (count === 0) return `${emoji} ${label}: ❌ OFF`
-      if (count === 1) return `${emoji} ${label}: ✅ ON`
-      return `${emoji} ${label}: ✅ ON (×${count})`
+    function fmtSlot(emoji: string, label: string, count: number, guests: number): string {
+      const guestSuffix = guests > 0 ? ` +${guests} 👥` : ''
+      if (count === 0) return `${emoji} ${label}: ❌ OFF${guestSuffix}`
+      if (count === 1) return `${emoji} ${label}: ✅ ON${guestSuffix}`
+      return `${emoji} ${label}: ✅ ON (×${count})${guestSuffix}`
     }
 
+    const totalGuests = log.guestBreakfastCount + log.guestLunchCount + log.guestDinnerCount
     const lines = [
       `📅 *Today's Meals — ${date}*`,
-      fmtSlot('🍳', 'Breakfast', log.breakfastCount),
-      fmtSlot('🍱', 'Lunch', log.lunchCount),
-      fmtSlot('🌙', 'Dinner', log.dinnerCount),
-      `👥 Guests: ${log.guestCount}`,
+      fmtSlot('🍳', 'Breakfast', log.breakfastCount, log.guestBreakfastCount),
+      fmtSlot('🍱', 'Lunch', log.lunchCount, log.guestLunchCount),
+      fmtSlot('🌙', 'Dinner', log.dinnerCount, log.guestDinnerCount),
+      `👥 Total guests: ${totalGuests}`,
       log.frozen ? '\n🔒 _This day is frozen_' : '',
     ].filter(Boolean).join('\n')
 

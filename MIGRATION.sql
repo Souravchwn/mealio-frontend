@@ -104,9 +104,41 @@ CREATE TABLE IF NOT EXISTS telegram_otps (
 
 CREATE INDEX IF NOT EXISTS idx_telegram_otps_uid ON telegram_otps(telegram_id);
 
+-- ── 8. daily_logs: per-slot guest counts ─────────────────────────────────────
+-- Guests now attend a specific meal and are billed to the host member.
+-- A host's billed portions for a slot = own slot count + that slot's guest count.
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS guest_breakfast_count INTEGER NOT NULL DEFAULT 0 CHECK (guest_breakfast_count >= 0);
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS guest_lunch_count     INTEGER NOT NULL DEFAULT 0 CHECK (guest_lunch_count >= 0);
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS guest_dinner_count    INTEGER NOT NULL DEFAULT 0 CHECK (guest_dinner_count >= 0);
+
+-- Backfill: the legacy single guest_count is assumed to be dinner guests.
+-- Idempotent guard: only migrate rows whose three new columns are still all 0.
+UPDATE daily_logs
+SET guest_dinner_count = guest_count
+WHERE guest_count IS NOT NULL AND guest_count > 0
+  AND guest_breakfast_count = 0 AND guest_lunch_count = 0 AND guest_dinner_count = 0;
+
+-- NOTE: guest_count is retained (deprecated) for one release for safe rollback.
+-- It is no longer read by application code. DROP it in a later migration:
+--   ALTER TABLE daily_logs DROP COLUMN IF EXISTS guest_count;
+
+-- ── 9. members: deprecate the guest-as-member system ──────────────────────────
+-- is_guest / guest_from / guest_until and role='GUEST' are no longer used by the
+-- application (guests are per-slot counts on daily_logs, attached to a host).
+-- Columns are NOT dropped here to avoid irreversible data loss; drop them in a
+-- later migration once confirmed safe:
+--   ALTER TABLE members DROP COLUMN IF EXISTS is_guest;
+--   ALTER TABLE members DROP COLUMN IF EXISTS guest_from;
+--   ALTER TABLE members DROP COLUMN IF EXISTS guest_until;
+--
+-- Optional one-time normalization of any existing guest member rows into
+-- regular members (uncomment to apply):
+--   UPDATE members SET role = 'MEMBER', is_guest = false WHERE role = 'GUEST';
+
 -- ── Done ──────────────────────────────────────────────────────────────────────
 -- After running this script:
 --   1. Deploy the new code to Vercel
---   2. The app will use breakfast_count/lunch_count/dinner_count for all meal logic
+--   2. The app will use breakfast_count/lunch_count/dinner_count for member meals
+--      and guest_breakfast_count/guest_lunch_count/guest_dinner_count for guests
 --   3. meal_configs drives per-meal cutoff times (BREAKFAST 08:30, LUNCH 13:00, DINNER 21:00)
 -- ============================================================
