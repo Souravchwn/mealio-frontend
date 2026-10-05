@@ -393,3 +393,108 @@
     font-weight: 600;
     margin-bottom: var(--space-4);
 }
+/* ── Billing rules ─────────────────────────────────────────────────────── */
+.optionList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.option:hover:not(:disabled) {
+    border-color: var(--color-primary);
+}
+
+.option:disabled {
+    cursor: default;
+    opacity: 0.8;
+}
+
+.optionActive {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.optionTitle {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.optionDesc {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+.switchRow {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    cursor: pointer;
+}
+
+.switchRow input {
+    margin-top: 3px;
+    accent-color: var(--color-primary);
+}
+
+/* ── Telegram link code ────────────────────────────────────────────────── */
+.linkCodeBox {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    margin-bottom: var(--space-2);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    overflow-wrap: anywhere;
+}
+
+/* ── Weekend day chips ─────────────────────────────────────────────────── */
+.dayChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.dayChip {
+    min-width: 56px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.dayChip:disabled {
+    cursor: default;
+}
+
+.dayChipActive {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
+    font-weight: 600;
+}

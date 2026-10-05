@@ -248,7 +248,12 @@ export interface MonthMatrixResponse {
     isClosed: boolean;
     mealRate: number;
     totalExpense: number;
+    /** Billable meals across the mess (the meal-rate denominator) */
     totalMeals: number;
+    totalGuestMeals: number;
+    guestMealPolicy: GuestMealPolicy;
+    /** Whether closing this month carries balances into the next one */
+    carryForwardBalance: boolean;
     members: MemberMatrixRow[];
 }
 
@@ -260,8 +265,12 @@ export interface MemberMatrixRow {
     guestFrom?: string;
     guestUntil?: string;
     days: DayEntry[];
+    ownMeals: number;
+    guestMeals: number;
+    /** Billable meals for this member (own + guests under the HOST policy) */
     totalMeals: number;
     totalAmount: number;
+    contributed: number;
     balance: number;
 }
 
@@ -277,7 +286,25 @@ export interface DayEntry {
     lunch: boolean;
     dinner: boolean;
     guestCount: number;
+    /** Guest portions that day (guests × meals the host ate) */
+    guestMeals?: number;
     frozen: boolean;
+}
+
+/** HOST = guest meals are charged to the member who brought them; SHARED = spread across the mess */
+export type GuestMealPolicy = "HOST" | "SHARED";
+
+export interface MessSettingsResponse {
+    name: string;
+    cutOffTime: string;
+    estimatedMonthlyBudget: number | null;
+    monthStartDay: number;
+    timezone: string;
+    guestMealPolicy: GuestMealPolicy;
+    bazaarCountsAsDeposit: boolean;
+    carryForwardBalance: boolean;
+    /** JS weekday numbers (0 = Sunday … 6 = Saturday) counted as WEEKEND */
+    weekendDays: number[];
 }
 
 /* API Requests */

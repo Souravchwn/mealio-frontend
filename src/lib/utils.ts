@@ -28,12 +28,6 @@ export function formatDate(
     return date.toLocaleDateString("en-US", options);
 }
 
-/**
- * Get today's date as YYYY-MM-DD
- */
-export function getTodayISO(): string {
-    return new Date().toISOString().split("T")[0];
-}
 
 /**
  * Get current year-month as YYYY-MM

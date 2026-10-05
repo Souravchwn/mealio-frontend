@@ -14,17 +14,6 @@ export interface DailyLogRow {
   frozen: boolean
 }
 
-export interface ExpenseRow {
-  amount: number
-}
-
-export interface LogSlotRow {
-  breakfastCount: number
-  lunchCount: number
-  dinnerCount: number
-  guestCount: number
-}
-
 export class MealRepository {
   private dateObj(date: string): Date {
     return new Date(`${date}T00:00:00.000Z`)
@@ -145,33 +134,5 @@ export class MealRepository {
         }),
       ),
     )
-  }
-
-  async getMonthExpenses(messId: string, start: Date, end: Date): Promise<ExpenseRow[]> {
-    return prisma.expense.findMany({
-      where: { messId, expenseDate: { gte: start, lte: end } },
-      select: { amount: true },
-    }).then((rows) => rows.map((r) => ({ amount: Number(r.amount) })))
-  }
-
-  async getMemberMonthExpenses(memberId: string, start: Date, end: Date): Promise<ExpenseRow[]> {
-    return prisma.expense.findMany({
-      where: { addedBy: memberId, expenseDate: { gte: start, lte: end } },
-      select: { amount: true },
-    }).then((rows) => rows.map((r) => ({ amount: Number(r.amount) })))
-  }
-
-  async getMonthLogs(messId: string, start: Date, end: Date): Promise<LogSlotRow[]> {
-    return prisma.dailyLog.findMany({
-      where: { messId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
-    })
-  }
-
-  async getMemberMonthLogs(memberId: string, start: Date, end: Date): Promise<LogSlotRow[]> {
-    return prisma.dailyLog.findMany({
-      where: { memberId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
-    })
   }
 }

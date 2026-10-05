@@ -1,12 +1,21 @@
 /**
  * Seed demo accounts for testing.
- * Run: npm run seed
+ * Run: npm run seed -- --yes
  *
  * Requires DATABASE_URL and JWT_SECRET in .env.local
+ *
+ * ⚠️ Creates accounts with PUBLIC passwords (admin123, …) and the invite code
+ * MESS-DEMO. Never run this against the production database.
  */
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
+
+if (!process.argv.includes('--yes')) {
+  console.error('⚠️  This creates demo accounts with publicly known passwords (admin123, manager123, member123).')
+  console.error('    Only run it against a development database. To continue: npm run seed -- --yes')
+  process.exit(1)
+}
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {

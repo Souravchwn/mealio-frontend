@@ -15,11 +15,11 @@ export class StatusCommandHandler implements CommandHandler {
 
   async handle(ctx: CommandContext): Promise<void> {
     if (!ctx.member) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Use \`/link <phone>\``)
+      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Send \`/link\` to see how.`)
       return
     }
     const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: ctx.group?.timezone ?? 'Asia/Dhaka',
+      timeZone: ctx.timezone,
     }).format(new Date())
     const result = await this.mealService.getStatus(ctx.member.id, ctx.member.messId, today)
     await this.sender.sendMessage(ctx.chatId, result.message)

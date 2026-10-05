@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { getMemberMealDefaults } from '@/lib/meal-preferences'
+import { getMessSettings, todayIn } from '@/lib/mess-settings'
+import { isDateInClosedPeriod } from '@/lib/period'
+import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
 // Shared helper — also used by the Telegram webhook
 export async function broadcastTelegram(
@@ -49,15 +52,19 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const action: 'on' | 'off' = body.action === 'on' ? 'on' : 'off'
-  const date: string = body.date ?? new Date().toISOString().slice(0, 10)
-  const reason: string = body.reason ?? ''
   const messId: string = payload.messId
+  const settings = await getMessSettings(messId)
+  const date: string = body.date ?? todayIn(settings?.timezone ?? DEFAULT_TIMEZONE)
+  const reason: string = typeof body.reason === 'string' ? body.reason.slice(0, 200) : ''
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ detail: 'Invalid date format. Use YYYY-MM-DD.' }, { status: 400 })
   }
 
   const dateObj = new Date(`${date}T00:00:00.000Z`)
+  if (await isDateInClosedPeriod(messId, dateObj)) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
+  }
 
   const members = await prisma.member.findMany({
     where: { messId, isActive: true },
@@ -112,6 +119,10 @@ export async function POST(req: NextRequest) {
       })
     }))
   }
+
+  await prisma.auditLog.create({
+    data: { messId, actorId: payload.sub, action: 'NO_COOK', targetTable: 'daily_logs', newValue: { date, action, reason: reason || null, via: 'web' } },
+  })
 
   // Telegram broadcast (non-blocking)
   let broadcastMsg: string

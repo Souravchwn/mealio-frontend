@@ -5,6 +5,7 @@
 
 import { prisma } from '@/lib/prisma'
 import type { ResolvedMember } from '../dto'
+import { DEFAULT_CUTOFF_TIME } from '@/lib/constants'
 
 export interface TelegramLinkedMember {
   id: string
@@ -21,18 +22,29 @@ export class MemberRepository {
     return { id: m.id, messId: m.messId, name: m.name, role: m.role }
   }
 
-  async findByPhone(phone: string): Promise<{ id: string; name: string } | null> {
+  async findActiveById(memberId: string): Promise<{ id: string; name: string } | null> {
     return prisma.member.findFirst({
-      where: { phone, isActive: true },
+      where: { id: memberId, isActive: true },
       select: { id: true, name: true },
     })
   }
 
+  /**
+   * Link a Telegram user to a member. A Telegram account can belong to only
+   * one member, so any previous owner of this Telegram id is unlinked first.
+   */
   async linkTelegram(memberId: string, telegramUid: number): Promise<void> {
-    await prisma.member.update({
-      where: { id: memberId },
-      data: { telegramUid: BigInt(telegramUid), telegramLinked: true },
-    })
+    const uid = BigInt(telegramUid)
+    await prisma.$transaction([
+      prisma.member.updateMany({
+        where: { telegramUid: uid, id: { not: memberId } },
+        data: { telegramUid: null, telegramLinked: false },
+      }),
+      prisma.member.update({
+        where: { id: memberId },
+        data: { telegramUid: uid, telegramLinked: true },
+      }),
+    ])
   }
 
   /** All active linked members in a mess — used for broadcasts. */
@@ -58,6 +70,6 @@ export class MemberRepository {
       where: { id: messId },
       select: { cutOffTime: true },
     })
-    return mess?.cutOffTime ? mess.cutOffTime.toISOString().slice(11, 16) : '21:00'
+    return mess?.cutOffTime ? mess.cutOffTime.toISOString().slice(11, 16) : DEFAULT_CUTOFF_TIME
   }
 }

@@ -12,7 +12,7 @@ import styles from "./MessSwitcher.module.css";
 interface MessItem {
     id: string;
     name: string;
-    inviteCode: string;
+    inviteCode: string | null;
     cutOffTime: string;
     isCurrent: boolean;
     role: string;

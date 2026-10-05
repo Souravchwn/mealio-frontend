@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { calculateMealRate, nonVoidedExpenseWhere } from '@/lib/financial'
-import { resolvePeriod } from '@/lib/period'
+import { resolvePeriod, isDateInClosedPeriod } from '@/lib/period'
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -11,7 +14,8 @@ export async function GET(req: NextRequest) {
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const messId    = searchParams.get('mess_id') || payload.messId
+  // Always the caller's own mess — never a mess id from the request
+  const messId    = payload.messId
   const yearMonth = searchParams.get('year_month') || null
   const page      = Math.max(1, parseInt(searchParams.get('page')  || '1',  10))
   const limit     = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
@@ -63,10 +67,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'Only Admin or Manager can add expenses' }, { status: 403 })
   }
 
-  const { mess_id, amount, category, description, date } = await req.json()
+  let body: { amount?: unknown; category?: unknown; description?: unknown; date?: unknown }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ detail: 'Invalid request body' }, { status: 400 })
+  }
+  // mess_id in the body is ignored — expenses always go to the caller's own mess
+  const messId = payload.messId
+  const { amount, category, description, date } = body
 
-  if (!mess_id || !amount || !category || !date) {
-    return NextResponse.json({ detail: 'mess_id, amount, category and date are required' }, { status: 400 })
+  if (!amount || !category || !date) {
+    return NextResponse.json({ detail: 'amount, category and date are required' }, { status: 400 })
+  }
+  if (typeof date !== 'string' || !DATE_RE.test(date)) {
+    return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
+  }
+  if (!EXPENSE_CATEGORIES.includes(category as ExpenseCategory)) {
+    return NextResponse.json({ detail: 'Invalid expense category' }, { status: 400 })
   }
 
   const numAmount = Number(amount)
@@ -74,23 +92,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'Amount must be a positive number' }, { status: 400 })
   }
 
-  const yearMonth = (date as string).slice(0, 7)
+  const expenseDate = new Date(`${date}T00:00:00.000Z`)
+  if (await isDateInClosedPeriod(messId, expenseDate)) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
+  }
+
+  const yearMonth = date.slice(0, 7)
 
   try {
     const expense = await prisma.expense.create({
       data: {
-        messId: mess_id,
+        messId,
         addedBy: payload.sub,
-        amount,
-        category,
-        description: description || null,
-        expenseDate: new Date(`${date as string}T00:00:00.000Z`),
+        amount: numAmount,
+        category: category as string,
+        description: typeof description === 'string' && description.trim() ? description.trim() : null,
+        expenseDate,
         yearMonth,
       },
       include: { addedByMember: { select: { name: true } } },
     })
 
-    const liveMealRate = await calculateMealRate(mess_id as string, yearMonth)
+    const liveMealRate = await calculateMealRate(messId, null)
 
     return NextResponse.json({
       id: expense.id,
@@ -105,7 +128,7 @@ export async function POST(req: NextRequest) {
       live_meal_rate: liveMealRate,
     })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to add expense'
-    return NextResponse.json({ detail: msg }, { status: 500 })
+    console.error('[POST /api/expenses] messId=%s', messId, err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

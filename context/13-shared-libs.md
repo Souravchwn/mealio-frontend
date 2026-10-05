@@ -77,99 +77,84 @@ yourModule: {
 
 ## `src/lib/financial.ts` — Server-Only Financial Logic
 
-**Import only in API routes.** Never import in client components.
+**`calculatePeriodSummary(messId, period)` is the ONE place meal counts, meal rate and balances are calculated.** Matrix, Members, My Summary, Overview, expense stats, Telegram `/rate` + `/balance` and month closing all use it.
 
-### `monthRange(yearMonth: string): { start: Date, end: Date }`
+### `calculatePeriodSummary(messId, period): Promise<PeriodSummary>`
+1. `ensureDailyLogs(messId)` — fills missing days first (see `12-daily-meal-counting.md`)
+2. Reads settings (guest policy, bazaar credit) from Redis
+3. Meals: open period → logs up to **today** only; closed → whole period. Logs dated before a member joined are ignored (member AND total)
+4. Per member: `ownMeals`, `guestMeals` (= `guestCount × meals the host ate`), `billableMeals` (= own + guest under `HOST`, own only under `SHARED`)
+5. `mealRate = totalExpense (non-voided) / Σ billableMeals`
+6. `deposited` = non-voided `CONTRIBUTION` entries created in the period; `carriedForward` = `CARRY_FORWARD` entries for this period; `bazaarCredit` = expenses the member recorded, **only** if `bazaarCountsAsDeposit`
+7. `contributed = deposited + bazaarCredit + carriedForward`; `mealCost = billableMeals × mealRate`; `balance = contributed − mealCost`
 
-Converts `"2026-04"` to UTC Date objects for Prisma queries.
-```typescript
-// Input: "2026-04"
-// Output: { start: 2026-04-01T00:00:00.000Z, end: 2026-04-30T00:00:00.000Z }
+Returns `{ guestMealPolicy, bazaarCountsAsDeposit, totalExpense, totalMeals, totalGuestMeals, mealRate, members: Map, forMember(id) }`. Under either policy the members' meal costs add up to the total expense.
+
+### Helpers
+| Function | Purpose |
+|----------|---------|
+| `ownMeals(log)` / `guestMeals(log)` | One day's own / guest portions |
+| `countMealSlots(logs, policy)` | Billable meals for a set of logs |
+| `nonVoidedExpenseWhere(messId, start, end)` | Prisma filter excluding voided bazaar sessions |
+| `endOfPeriodExclusive(end)` | Use for timestamp columns so the last day is included |
+| `calculateMonthStats(messId, yearMonth \| null)` / `calculateMealRate(...)` | Thin wrappers over the summary |
+| `extractCutoffTime`, `isCutoffPassed` | Cutoff helpers |
+| `monthRange(yearMonth)` | Legacy calendar month — migration only |
+
+### `closeMonth(messId, yearMonth, adminId, nextManagerId?)`
+- Throws `PeriodNotFinishedError` before the period's last day (mess timezone), `MonthAlreadyClosedError` if closed (guarded inside the transaction, so two clicks can't close twice)
+- Transaction: close period (rate, total) → freeze logs → `DEDUCTION` per member with meals → create next period → `CARRY_FORWARD` = full balance per member **only if `carryForwardBalance`** → audit `CLOSE_MONTH`
+
+## `src/lib/mess-settings.ts` — Mess Settings (Redis)
+
+`getMessSettings(messId)` reads Redis key `mealio:mess:<id>:settings:v3`; on a miss loads Postgres and writes Redis (24 h TTL). **After any settings write call `refreshMessSettings(messId)`.** Bump the key version when the shape changes.
+
+```ts
+MessSettings {
+  messId, name, timezone            // timezone = active Telegram group's, else DEFAULT_TIMEZONE
+  cutOffTime, monthStartDay, estimatedMonthlyBudget
+  guestMealPolicy: 'HOST' | 'SHARED'
+  bazaarCountsAsDeposit: boolean
+  carryForwardBalance: boolean
+  weekendDays: number[]             // 0 = Sun … 6 = Sat
+  meals: { BREAKFAST|LUNCH|DINNER: { enabled, cutoffTime, maxCount } }
+}
 ```
-Used in almost every API route that queries by month.
+Also: `todayIn(tz)`, `nowHHMMIn(tz)`, `isValidTimezone(tz)`, `parseWeekendDays(raw)`.
 
-### `countMealSlots(logs: MealSlotData[]): number`
+## `src/lib/daily-logs.ts` — Automatic Daily Counting
 
-```typescript
-type MealSlotData = { breakfastCount, lunchCount, dinnerCount, guestCount }
-// Returns sum of ALL counts across ALL logs (including guests)
-```
+| Function | Purpose |
+|----------|---------|
+| `ensureDailyLogs(messId)` | Write missing days (open period, up to today) from defaults for active members + guest residents in their stay; then deactivate expired guests; daily cleanup. Redis marker per day |
+| `settleDailyLogs(messId)` | Call BEFORE changing preferences, meal configs, weekend days, member status — keeps changes non-retroactive |
+| `recordInactiveGap(messId, memberId)` | On reactivation: 0-meal rows for days away |
+| `invalidateDailyLogsMarker(messId)` | After membership changes |
 
-This is the denominator for meal rate calculation. Guests count as 1 meal slot each.
+## `src/lib/meal-access.ts` — Meal Write Rules
 
-### `extractCutoffTime(cutOffTime: Date | null): string`
+`checkMealWriteAccess(payload, settings, memberId, date)` → members: own log, today/future (≤ 60 days); ADMIN/MANAGER: anyone in their mess. `isActiveMemberOfMess`, `isPrivileged`.
 
-Converts Prisma `@db.Time` field (stored as 1970-01-01T{HH:MM}Z Date) to `"HH:MM"` string.
-Falls back to `DEFAULT_CUTOFF_TIME` ("21:00") if null.
+## `src/lib/redis.ts`
 
-### `isCutoffPassed(cutoffHHMM, checkDate, timezone): boolean`
-
-Returns `false` for any date that's not today. For today, compares current time vs cutoff.
-Timezone-aware using `Intl.DateTimeFormat`.
-
-### `calculateMemberBalance(contributed, memberMeals, mealRate): number`
-
-```typescript
-return contributed - memberMeals * mealRate
-// Positive = overpaid (member gets money back)
-// Negative = owes money
-```
-
-### `calculateMealRate(messId, yearMonth): Promise<number>`
-
-Async DB query: `totalExpense / totalMealSlots`. Returns 0 if no meals.
-
-### `closeMonth(messId, yearMonth, adminId): Promise<{ mealRate, totalExpense, totalMeals }>`
-
-Atomic Prisma transaction. See Module 08 for full details. **Irreversible.**
-
----
+Upstash client from `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`; `getRedis()` returns null when unset. `redisGet/redisSet/redisDel` never throw.
 
 ## `src/lib/meal-preferences.ts` — Server-Only Meal Defaults
 
-**Import only in API routes and cron jobs.**
-
-### `getDayType(date: string): 'WEEKDAY' | 'WEEKEND'`
-
-```typescript
-// Input: "2026-04-13" (Monday)
-// Output: "WEEKDAY"
-// Uses UTC noon (12:00Z) to avoid DST edge cases
-```
-
-### `getMemberMealDefaults(memberId, messId, date): Promise<MealDefaults>`
-
-Returns `{ breakfastCount, lunchCount, dinnerCount }` for one member.
-
-**Three-level defensive fallback:**
-1. Query `userMealPreference` with `defaultCount` → use `enabled ? defaultCount : 0`
-2. If error: retry without `defaultCount` → use `enabled ? 1 : 0`
-3. If error: return `{ breakfastCount: 1, lunchCount: 1, dinnerCount: 1 }`
-
-**Missing rows = all ON** (no preference row = member hasn't customized = uses default 1).
-
-### `getBulkMealDefaults(memberIds, messId, date): Promise<Map<string, MealDefaults>>`
-
-Same but for multiple members. Returns `Map<memberId, MealDefaults>`. Used by:
-- `cron/generate-daily-meals` — to seed all members' logs
-- `admin/no-cook` action "on" — to restore all members' meals
-- `NoMealService.enableAllMeals()` — same purpose
-
----
+| Function | Purpose |
+|----------|---------|
+| `getDayType(date, weekendDays?)` | WEEKDAY/WEEKEND using the mess's `weekendDays` |
+| `getBulkMealDefaults(memberIds, messId, date)` | Preference for that day type, then mess rules: meal off for the mess → 0, cap at `maxCount` |
+| `getMemberMealDefaults(memberId, messId, date)` | Same for one member |
 
 ## `src/lib/auth-utils.ts` — Server-Only JWT Utilities
 
-**Import only in API routes.** See Module 01 for full details.
-
-```typescript
-signToken(payload: TokenPayload): Promise<string>
-verifyToken(token: string): Promise<TokenPayload | null>
-extractToken(req: NextRequest): string | null
-
-interface TokenPayload { sub: string, messId: string, role: string }
-```
-
----
+| Function | Purpose |
+|----------|---------|
+| `signToken({ sub, messId, role })` | HS256, 30-day expiry |
+| `verifyToken(token)` | Verifies signature **and** re-checks the member in the DB: inactive or removed from the mess → null; returns the CURRENT role (demotions apply immediately) |
+| `extractToken(req)` | Bearer token from `Authorization` |
+| `clientIp(req)` | `x-real-ip`, else the LAST `x-forwarded-for` entry (not spoofable behind a proxy) |
 
 ## `src/lib/utils.ts` — Client-Side Utilities
 
@@ -332,11 +317,5 @@ export const prisma: PrismaClient
 
 ## `src/lib/rate-limit.ts`
 
-Simple in-memory rate limiter for API routes (not the Telegram bot one).
+`checkRateLimit(name, key, max, windowMs)` — Redis fixed window shared by all instances; in-memory fallback. `checkLoginRateLimit(ip, email)` — 10 / 15 min per IP and per email. Registration: 10 / hour per IP. Telegram link codes: 10 / hour per member.
 
-```typescript
-const limiter = rateLimit({ interval: 60_000, uniqueTokenPerInterval: 500 })
-await limiter.check(res, 10, 'CACHE_TOKEN')  // 10 requests per minute per token
-```
-
-Used in auth routes to prevent brute-force attacks.

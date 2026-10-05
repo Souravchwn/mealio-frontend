@@ -74,11 +74,12 @@ export default function DashboardLayout({
         router.push(`/${locale}/login`);
     };
 
-    // Use actual user data or fallback to mock
+    // Before auth resolves (the guard redirects if logged out) show an empty,
+    // least-privileged placeholder — never a fake user or mess name.
     const currentUser = user || {
-        name: "Guest User",
-        role: "MEMBER" as const,
-        messName: "Demo Mess",
+        name: "",
+        role: "GUEST" as const,
+        messName: "",
     };
 
     const basePath = `/${locale}`;

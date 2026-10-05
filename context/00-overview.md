@@ -17,8 +17,8 @@ This directory contains per-module context files. When working on any module, re
 | `09-members.md` | Member Management | `members/page.tsx`, `api/members/*` |
 | `10-mess-management.md` | Create Mess, Switch Mess | `mess/create/page.tsx`, `MessSwitcher`, `api/mess/*` |
 | `11-telegram-bot.md` | Full Telegram Bot | `src/lib/telegram/**` |
-| `12-cron-jobs.md` | All 4 Cron Jobs | `api/cron/*` |
-| `13-shared-libs.md` | All shared `src/lib/` files | `api.ts`, `financial.ts`, `auth-utils.ts`, `utils.ts`, `meal-preferences.ts` |
+| `12-daily-meal-counting.md` | Automatic daily meal counting (no crons), cutoffs, mismanagement risks | `daily-logs.ts`, `meal-preferences.ts` |
+| `13-shared-libs.md` | All shared `src/lib/` files | `api.ts`, `financial.ts`, `mess-settings.ts`, `daily-logs.ts`, `meal-access.ts`, `auth-utils.ts` |
 | `14-database-schema.md` | Prisma models, fields, relationships | `prisma/schema.prisma` |
 | `15-audit.md` | Admin Audit Log | `audit/page.tsx`, `api/admin/audit`, `src/lib/audit.ts` |
 
@@ -32,3 +32,8 @@ This directory contains per-module context files. When working on any module, re
 6. **Audit log:** Admin operations must call `createAudit()` from `src/lib/audit.ts`.
 7. **Role hierarchy:** `ADMIN` > `MANAGER` > `MEMBER` > `GUEST`. Checked both in layout nav AND in API routes.
 8. **After schema changes:** Run `npx prisma generate`. After any code change: `npm run build` (TypeScript check).
+9. **Never trust a mess id from the request.** Use `payload.messId` from `verifyToken()`, which also re-checks the member is active and returns their CURRENT role.
+10. **Settings come from `getMessSettings(messId)`** (Redis, Postgres fallback). After writing any setting call `refreshMessSettings(messId)`.
+11. **All money numbers come from `calculatePeriodSummary()`** in `financial.ts` — never recompute meal counts, rate or balances in a route.
+12. **Meals are counted automatically every day** from defaults (`ensureDailyLogs`). Before changing anything that affects defaults, call `settleDailyLogs(messId)`. See `12-daily-meal-counting.md`.
+13. **No cron jobs.** Don't add scheduled routes.

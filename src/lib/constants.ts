@@ -20,6 +20,36 @@ export const DEFAULT_MEAL_CONFIGS: Array<{ mealType: MealTypeUpper; cutoffTime: 
 export const VALID_ROLES = ['SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'MEMBER', 'GUEST'] as const
 export type MemberRole = (typeof VALID_ROLES)[number]
 
+/** Roles an admin may assign to a member from the web app. */
+export const ASSIGNABLE_ROLES = ['ADMIN', 'MANAGER', 'MEMBER', 'GUEST'] as const
+
+/** Default max portions per member per meal (meal_configs.max_count). */
+export const DEFAULT_MAX_MEAL_COUNT = 10
+
+/** Upper bound for guests a member can bring on one day. */
+export const MAX_GUEST_COUNT = 20
+
+/**
+ * Who pays for guest meals.
+ *  HOST   — guest meals are added to the meal count of the member who brought them.
+ *  SHARED — guest meals are not counted for anyone; their cost is spread across the mess.
+ */
+export const GUEST_MEAL_POLICIES = ['HOST', 'SHARED'] as const
+export type GuestMealPolicy = (typeof GUEST_MEAL_POLICIES)[number]
+export const DEFAULT_GUEST_MEAL_POLICY: GuestMealPolicy = 'HOST'
+
+/**
+ * Default weekend days (JS weekday numbers, 0 = Sunday … 6 = Saturday).
+ * Each mess can change this in Settings — e.g. Friday + Saturday = [5, 6].
+ */
+export const DEFAULT_WEEKEND_DAYS: readonly number[] = [0, 6]
+
+/** Currency symbol used in server-generated text (Telegram, ledger notes). */
+export const CURRENCY_SYMBOL = '৳'
+
+/** Telegram link code validity in minutes */
+export const TELEGRAM_LINK_CODE_TTL_MINUTES = 10
+
 /** Lowercase slot names used in API toggle requests. */
 export const VALID_MEAL_SLOTS = ['breakfast', 'lunch', 'dinner'] as const
 export type MealSlot = (typeof VALID_MEAL_SLOTS)[number]
@@ -31,9 +61,6 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
 /** JWT TTL in seconds (30 days) */
 export const JWT_TTL_SECONDS = 30 * 24 * 60 * 60
-
-/** OTP validity in minutes */
-export const OTP_TTL_MINUTES = 5
 
 /** Telegram broadcast batch size */
 export const TELEGRAM_BATCH_SIZE = 25

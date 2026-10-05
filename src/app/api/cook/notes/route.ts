@@ -76,6 +76,12 @@ export async function POST(req: NextRequest) {
   if (typeof note !== 'string') {
     return NextResponse.json({ detail: 'note must be a string' }, { status: 400 })
   }
+  if (note.length > 500) {
+    return NextResponse.json({ detail: 'Note is too long (max 500 characters)' }, { status: 400 })
+  }
+  if (date !== undefined && (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+    return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
+  }
 
   // Resolve date
   const mess = await prisma.mess.findUnique({

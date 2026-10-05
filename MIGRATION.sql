@@ -283,3 +283,22 @@ WHERE start_date IS NULL;
 
 ALTER TABLE mess_months ALTER COLUMN start_date SET NOT NULL;
 ALTER TABLE mess_months ALTER COLUMN end_date SET NOT NULL;
+
+-- ── 19. Settings + security hardening ─────────────────────────────────────────
+-- Guest meal billing policy: HOST (guest meals charged to the member who brought them)
+-- or SHARED (guest meals excluded from everyone's count, cost spread via the meal rate)
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS guest_meal_policy TEXT NOT NULL DEFAULT 'HOST';
+-- When true, bazaar expenses are credited as a deposit to the member who recorded them
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS bazaar_counts_as_deposit BOOLEAN NOT NULL DEFAULT FALSE;
+-- When true, closing a month carries each member's balance into the next month
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS carry_forward_balance BOOLEAN NOT NULL DEFAULT TRUE;
+-- Weekend days for meal preferences (0=Sun … 6=Sat). Bangladesh messes usually want '5,6' (Fri, Sat).
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS weekend_days TEXT NOT NULL DEFAULT '0,6';
+
+-- Telegram linking now uses a code issued by the web app to a logged-in member
+ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE telegram_otps ALTER COLUMN telegram_id DROP NOT NULL;
+ALTER TABLE telegram_otps ALTER COLUMN phone DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_telegram_otps_code ON telegram_otps(otp);
+-- Invalidate any phone-based OTPs issued by the old (insecure) flow
+UPDATE telegram_otps SET used = TRUE WHERE member_id IS NULL AND used = FALSE;

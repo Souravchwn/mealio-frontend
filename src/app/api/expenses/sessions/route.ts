@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { calculateMonthStats } from '@/lib/financial'
-import { resolvePeriod } from '@/lib/period'
+import { resolvePeriod, isDateInClosedPeriod } from '@/lib/period'
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 import { createAuditTx } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
@@ -12,7 +15,8 @@ export async function GET(req: NextRequest) {
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const messId = searchParams.get('mess_id') || payload.messId
+  // Always the caller's own mess — never a mess id from the request
+  const messId = payload.messId
   const yearMonth = searchParams.get('year_month') || null
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
@@ -89,13 +93,25 @@ export async function POST(req: NextRequest) {
     note?: string
   }
 
-  if (!date || !items || items.length === 0) {
+  if (!date || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ detail: 'date and at least one item are required' }, { status: 400 })
+  }
+  if (typeof date !== 'string' || !DATE_RE.test(date)) {
+    return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
+  }
+  if (shoppers !== undefined && !Array.isArray(shoppers)) {
+    return NextResponse.json({ detail: 'shoppers must be a list' }, { status: 400 })
+  }
+  if (await isDateInClosedPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
   }
 
   for (const item of items) {
     if (!item.category || !item.amount) {
       return NextResponse.json({ detail: 'Each item must have a category and amount' }, { status: 400 })
+    }
+    if (!EXPENSE_CATEGORIES.includes(item.category as ExpenseCategory)) {
+      return NextResponse.json({ detail: 'Invalid expense category' }, { status: 400 })
     }
     const num = Number(item.amount)
     if (isNaN(num) || num <= 0) {

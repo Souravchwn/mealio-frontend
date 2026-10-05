@@ -133,7 +133,7 @@ enum ExpenseCategory {
 
 ## API: GET `/api/expenses/sessions`
 
-**Query params:** `mess_id`, `year_month`, `page` (default 1), `limit` (default 20, max 50)
+**Query params:** `year_month`, `page` (default 1), `limit` (default 20, max 50) — the mess is always the caller's own
 
 **Response:**
 ```typescript
@@ -151,7 +151,7 @@ enum ExpenseCategory {
 
 ## API: GET `/api/expenses`
 
-**Query params:** `mess_id`, `year_month`, `page` (default 1), `limit` (default 20, max 50)
+**Query params:** `year_month`, `page` (default 1), `limit` (default 20, max 50) — the mess is always the caller's own
 
 **Response:**
 ```typescript
@@ -323,3 +323,11 @@ Void modal strings are hardcoded in English (not i18n keys).
 5. **After any write on contributions** (add or void): call `loadContributions(1)` to reload from page 1. This keeps `totalContrib` and `memberSummary` accurate.
 6. **`yearMonth` consistency** — `BazaarSession.yearMonth` and each `Expense.yearMonth` must match.
 7. **Void is irreversible** — there is no un-void API. The modal warns the user before confirming.
+
+## Money rules (current)
+
+- **Closed months are locked:** adding, editing or voiding an expense, bazaar session or deposit dated in a closed period → 400.
+- **Categories** must be one of `EXPENSE_CATEGORIES`; dates `YYYY-MM-DD`.
+- **Editing a session keeps the original recorder** (`addedBy`) — bazaar credit never moves to the editor.
+- **Bazaar spending is NOT a deposit by default.** Balance = deposits + carry-forward (+ bazaar spending only if `bazaarCountsAsDeposit` is on) − meal cost. See `13-shared-libs.md` → `calculatePeriodSummary`.
+- Deposit totals include the whole last day of the period (`endOfPeriodExclusive`).

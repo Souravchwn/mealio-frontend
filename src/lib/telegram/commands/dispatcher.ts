@@ -13,6 +13,8 @@ import type { CommandHandler } from './types'
 import type { TelegramSender } from '../infrastructure/sender'
 import type { MemberRepository } from '../repositories/member.repository'
 import type { GroupRepository } from '../repositories/group.repository'
+import { getMessSettings } from '@/lib/mess-settings'
+import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
 export class CommandDispatcher {
   private readonly handlers: CommandHandler[]
@@ -45,6 +47,9 @@ export class CommandDispatcher {
 
     const args = text.split(/\s+/).slice(1) // everything after /command
 
+    const settings = member ? await getMessSettings(member.messId) : null
+    const timezone = settings?.timezone ?? group?.timezone ?? DEFAULT_TIMEZONE
+
     const ctx: CommandContext = {
       update,
       message,
@@ -54,6 +59,7 @@ export class CommandDispatcher {
       args,
       member,
       group,
+      timezone,
     }
 
     const handler = this.handlers.find((h) => h.supports(command))

@@ -43,12 +43,12 @@ export class MealCommandHandler implements CommandHandler {
 
   async handle(ctx: CommandContext): Promise<void> {
     if (!ctx.member) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Link your account first: \`/link <phone>\``)
+      await this.sender.sendMessage(ctx.chatId, `❌ Link your account first — send \`/link\` to see how.`)
       return
     }
 
     const { member } = ctx
-    const timezone = ctx.group?.timezone ?? 'Asia/Dhaka'
+    const timezone = ctx.timezone
     const today = localDate(timezone)
 
     const sub = ctx.args[0]?.toLowerCase()
@@ -107,8 +107,8 @@ export class MealCommandHandler implements CommandHandler {
       let count: number
       if (rawCount !== undefined) {
         // Explicit count: /meal lunch 3
-        count = parseInt(rawCount, 10)
-        if (isNaN(count) || count < 0) {
+        count = Number(rawCount)
+        if (!Number.isInteger(count) || count < 0) {
           await this.sender.sendMessage(
             ctx.chatId,
             `❌ Invalid count. Usage: \`/meal ${slot} 2\` (use 0 to disable)`,

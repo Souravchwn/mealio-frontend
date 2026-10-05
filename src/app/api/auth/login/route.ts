@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { signToken } from '@/lib/auth-utils'
-import { getLoginRateLimiter } from '@/lib/rate-limit'
+import { signToken, clientIp } from '@/lib/auth-utils'
+import { checkLoginRateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
-  // Rate limiting — keyed by IP to prevent brute-force
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const limiter = getLoginRateLimiter()
-  const rateCheck = limiter.check(ip)
+  let body: { email?: unknown; password?: unknown }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ detail: 'Invalid request body' }, { status: 400 })
+  }
+  const { email, password } = body
+
+  if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    return NextResponse.json({ detail: 'Email and password are required' }, { status: 400 })
+  }
+
+  // Rate limiting — per IP and per email, shared across instances via Redis
+  const rateCheck = await checkLoginRateLimit(clientIp(req), email)
   if (!rateCheck.allowed) {
     const retryAfterSecs = Math.ceil((rateCheck.retryAfterMs ?? 0) / 1000)
     return NextResponse.json(
@@ -18,28 +28,19 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { email, password } = await req.json()
-
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
-      return NextResponse.json({ detail: 'Email and password are required' }, { status: 400 })
-    }
-
     const member = await prisma.member.findUnique({
       where: { email: email.toLowerCase().trim() },
       select: { id: true, name: true, email: true, role: true, messId: true, passwordHash: true, isActive: true },
     })
 
-    if (!member) {
+    // Same response for unknown email and wrong password — no account enumeration
+    const valid = member ? await bcrypt.compare(password, member.passwordHash) : false
+    if (!member || !valid) {
       return NextResponse.json({ detail: 'Invalid email or password' }, { status: 401 })
     }
 
     if (!member.isActive) {
       return NextResponse.json({ detail: 'Account is deactivated' }, { status: 401 })
-    }
-
-    const valid = await bcrypt.compare(password, member.passwordHash)
-    if (!valid) {
-      return NextResponse.json({ detail: 'Invalid email or password' }, { status: 401 })
     }
 
     if (!member.messId) {
@@ -63,7 +64,8 @@ export async function POST(req: NextRequest) {
         mess_name: mess?.name ?? '',
       },
     })
-  } catch {
-    return NextResponse.json({ detail: 'Internal server error' }, { status: 500 })
+  } catch (err) {
+    console.error('[POST /api/auth/login]', err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

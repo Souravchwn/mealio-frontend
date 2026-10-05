@@ -24,6 +24,8 @@ import type {
     BazaarSessionRequest,
     ContributionResponse,
     ContributionRequest,
+    GuestMealPolicy,
+    MessSettingsResponse,
 } from "@/types";
 
 // Empty base URL = relative paths (Next.js API routes)
@@ -246,6 +248,10 @@ export const api = {
                 dinner: boolean;
                 guestCount: number;
                 frozen: boolean;
+                /** HOST = guest meals are charged to this member; SHARED = spread across the mess */
+                guestMealPolicy: GuestMealPolicy;
+                /** WEEKDAY / WEEKEND for this date, per the mess's weekend setting */
+                dayType: "WEEKDAY" | "WEEKEND";
                 /** Next upcoming cutoff (or last slot cutoff if all passed) */
                 cutOffTime: string;
                 /** True only when ALL slots have passed their cutoff */
@@ -296,6 +302,21 @@ export const api = {
             }),
     },
 
+    telegramLink: {
+        status: (token: string) =>
+            fetcher<{ linked: boolean; botUsername: string | null }>("/api/members/telegram-link", {
+                method: "GET",
+                token,
+            }),
+        createCode: (token: string) =>
+            fetcher<{ code: string; expiresAt: string; botUsername: string | null }>("/api/members/telegram-link", {
+                method: "POST",
+                token,
+            }),
+        unlink: (token: string) =>
+            fetcher<{ ok: boolean }>("/api/members/telegram-link", { method: "DELETE", token }),
+    },
+
     mealConfigs: {
         list: (token: string) =>
             fetcher<{ mealConfigs: MealConfig[] }>("/api/mess/meal-configs", {
@@ -322,6 +343,9 @@ export const api = {
                     name: string;
                     phone: string | null;
                     role: string;
+                    mealCount: number;
+                    guestMeals: number;
+                    contributed: number;
                     balance: number;
                     telegramLinked: boolean;
                     isGuest: boolean;
@@ -339,7 +363,13 @@ export const api = {
                 yearMonth: string;
                 mealRate: number;
                 totalExpense: number;
+                guestMealPolicy: GuestMealPolicy;
+                /** Billable meals: own meals (+ guest meals when the host pays) */
                 myMealCount: number;
+                ownMealCount: number;
+                guestMealCount: number;
+                deposited: number;
+                carriedForward: number;
                 contributed: number;
                 mealCost: number;
                 balance: number;
@@ -357,7 +387,8 @@ export const api = {
                 messes: Array<{
                     id: string;
                     name: string;
-                    inviteCode: string;
+                    /** Only returned to admins and managers */
+                    inviteCode: string | null;
                     cutOffTime: string;
                     isCurrent: boolean;
                     role: string;
@@ -443,11 +474,22 @@ export const api = {
                 method: "DELETE",
                 token,
             }),
+        getSettings: (token: string) =>
+            fetcher<MessSettingsResponse>("/api/mess/settings", { method: "GET", token }),
         updateSettings: (
-            data: { name?: string; cutOffTime?: string; estimatedMonthlyBudget?: number; monthStartDay?: number },
+            data: {
+                name?: string;
+                cutOffTime?: string;
+                estimatedMonthlyBudget?: number;
+                monthStartDay?: number;
+                guestMealPolicy?: GuestMealPolicy;
+                bazaarCountsAsDeposit?: boolean;
+                carryForwardBalance?: boolean;
+                weekendDays?: number[];
+            },
             token: string
         ) =>
-            fetcher<{ ok: boolean }>("/api/mess/settings", {
+            fetcher<{ ok: boolean } & MessSettingsResponse>("/api/mess/settings", {
                 method: "PUT",
                 body: data,
                 token,

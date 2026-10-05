@@ -31,8 +31,7 @@
    Send `/setcommands` to BotFather, select your bot, then paste:
    ```
    start - Welcome message & command list
-   link - Link your Mealio account (/link +8801XXXXXXXXX)
-   verify - Verify OTP after linking (/verify 123456)
+   link - Link your Mealio account (/link CODE from web Settings)
    status - Today's meal status
    meal - Toggle meals (/meal on|off|breakfast|lunch|dinner|guest N)
    rate - Current meal rate for this month
@@ -105,17 +104,13 @@ Every Mealio member who wants to use the bot must link once.
 
 1. Find your bot on Telegram (search by its username)
 2. Send `/start`
-3. Send your phone number exactly as registered in Mealio:
+3. In the Mealio web app open **Settings → My Telegram** and tap **Get link code**.
+4. Send the code to the bot in a private chat:
    ```
-   /link +8801712345678
+   /link ABCD2345
    ```
-4. You'll receive a 6-digit OTP. Send it back:
-   ```
-   /verify 123456
-   ```
-5. Confirmation message appears — you can now use all commands.
 
-> The phone number must match what's stored in your Mealio member profile.
+> Codes work once and expire after 10 minutes. Only a logged-in member can get one, so nobody can link your account just by knowing your phone number.
 
 ---
 
@@ -126,8 +121,7 @@ Every Mealio member who wants to use the bot must link once.
 | Command | Description |
 |---|---|
 | `/start` | Welcome message and full command list |
-| `/link +880XXXXXXXXXX` | Link your Telegram to your Mealio account |
-| `/verify 123456` | Verify OTP to complete account linking |
+| `/link CODE` | Link your Telegram using a code from web Settings → My Telegram |
 | `/status` | Show today's breakfast / lunch / dinner status |
 | `/meal off` | Disable the **next upcoming meal** (time-based — see below) |
 | `/meal on` | Enable the **next upcoming meal** (time-based — see below) |
@@ -167,7 +161,7 @@ Mealio is designed so members **never need to interact daily** unless their plan
 
 ### Automatic daily log generation
 
-Every night at **00:05**, a cron job reads each member's stored preferences and creates a `DailyLog` row for them. No action required from the member.
+The first time anyone opens the mess's meal data each day, the app reads each member's stored preferences and creates any missing `DailyLog` rows. No action required from the member.
 
 ### Setting preferences
 

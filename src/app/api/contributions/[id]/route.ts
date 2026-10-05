@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
+import { isDateInClosedPeriod } from '@/lib/period'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -29,10 +30,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params
   const entry = await prisma.ledgerEntry.findFirst({
     where: { id, messId: payload.messId, entryType: 'CONTRIBUTION' },
-    select: { id: true, memberId: true, amount: true, isVoided: true },
+    select: { id: true, memberId: true, amount: true, isVoided: true, createdAt: true },
   })
   if (!entry) return NextResponse.json({ detail: 'Deposit not found' }, { status: 404 })
   if (entry.isVoided) return NextResponse.json({ detail: 'Deposit is already voided' }, { status: 400 })
+  if (await isDateInClosedPeriod(payload.messId, new Date(`${entry.createdAt.toISOString().slice(0, 10)}T00:00:00.000Z`))) {
+    return NextResponse.json({ detail: 'This deposit is in a closed month and can no longer be changed' }, { status: 400 })
+  }
 
   try {
     await prisma.$transaction(async (tx) => {

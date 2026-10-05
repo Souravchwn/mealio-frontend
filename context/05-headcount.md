@@ -18,11 +18,11 @@ Shows the cook **3 separate cards** — one per meal slot (Breakfast / Lunch / D
 
 ## API: GET `/api/cook/headcount`
 
-**Query params:** `mess_id` (optional — defaults to JWT `messId`)
+**Query params:** none — always the caller's own mess. Calls `ensureDailyLogs` first, so every member has today's row.
 
 **Server-side logic:**
 1. Auth check (any role)
-2. Resolve today + current time in mess timezone (`telegramGroups[0].timezone` or `Asia/Dhaka`)
+2. Resolve today + current time from mess settings (Redis) — timezone and per-meal cutoffs
 3. Fetch all active non-guest members
 4. Fetch all DailyLogs for today (breakfast/lunch/dinner/guestCount per member)
 5. Fetch MealConfigs for cutoff times; fall back to `DEFAULT_MEAL_CONFIGS` if table is empty
@@ -89,7 +89,7 @@ After a slot's `cutoffTime` is reached (in mess timezone):
 
 Meals toggles on the Meals page are also disabled after each slot's cutoff (enforced server-side by `meals/toggle/route.ts`). So the headcount at cutoff time is always the final number.
 
-After all 3 slots' cutoffs pass (end of day), all 3 cards show "Meal Cooked". The next day the cron at 00:05 seeds new DailyLogs from member preferences and all counts reset.
+After all 3 slots' cutoffs pass (end of day), all 3 cards show "Meal Cooked". The next day the first read writes that day's rows from member preferences and all counts reset.
 
 ---
 
@@ -158,3 +158,5 @@ interface HeadcountResponse {
 3. **`cutoffPassed` uses string comparison** — `"13:00" >= "08:30"` works correctly since times are zero-padded HH:MM. Both sides must come from the mess timezone.
 4. **Backward-compat top-level fields** — `memberCount`, `guestCount`, `totalHeadcount` reflect the **lunch** slot. Only the overview page uses these. New code should always use `slots.breakfast/lunch/dinner`.
 5. **Guests set on the Meals page** — `POST /api/meals/guest` sets `DailyLog.guestCount` (a flat daily count, not per slot). Per-slot guest distribution happens at read time in the headcount API.
+6. **Guest residents** (`isGuest`) appear only when they have a row today (they are auto-counted inside their stay dates).
+7. **Billing matches the headcount:** guests eat every meal their host eats, and are billed that way (per the guest policy).

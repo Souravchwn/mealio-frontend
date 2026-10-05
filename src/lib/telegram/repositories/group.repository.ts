@@ -5,6 +5,7 @@
 
 import { prisma } from '@/lib/prisma'
 import type { ResolvedGroup } from '../dto'
+import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
 export class GroupRepository {
   async findByChatId(chatId: string): Promise<ResolvedGroup | null> {
@@ -16,7 +17,7 @@ export class GroupRepository {
     return { id: group.id, chatId: group.chatId, messId: group.messId, timezone: group.timezone }
   }
 
-  async register(chatId: string, chatName: string, messId: string, timezone = 'Asia/Dhaka'): Promise<ResolvedGroup> {
+  async register(chatId: string, chatName: string, messId: string, timezone: string = DEFAULT_TIMEZONE): Promise<ResolvedGroup> {
     const group = await prisma.telegramGroup.upsert({
       where: { chatId },
       create: { chatId, chatName, messId, timezone },

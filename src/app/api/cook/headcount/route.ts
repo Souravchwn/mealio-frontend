@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { DEFAULT_TIMEZONE, DEFAULT_MEAL_CONFIGS } from '@/lib/constants'
+import { getMessSettings, todayIn, nowHHMMIn } from '@/lib/mess-settings'
+import { ensureDailyLogs } from '@/lib/daily-logs'
 
 const COUNT_FIELD = {
   BREAKFAST: 'breakfastCount',
@@ -9,45 +10,27 @@ const COUNT_FIELD = {
   DINNER: 'dinnerCount',
 } as const
 
-function toHHMM(ct: Date | string): string {
-  if (ct instanceof Date) return ct.toISOString().slice(11, 16)
-  return String(ct)
-}
-
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
   if (!token) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
   const payload = await verifyToken(token)
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
-  const { searchParams } = new URL(req.url)
-  const messId = searchParams.get('mess_id') || payload.messId
+  // Always the caller's own mess — never a mess id from the request
+  const messId = payload.messId
+  const settings = await getMessSettings(messId)
+  if (!settings) return NextResponse.json({ detail: 'Mess not found' }, { status: 404 })
 
-  const mess = await prisma.mess.findUnique({
-    where: { id: messId },
-    select: {
-      name: true,
-      telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 },
-    },
-  })
-  const timezone = mess?.telegramGroups[0]?.timezone ?? DEFAULT_TIMEZONE
+  await ensureDailyLogs(messId)
 
-  // Today in mess timezone
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date())
+  const today = todayIn(settings.timezone)
   const todayObj = new Date(`${today}T00:00:00.000Z`)
+  const nowHHMM = nowHHMMIn(settings.timezone)
 
-  // Current time HH:MM in mess timezone (for cutoff comparison)
-  const nowHHMM = new Intl.DateTimeFormat('en-GB', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date())
-
-  const [allMembers, logs, dbConfigs, cookNotes] = await Promise.all([
+  const [members, logs, cookNotes] = await Promise.all([
     prisma.member.findMany({
-      where: { messId, isActive: true, isGuest: false },
-      select: { id: true, name: true },
+      where: { messId, isActive: true },
+      select: { id: true, name: true, isGuest: true },
       orderBy: { name: 'asc' },
     }),
     prisma.dailyLog.findMany({
@@ -60,9 +43,6 @@ export async function GET(req: NextRequest) {
         guestCount: true,
       },
     }),
-    prisma.mealConfig
-      .findMany({ where: { messId }, select: { mealType: true, cutoffTime: true } })
-      .catch(() => [] as { mealType: string; cutoffTime: Date }[]),
     prisma.dailyCookNote
       .findMany({ where: { messId, logDate: todayObj }, select: { slot: true, note: true } })
       .catch(() => [] as { slot: string; note: string | null }[]),
@@ -70,10 +50,8 @@ export async function GET(req: NextRequest) {
 
   const logByMember = new Map(logs.map((l) => [l.memberId, l]))
 
-  // Build cutoff lookup: mealType → HH:MM string
-  const cutoffMap: Record<string, string> = {}
-  for (const dc of DEFAULT_MEAL_CONFIGS) cutoffMap[dc.mealType] = dc.cutoffTime
-  for (const c of dbConfigs) cutoffMap[c.mealType] = toHHMM(c.cutoffTime)
+  // Guest members (temporary residents) only appear when they have a log today
+  const allMembers = members.filter((m) => !m.isGuest || logByMember.has(m.id))
 
   // Build cook notes lookup: slot → note
   const noteBySlot = new Map(cookNotes.map((n) => [n.slot, n.note ?? null]))
@@ -106,7 +84,8 @@ export async function GET(req: NextRequest) {
 
     for (const m of allMembers) {
       const log = logByMember.get(m.id)
-      const count = log ? log[field] : 1 // no log = default ON (1 portion)
+      // No log = default ON (1 portion) for regular members; ensureDailyLogs normally creates it
+      const count = log ? log[field] : 1
       memberPortions += count
       // Guests only eat this meal if their host member is eating it.
       const guestCountForSlot = count > 0 && log ? log.guestCount : 0
@@ -120,7 +99,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const cutoffTime = cutoffMap[slot] ?? '21:00'
+    const cutoffTime = settings.meals[slot].cutoffTime
     slots[slot.toLowerCase()] = {
       member_count: memberPortions,
       guest_count: guestPortions,
@@ -136,7 +115,7 @@ export async function GET(req: NextRequest) {
   const { member_count, guest_count, total } = slots['lunch']
 
   return NextResponse.json({
-    mess_name: mess?.name ?? '',
+    mess_name: settings.name,
     date: today,
     member_count,
     guest_count,

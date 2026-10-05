@@ -52,7 +52,7 @@ export default function MembersPage() {
             .list(user.messId, token)
             .then((res) => {
                 setMessName(res.messName);
-                setMembers(res.members as MemberRow[]);
+                setMembers(res.members.map((m) => ({ ...m, isActive: true })));
             })
             .catch((err) => toast.error(err instanceof Error ? err.message : "Failed to load members"))
             .finally(() => setLoading(false));

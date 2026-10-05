@@ -14,13 +14,16 @@ export class LinkCommandHandler implements CommandHandler {
   }
 
   async handle(ctx: CommandContext): Promise<void> {
-    const phone = ctx.args[0]
-    if (!phone) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Usage: \`/link +8801712345678\``)
+    const code = ctx.args[0]
+    if (!code) {
+      await this.sender.sendMessage(
+        ctx.chatId,
+        `🔗 *Link your account*\n\n1. Open the Mealio web app → *Settings → Telegram*\n2. Tap *Get link code*\n3. Send it here: \`/link ABCD2345\`\n\n_Send the code in a private chat with the bot._`,
+      )
       return
     }
 
-    const result = await this.linkingService.initiateLink(ctx.telegramUid, phone)
+    const result = await this.linkingService.linkWithCode(ctx.telegramUid, code)
     await this.sender.sendMessage(ctx.chatId, result.message)
   }
 }

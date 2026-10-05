@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { countMealSlots, calculateMemberBalance } from '@/lib/financial'
+import { calculatePeriodSummary } from '@/lib/financial'
 import { resolvePeriod } from '@/lib/period'
+import { getMessSettings } from '@/lib/mess-settings'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -14,54 +15,45 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ detail: 'Admin or Manager access required' }, { status: 403 })
   }
 
+  // Always the caller's own mess — never a mess id from the request
+  const messId = payload.messId
   const { searchParams } = new URL(req.url)
-  const messId = searchParams.get('mess_id') || payload.messId
   const yearMonth = searchParams.get('year_month') || null
 
-  // Resolve to actual period dates
-  const period = await resolvePeriod(messId, yearMonth)
-  const { start, end } = period
+  try {
+    const period = await resolvePeriod(messId, yearMonth)
+    const [settings, members, summary] = await Promise.all([
+      getMessSettings(messId),
+      prisma.member.findMany({
+        where: { messId, isActive: true },
+        select: { id: true, name: true, phone: true, role: true, telegramLinked: true, isGuest: true, guestFrom: true, guestUntil: true },
+        orderBy: { joinedAt: 'asc' },
+      }),
+      calculatePeriodSummary(messId, period),
+    ])
 
-  const [mess, members, expenses, logs] = await Promise.all([
-    prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),
-    prisma.member.findMany({
-      where: { messId, isActive: true },
-      select: { id: true, name: true, phone: true, role: true, telegramLinked: true, isGuest: true, guestFrom: true, guestUntil: true },
-      orderBy: { joinedAt: 'asc' },
-    }),
-    prisma.expense.findMany({
-      where: { messId, expenseDate: { gte: start, lte: end } },
-      select: { amount: true, addedBy: true },
-    }),
-    prisma.dailyLog.findMany({
-      where: { messId, logDate: { gte: start, lte: end } },
-      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
-    }),
-  ])
-
-  const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
-  const totalMeals = countMealSlots(logs)
-  const mealRate = totalMeals > 0 ? totalExpense / totalMeals : 0
-
-  return NextResponse.json({
-    mess_name: mess?.name ?? '',
-    members: members.map((member) => {
-      const memberMeals = countMealSlots(logs.filter((l) => l.memberId === member.id))
-      const contributed = expenses
-        .filter((e) => e.addedBy === member.id)
-        .reduce((s, e) => s + Number(e.amount), 0)
-
-      return {
-        id: member.id,
-        name: member.name,
-        phone: member.phone,
-        role: member.role,
-        balance: calculateMemberBalance(contributed, memberMeals, mealRate),
-        telegram_linked: member.telegramLinked,
-        is_guest: member.isGuest,
-        guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,
-        guest_until: member.guestUntil?.toISOString().slice(0, 10) ?? null,
-      }
-    }),
-  })
+    return NextResponse.json({
+      mess_name: settings?.name ?? '',
+      members: members.map((member) => {
+        const s = summary.forMember(member.id)
+        return {
+          id: member.id,
+          name: member.name,
+          phone: member.phone,
+          role: member.role,
+          meal_count: s.billableMeals,
+          guest_meals: s.guestMeals,
+          contributed: s.contributed,
+          balance: s.balance,
+          telegram_linked: member.telegramLinked,
+          is_guest: member.isGuest,
+          guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,
+          guest_until: member.guestUntil?.toISOString().slice(0, 10) ?? null,
+        }
+      }),
+    })
+  } catch (err) {
+    console.error('[GET /api/members] messId=%s', messId, err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
 }

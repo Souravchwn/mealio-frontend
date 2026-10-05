@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Sun, CloudSun, Moon, Clock, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
@@ -40,6 +40,7 @@ export default function MealsPage() {
         dinner: false,
     });
     const [guestCount, setGuestCount] = useState(0);
+    const [guestPolicy, setGuestPolicy] = useState<"HOST" | "SHARED">("HOST");
     // Per-slot cutoff: each slot locks independently once its cutoff passes
     const [slotCutoffs, setSlotCutoffs] = useState<Record<MealSlotKey, boolean>>({
         breakfast: false,
@@ -69,6 +70,8 @@ export default function MealsPage() {
                 dinner: log.dinnerCount > 0,
             });
             setGuestCount(log.guestCount);
+            if (log.guestMealPolicy) setGuestPolicy(log.guestMealPolicy);
+            if (log.dayType) setTodayDayType(log.dayType);
             setCutoffPassed(log.cutOffPassed);
             setCutoffTime(log.cutOffTime);
             // Per-slot cutoff — falls back gracefully if server doesn't return it yet
@@ -91,12 +94,8 @@ export default function MealsPage() {
         loadToday();
     }, [loadToday]);
 
-    // Determine today's day type client-side (for preference cross-reference display only)
-    // Note: slight inaccuracy possible around midnight vs mess timezone — acceptable for display.
-    const todayDayType = useMemo(() => {
-        const dow = new Date().getDay(); // 0=Sun, 6=Sat
-        return dow === 0 || dow === 6 ? "WEEKEND" : "WEEKDAY";
-    }, []);
+    // Today's day type comes from the server (mess timezone + mess weekend setting)
+    const [todayDayType, setTodayDayType] = useState<"WEEKDAY" | "WEEKEND">("WEEKDAY");
 
     // Get the preference for a slot + today's day type
     const getPref = useCallback(
@@ -328,6 +327,9 @@ export default function MealsPage() {
                         </span>
                     )}
                 </div>
+                <p className={styles.guestNote}>
+                    {guestPolicy === "SHARED" ? t("guestShared") : t("guestHostPays")}
+                </p>
 
                 <div className={styles.guestControls}>
                     <button

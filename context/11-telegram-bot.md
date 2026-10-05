@@ -17,8 +17,7 @@ src/lib/telegram/
 │   ├── types.ts                      ← CommandHandler interface
 │   └── handlers/
 │       ├── start.handler.ts          ← /start — welcome message
-│       ├── link.handler.ts           ← /link <phone> — initiate account linking
-│       ├── verify.handler.ts         ← /verify <otp> — complete linking
+│       ├── link.handler.ts           ← /link <code> — link with a code from web Settings
 │       ├── meal.handler.ts           ← /meal [subcommand] — full meal management
 │       ├── status.handler.ts         ← /status — today's meal status
 │       ├── nomeal.handler.ts         ← /nomeal, /mealon — admin bulk toggle
@@ -132,6 +131,7 @@ interface CommandContext {
   args: string[]              // everything after command, split by whitespace
   member: ResolvedMember | null  // null until /link is complete
   group: ResolvedGroup | null    // null for private chats
+  timezone: string               // mess timezone from mess settings (group's, then default)
 }
 
 interface ResolvedMember { id, messId, name, role }
@@ -141,7 +141,7 @@ interface ResolvedGroup  { id, chatId, messId, timezone }
 **`member` is null** for unlinked users. Every handler that needs a member must check first:
 ```typescript
 if (!ctx.member) {
-  await this.sender.sendMessage(ctx.chatId, "❌ Link your account first: `/link <phone>`")
+  await this.sender.sendMessage(ctx.chatId, "❌ Account not linked. Send `/link` to see how.")
   return
 }
 ```
@@ -156,32 +156,22 @@ Welcome message with list of available commands. No member required.
 
 ---
 
-### `/link <phone>`
+### `/link <code>`
 
-`AccountLinkingService.initiateLink(telegramId, phone)`
+`AccountLinkingService.linkWithCode(telegramId, code)`
+1. The member gets the code in web **Settings → My Telegram** (`POST /api/members/telegram-link`, logged in — this is what proves ownership)
+2. `OtpRepository.consumeLinkCode` — unused, unexpired, claimed atomically (only one redeem wins)
+3. Member must still be active
+4. Any other member holding this Telegram id is unlinked, then `telegramUid` + `telegramLinked: true` are set
 
-Flow:
-1. Find member by phone number
-2. Generate OTP (6 digits, stored in `telegram_otps` table with 5-min TTL)
-3. Send OTP via Telegram DM to the user's private chat
-4. Reply: "OTP sent — use /verify <code>"
+`/link` with no code replies with instructions. There is no `/verify` and no phone-number lookup any more.
 
----
 
-### `/verify <otp>`
-
-`AccountLinkingService.verifyOtp(telegramId, otp)`
-
-Flow:
-1. Find OTP record (`telegramId + otp`, not expired)
-2. Mark as consumed (delete from `telegram_otps`)
-3. Find member by phone (stored in OTP)
-4. Update `Member.telegramUid = BigInt(telegramId)` + `telegramLinked: true`
-5. Reply with success + command list
-
----
 
 ### `/meal [subcommand]`
+
+Same rules as the web app (`MealService`): `ensureDailyLogs` runs first so today's row comes from the member's defaults; counts must be whole numbers `0 … maxCount`; a meal switched off for the mess can't be turned on; frozen days are refused; slot cutoffs enforced in the handler; guests `0 … 20`.
+
 
 Full syntax:
 ```
@@ -227,15 +217,19 @@ Example for default config (B=08:30, L=13:00, D=21:00):
 
 ---
 
+Refused for dates in a closed month. Audited as `NO_COOK` (`via: 'telegram'`).
+
 ### `/mealon`
 
 **ADMIN/MANAGER only.** Calls `NoMealService.enableAllMeals()`:
 1. Fetches each member's preferences (`getBulkMealDefaults()`)
 2. Restores each member to their OWN defaults (not blanket all-1)
-3. Sets `isOverride: false, overrideType: null` (like cron-generated)
+3. Sets `isOverride: false, overrideType: null` (like an automatic day)
 4. Broadcasts notification
 
 ---
+
+Refused for dates in a closed month. Audited as `NO_COOK`.
 
 ### `/rate`
 
@@ -266,10 +260,6 @@ Example for default config (B=08:30, L=13:00, D=21:00):
 | `updateLog(id, data)` | Update specific fields on existing log |
 | `bulkUpsertLogs(memberIds, messId, date, data, overrideType)` | Bulk update for all members |
 | `bulkRestoreFromPrefs(prefsMap, messId, date)` | Restore each member to their own defaults |
-| `getMonthExpenses(messId, start, end)` | All expenses for a month |
-| `getMemberMonthExpenses(memberId, start, end)` | One member's expenses |
-| `getMonthLogs(messId, start, end)` | All logs for a month |
-| `getMemberMonthLogs(memberId, start, end)` | One member's logs |
 
 ### `MealConfigRepository`
 
@@ -280,15 +270,15 @@ Example for default config (B=08:30, L=13:00, D=21:00):
 | `getMealConfig(messId, mealType)` | Config for a specific meal |
 | `isCutoffPassed(messId, mealType, timezone)` | Boolean check for a specific slot |
 
-**Fallback:** If no meal_configs exist, returns hardcoded defaults (B=08:30, L=13:00, D=21:00).
+Reads configs from `getMessSettings` (Redis); defaults come from `DEFAULT_MEAL_CONFIGS`.
 
 ### `MemberRepository`
 
 | Method | Purpose |
 |--------|---------|
 | `findByTelegramUid(telegramUid)` | Resolve member from Telegram ID |
-| `findByPhone(phone)` | Find member for OTP linking |
-| `linkTelegram(memberId, telegramUid)` | Set telegramUid + telegramLinked: true |
+| `findActiveById(memberId)` | Member for code linking |
+| `linkTelegram(memberId, telegramUid)` | Unlink any previous owner of the Telegram id, then link |
 | `findLinkedByMess(messId)` | All Telegram-linked members (for broadcasts) |
 | `findAllActiveByMess(messId)` | All active members (for bulk updates) |
 
@@ -312,8 +302,8 @@ Wraps `getBulkMealDefaults()` from `src/lib/meal-preferences.ts`.
 
 | Method | Purpose |
 |--------|---------|
-| `createOtp(telegramId, phone)` | Generate + store 6-digit OTP (5-min TTL) |
-| `consumeOtp(telegramId, otp)` | Verify + delete → returns phone or null |
+| `createLinkCode(memberId)` | 8-char code, 10-min TTL, invalidates the member's older codes |
+| `consumeLinkCode(code, telegramId)` | Atomic single use → memberId or null |
 
 ---
 
@@ -335,8 +325,10 @@ Wraps `getBulkMealDefaults()` from `src/lib/meal-preferences.ts`.
 ## Common Pitfalls
 
 1. **`member` can be null** in CommandContext — always check before accessing `member.id` or `member.messId`. The only handler that doesn't need a member is `/start`.
-2. **`group` can be null** for private chats. Timezone fallback: `ctx.group?.timezone ?? 'Asia/Dhaka'`.
+2. **`group` can be null** for private chats. Always use `ctx.timezone` (mess settings), never a hard-coded zone.
 3. **Never throw in a handler** — errors must be caught internally. If `handleWebhookUpdate` throws, Telegram retries the update, creating infinite loops.
 4. **`telegramUid` is stored as `BigInt`** in Prisma (Postgres `bigint`). The repository converts: `BigInt(telegramUid)` when writing. When reading, comparisons work normally.
 5. **Markdown in messages** uses Telegram's MarkdownV1 (parse_mode: 'Markdown'): `*bold*`, `_italic_`, `` `code` ``. NOT MarkdownV2. Don't use `**` or `__`.
 6. **Rate limiter is in-memory** — resets on server restart (Vercel cold start). This is acceptable for a mess app.
+7. **`/rate` and `/balance`** use `calculatePeriodSummary` for the current open period — identical to the web app.
+8. **Webhook secret is required.** Without `TELEGRAM_WEBHOOK_SECRET` the webhook rejects every update (503).

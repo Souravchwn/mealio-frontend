@@ -278,16 +278,21 @@ export default function MatrixPage() {
                             },
                         ];
                     }
-                    const totalMeals = newDays.reduce(
-                        (s, d) => s + (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0) + d.guestCount,
-                        0
-                    );
+                    // Same rule as the server: guests eat every meal their host eats,
+                    // and only count for the host under the HOST policy.
+                    const hostPays = prev.guestMealPolicy !== "SHARED";
+                    const totalMeals = newDays.reduce((s, d) => {
+                        const slots = (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0);
+                        return s + slots + (hostPays ? d.guestCount * slots : 0);
+                    }, 0);
                     return { ...m, days: newDays, totalMeals };
                 }),
             };
         });
         try {
             await api.admin.editMeal({ memberId, date, slot, value }, token);
+            // Refresh server-calculated meal rate and balances
+            void fetchMatrix(selectedMonth);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to update meal");
             void fetchMatrix(selectedMonth);
@@ -770,7 +775,9 @@ export default function MatrixPage() {
                             <li>Freeze all meal logs</li>
                             <li>Calculate final balances</li>
                             <li>Create the next billing period</li>
-                            <li>Carry forward balances</li>
+                            {matrix?.carryForwardBalance !== false
+                                ? <li>Carry forward balances</li>
+                                : <li>Start the next period at zero (balances settled in cash)</li>}
                         </ul>
 
                         <div className={styles.dialogField}>

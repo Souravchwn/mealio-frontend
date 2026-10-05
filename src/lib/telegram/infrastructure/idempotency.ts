@@ -2,8 +2,8 @@
  * IdempotencyGuard — prevents duplicate processing of Telegram updates.
  *
  * Telegram guarantees at-least-once delivery. We store processed update_ids
- * in the DB so retried webhooks are silently dropped. The table is append-only;
- * a background job (or Supabase pg_cron) can purge rows older than 30 days.
+ * in the DB so retried webhooks are silently dropped. Rows older than 30 days
+ * are purged once a day by purgeOldRecordsOncePerDay() in lib/daily-logs.ts.
  */
 
 import { prisma } from '@/lib/prisma'

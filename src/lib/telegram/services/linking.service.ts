@@ -1,14 +1,16 @@
 /**
- * AccountLinkingService — OTP-based Telegram ↔ Mealio account pairing.
+ * AccountLinkingService — Telegram ↔ Mealio account pairing.
  *
  * Flow:
- *   1. /link +880XXXXXXXXXX  → generates OTP, sends it via Telegram DM
- *   2. /verify <otp>         → verifies OTP, persists link
+ *   1. Member opens Settings in the web app → "Link Telegram" → gets a code
+ *   2. Member sends `/link <code>` to the bot → account linked
+ *
+ * The code can only be obtained while logged in, so knowing someone's phone
+ * number is no longer enough to take over their account.
  */
 
 import type { OtpRepository } from '../repositories/otp.repository'
 import type { MemberRepository } from '../repositories/member.repository'
-import type { TelegramSender } from '../infrastructure/sender'
 
 export interface LinkResult {
   ok: boolean
@@ -20,44 +22,20 @@ export class AccountLinkingService {
   constructor(
     private readonly otpRepo: OtpRepository,
     private readonly memberRepo: MemberRepository,
-    private readonly sender: TelegramSender,
   ) {}
 
-  async initiateLink(telegramId: number, phone: string): Promise<LinkResult> {
-    const member = await this.memberRepo.findByPhone(phone)
-    if (!member) {
+  async linkWithCode(telegramId: number, code: string): Promise<LinkResult> {
+    const memberId = await this.otpRepo.consumeLinkCode(code, telegramId)
+    if (!memberId) {
       return {
         ok: false,
-        message: `❌ No active account found with phone \`${phone}\`.\n\nRegister at the Mealio web app first, then try again.`,
+        message: `❌ Invalid or expired code.\n\nOpen *Settings → Telegram* in the Mealio web app to get a new one.`,
       }
     }
 
-    const otp = await this.otpRepo.createOtp(telegramId, phone)
-
-    // Send OTP directly to the user's private chat (telegramId = their private chat id)
-    await this.sender.sendMessage(
-      telegramId,
-      `🔐 *Your Mealio verification code is:*\n\n\`${otp}\`\n\nSend \`/verify ${otp}\` to complete linking.\n_Expires in 5 minutes._`,
-    )
-
-    return {
-      ok: true,
-      message: `📱 OTP sent! Check your Telegram messages and reply with:\n\`/verify <code>\`\n\n_Code expires in 5 minutes._`,
-    }
-  }
-
-  async verifyOtp(telegramId: number, otp: string): Promise<LinkResult> {
-    const phone = await this.otpRepo.consumeOtp(telegramId, otp)
-    if (!phone) {
-      return {
-        ok: false,
-        message: `❌ Invalid or expired OTP.\n\nRequest a new one with \`/link <your-phone>\``,
-      }
-    }
-
-    const member = await this.memberRepo.findByPhone(phone)
+    const member = await this.memberRepo.findActiveById(memberId)
     if (!member) {
-      return { ok: false, message: `❌ Account not found. Please register first.` }
+      return { ok: false, message: `❌ This account is no longer active.` }
     }
 
     await this.memberRepo.linkTelegram(member.id, telegramId)

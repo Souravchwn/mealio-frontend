@@ -217,3 +217,16 @@ export function formatPeriodLabel(startDate: Date, endDate: Date): string {
   })
   return `${startStr} → ${endStr}`
 }
+
+/**
+ * True when `date` falls inside a CLOSED period of the mess. Expenses and
+ * sessions dated in a closed period must not change — the period's numbers
+ * have already been settled into the ledger.
+ */
+export async function isDateInClosedPeriod(messId: string, date: Date): Promise<boolean> {
+  const closed = await prisma.messMonth.findFirst({
+    where: { messId, isClosed: true, startDate: { lte: date }, endDate: { gte: date } },
+    select: { id: true },
+  })
+  return !!closed
+}

@@ -188,7 +188,9 @@
         "status": {
             "active": "Active",
             "frozen": "Frozen"
-        }
+        },
+        "guestHostPays": "Guests eat the meals you eat today and are added to your meal count.",
+        "guestShared": "Guests eat the meals you eat today. Their cost is shared by the whole mess."
     },
     "expenses": {
         "title": "Bazaar Expenses",
@@ -381,7 +383,61 @@
             "link": "Link Group",
             "linking": "Linking...",
             "linked": "Linked",
-            "unlinked": "No group linked yet"
+            "unlinked": "No group linked yet",
+            "chatNamePlaceholder": "e.g. Bashundhara Mess Group"
+        },
+        "dangerDesc": "Permanently deletes the mess and all associated data. This cannot be undone.",
+        "monthStart": {
+            "title": "Billing Period Start Day",
+            "help": "Set which day of the month your billing cycle begins. For example, setting this to 10 means each period runs from the 10th to the 9th of the next month.",
+            "calendar": "Calendar month (1st → last day)",
+            "range": "Day {start} → day {end} of next month",
+            "saved": "Month start day saved"
+        },
+        "billing": {
+            "title": "Billing Rules",
+            "guestTitle": "Who pays for guest meals",
+            "guestHelp": "A guest eats every meal their host eats that day. Choose who is charged for those meals.",
+            "policy": {
+                "HOST": {
+                    "title": "The host pays",
+                    "description": "Guest meals are added to the meal count of the member who brought the guest. Nobody else pays for them."
+                },
+                "SHARED": {
+                    "title": "Everyone shares",
+                    "description": "Guest meals are not added to anyone's count. Their cost is spread across all members through the meal rate."
+                }
+            },
+            "bazaarCredit": {
+                "title": "Count bazaar spending as the shopper's deposit",
+                "description": "Turn on only if members buy groceries with their own money. Leave off if they spend money already deposited with the manager, or it will be counted twice."
+            },
+            "saved": "Billing rules saved",
+            "saveFailed": "Failed to save billing rules",
+            "adminOnly": "Only the admin can change billing rules.",
+            "carryForward": {
+                "title": "Carry balances into the next month",
+                "description": "When a month is closed, each member's leftover balance (credit or due) moves into the next month. Turn off if you settle up in cash at month end and start every month at zero."
+            }
+        },
+        "telegramAccount": {
+            "title": "My Telegram",
+            "description": "Link your Telegram account to manage meals and check your balance from the Mealio bot.",
+            "linked": "Linked",
+            "getCode": "Get link code",
+            "relink": "Link a different account",
+            "unlink": "Unlink",
+            "unlinked": "Telegram unlinked",
+            "unlinkFailed": "Failed to unlink Telegram",
+            "codeFailed": "Failed to create a link code",
+            "theBot": "the Mealio bot",
+            "instructions": "Send this message to {bot} in a private chat. The code works once and expires at {time}."
+        },
+        "weekend": {
+            "title": "Weekend days",
+            "help": "Members set separate default meals for weekdays and weekends. Choose which days count as the weekend (for Bangladesh this is usually Friday and Saturday). Changes apply from today; past days are not changed.",
+            "saved": "Weekend days saved",
+            "saveFailed": "Failed to save weekend days"
         }
     },
     "createMess": {

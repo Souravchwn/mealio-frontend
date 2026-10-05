@@ -1,24 +1,21 @@
 /**
  * /api/mess/meal-configs
  *
- * GET — Returns meal configs for the current user's mess.
- *       Falls back to defaults if the table doesn't exist yet.
- * PUT — Admin/Manager: update a single meal config.
+ * GET — Returns meal configs for the current user's mess (served from Redis).
+ * PUT — Admin/Manager: update a single meal config, then refresh the Redis copy.
  *       Body: { meal_type, cutoff_time?, enabled?, max_count? }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { MEAL_TYPES, DEFAULT_MEAL_CONFIGS } from '@/lib/constants'
+import { MEAL_TYPES, DEFAULT_MAX_MEAL_COUNT, DEFAULT_CUTOFF_TIME } from '@/lib/constants'
+import { getMessSettings, refreshMessSettings } from '@/lib/mess-settings'
+import { createAudit } from '@/lib/audit'
+import { settleDailyLogs } from '@/lib/daily-logs'
 
-const FALLBACK_CONFIGS = DEFAULT_MEAL_CONFIGS.map((cfg, i) => ({
-  id: `default-${i}`,
-  meal_type: cfg.mealType,
-  enabled: true,
-  cutoff_time: cfg.cutoffTime,
-  max_count: 10,
-}))
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+const MAX_ALLOWED_COUNT = 50
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -26,28 +23,20 @@ export async function GET(req: NextRequest) {
   const payload = await verifyToken(token)
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
-  try {
-    const rows = await prisma.mealConfig.findMany({
-      where: { messId: payload.messId },
-      select: { id: true, mealType: true, enabled: true, cutoffTime: true, maxCount: true },
-      orderBy: { cutoffTime: 'asc' },
-    })
+  const settings = await getMessSettings(payload.messId)
+  if (!settings) return NextResponse.json({ detail: 'Mess not found' }, { status: 404 })
 
-    const configs = rows.length > 0
-      ? rows.map((r) => ({
-        id: r.id,
-        meal_type: r.mealType,
-        enabled: r.enabled,
-        cutoff_time: r.cutoffTime.toISOString().slice(11, 16),
-        max_count: r.maxCount,
-      }))
-      : FALLBACK_CONFIGS
+  const configs = MEAL_TYPES
+    .map((mealType) => ({
+      id: mealType,
+      meal_type: mealType,
+      enabled: settings.meals[mealType].enabled,
+      cutoff_time: settings.meals[mealType].cutoffTime,
+      max_count: settings.meals[mealType].maxCount,
+    }))
+    .sort((a, b) => a.cutoff_time.localeCompare(b.cutoff_time))
 
-    return NextResponse.json({ meal_configs: configs })
-  } catch {
-    // meal_configs table not yet migrated — return defaults
-    return NextResponse.json({ meal_configs: FALLBACK_CONFIGS })
-  }
+  return NextResponse.json({ meal_configs: configs })
 }
 
 export async function PUT(req: NextRequest) {
@@ -60,23 +49,34 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ detail: 'Admin or Manager access required' }, { status: 403 })
   }
 
-  const body = await req.json()
-  const { meal_type, cutoff_time, enabled, max_count } = body as {
-    meal_type?: string
-    cutoff_time?: string
-    enabled?: boolean
-    max_count?: number
+  let body: { meal_type?: unknown; cutoff_time?: unknown; enabled?: unknown; max_count?: unknown }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ detail: 'Invalid request body' }, { status: 400 })
   }
+  const { meal_type, cutoff_time, enabled, max_count } = body
 
-  const mealTypeUpper = (meal_type as string)?.toUpperCase()
+  const mealTypeUpper = typeof meal_type === 'string' ? meal_type.toUpperCase() : ''
   if (!MEAL_TYPES.includes(mealTypeUpper as typeof MEAL_TYPES[number])) {
     return NextResponse.json({ detail: 'Invalid meal_type' }, { status: 400 })
   }
 
   const updateData: Record<string, unknown> = {}
-  if (typeof enabled === 'boolean') updateData.enabled = enabled
-  if (typeof max_count === 'number' && max_count > 0) updateData.maxCount = max_count
-  if (typeof cutoff_time === 'string' && /^\d{2}:\d{2}$/.test(cutoff_time)) {
+  if (enabled !== undefined) {
+    if (typeof enabled !== 'boolean') return NextResponse.json({ detail: 'enabled must be true or false' }, { status: 400 })
+    updateData.enabled = enabled
+  }
+  if (max_count !== undefined) {
+    if (typeof max_count !== 'number' || !Number.isInteger(max_count) || max_count < 1 || max_count > MAX_ALLOWED_COUNT) {
+      return NextResponse.json({ detail: `max_count must be a whole number between 1 and ${MAX_ALLOWED_COUNT}` }, { status: 400 })
+    }
+    updateData.maxCount = max_count
+  }
+  if (cutoff_time !== undefined) {
+    if (typeof cutoff_time !== 'string' || !HHMM.test(cutoff_time)) {
+      return NextResponse.json({ detail: 'cutoff_time must be HH:MM' }, { status: 400 })
+    }
     updateData.cutoffTime = new Date(`1970-01-01T${cutoff_time}:00.000Z`)
   }
 
@@ -85,22 +85,31 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
+    // Record every day so far under the current config — the change applies from now on
+    await settleDailyLogs(payload.messId)
     await prisma.mealConfig.upsert({
       where: { messId_mealType: { messId: payload.messId, mealType: mealTypeUpper } },
       create: {
         messId: payload.messId,
         mealType: mealTypeUpper,
         enabled: typeof enabled === 'boolean' ? enabled : true,
-        cutoffTime: (updateData.cutoffTime as Date) ?? new Date('1970-01-01T21:00:00.000Z'),
-        maxCount: typeof max_count === 'number' ? max_count : 10,
+        cutoffTime: (updateData.cutoffTime as Date) ?? new Date(`1970-01-01T${DEFAULT_CUTOFF_TIME}:00.000Z`),
+        maxCount: (updateData.maxCount as number) ?? DEFAULT_MAX_MEAL_COUNT,
       },
       update: updateData,
     })
-    return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json(
-      { detail: 'meal_configs table not yet available — run MIGRATION.sql first' },
-      { status: 503 },
-    )
+    await createAudit({
+      messId: payload.messId,
+      actorId: payload.sub,
+      action: 'ADMIN_SETTINGS_UPDATE',
+      targetTable: 'meal_configs',
+      newValue: { meal_type: mealTypeUpper, ...body },
+    })
+  } catch (err) {
+    console.error('[PUT /api/mess/meal-configs] messId=%s', payload.messId, err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
   }
+
+  await refreshMessSettings(payload.messId)
+  return NextResponse.json({ ok: true })
 }

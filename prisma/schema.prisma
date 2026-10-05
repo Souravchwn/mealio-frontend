@@ -16,6 +16,14 @@ model Mess {
   estimatedMonthlyBudget Decimal? @map("estimated_monthly_budget") @db.Decimal(10, 2)
   /// Day of the month when the billing period starts (1–28). Default 1 = calendar month.
   monthStartDay          Int      @default(1) @map("month_start_day")
+  /// Who pays for guest meals: HOST = the member who brought the guest, SHARED = spread across the mess via the meal rate
+  guestMealPolicy        String   @default("HOST") @map("guest_meal_policy")
+  /// When true, bazaar expenses are credited to the member who recorded them (they paid from their own pocket)
+  bazaarCountsAsDeposit  Boolean  @default(false) @map("bazaar_counts_as_deposit")
+  /// When true, closing a month carries each member's balance into the next month
+  carryForwardBalance    Boolean  @default(true) @map("carry_forward_balance")
+  /// Weekend days for meal preferences, comma-separated JS weekday numbers (0=Sun … 6=Sat)
+  weekendDays            String   @default("0,6") @map("weekend_days")
   isActive               Boolean  @default(true) @map("is_active")
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -249,16 +257,20 @@ model TelegramGroup {
   @@map("telegram_groups")
 }
 
+/// One-time Telegram link codes. Issued by the web app to a logged-in member
+/// (memberId set); redeemed in the bot with `/link <code>`.
 model TelegramOtp {
   id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  telegramId String   @map("telegram_id")
-  phone      String
+  memberId   String?  @map("member_id") @db.Uuid
+  telegramId String?  @map("telegram_id")
+  phone      String?
   otp        String
   expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
   used       Boolean  @default(false)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([telegramId], map: "idx_telegram_otps_uid")
+  @@index([otp], map: "idx_telegram_otps_code")
   @@map("telegram_otps")
 }
 

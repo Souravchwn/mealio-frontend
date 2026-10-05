@@ -36,25 +36,24 @@ page load
 
 ## API: GET `/api/members/me`
 
-**Query params:** `year_month` (default: current month)
+Query `year_month?`. Built entirely from `calculatePeriodSummary(...).forMember(me)`.
 
-**Response (camelCase after api.ts):**
 ```typescript
 {
-  memberId:     string
-  yearMonth:    string
-  mealRate:     number   // mess-wide, voided-excluded
-  totalExpense: number   // mess-wide total expense this month
-  myMealCount:  number   // member's meal slots for the month (filtered by joinedAt)
-  contributed:  number   // member's expense additions + non-voided cash contributions
-  mealCost:     number   // myMealCount × mealRate
-  balance:      number   // contributed − mealCost (positive = overpaid, negative = owes)
+  memberId, yearMonth, startDate, endDate
+  mealRate, totalExpense
+  guestMealPolicy: 'HOST' | 'SHARED'
+  myMealCount: number     // billable: own (+ guest meals when the host pays)
+  ownMealCount: number
+  guestMealCount: number  // guests × meals I ate
+  deposited: number       // cash deposits this period
+  carriedForward: number  // from last month (if carry-forward is on)
+  contributed: number     // deposited + carriedForward (+ bazaar credit if enabled)
+  mealCost: number
+  balance: number         // contributed − mealCost (positive = mess owes you)
 }
 ```
-
-**`joinedAt` filtering (important):** `myMealCount` only counts `DailyLog` rows where `logDate >= member.joinedAt`. This prevents phantom logs (created before the member joined) from inflating counts. See **Common Pitfalls** below.
-
----
+Same numbers as the Matrix and Telegram `/balance`.
 
 ## `src/lib/api.ts` — Client Method
 

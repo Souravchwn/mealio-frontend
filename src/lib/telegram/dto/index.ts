@@ -45,7 +45,6 @@ export enum UserRole {
 export enum CommandType {
   START = '/start',
   LINK = '/link',
-  VERIFY = '/verify',
   STATUS = '/status',
   MEAL = '/meal',
   NOMEAL = '/nomeal',
@@ -84,6 +83,8 @@ export interface CommandContext {
   member: ResolvedMember | null
   /** null for private chats not registered as a group */
   group: ResolvedGroup | null
+  /** Mess timezone from mess settings (falls back to the group's, then the default) */
+  timezone: string
 }
 
 // ─── Service DTOs ────────────────────────────────────────────────────────────
@@ -108,16 +109,6 @@ export interface BroadcastRequest {
   messId: string
   message: string
   senderName: string
-}
-
-export interface LinkRequest {
-  telegramId: number
-  phone: string
-}
-
-export interface VerifyRequest {
-  telegramId: number
-  otp: string
 }
 
 export interface BalanceResult {

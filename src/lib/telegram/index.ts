@@ -27,7 +27,6 @@ import { ReportService } from './services/report.service'
 
 import { StartCommandHandler } from './commands/handlers/start.handler'
 import { LinkCommandHandler } from './commands/handlers/link.handler'
-import { VerifyCommandHandler } from './commands/handlers/verify.handler'
 import { MealCommandHandler } from './commands/handlers/meal.handler'
 import { StatusCommandHandler } from './commands/handlers/status.handler'
 import { NoMealCommandHandler, MealOnCommandHandler } from './commands/handlers/nomeal.handler'
@@ -50,16 +49,15 @@ const mealConfigRepo = new MealConfigRepository()
 function buildDispatcher(): CommandDispatcher {
   const sender = getTelegramSender()
 
-  const linkingService = new AccountLinkingService(otpRepo, memberRepo, sender)
+  const linkingService = new AccountLinkingService(otpRepo, memberRepo)
   const mealService = new MealService(mealRepo)
   const noMealService = new NoMealService(mealRepo, memberRepo, prefRepo, sender)
   const announceService = new AnnounceService(memberRepo, sender)
-  const reportService = new ReportService(mealRepo)
+  const reportService = new ReportService()
 
   const handlers = [
     new StartCommandHandler(sender),
     new LinkCommandHandler(linkingService, sender),
-    new VerifyCommandHandler(linkingService, sender),
     new MealCommandHandler(mealService, mealConfigRepo, prefRepo, sender),
     new StatusCommandHandler(mealService, sender),
     new NoMealCommandHandler(noMealService, sender),

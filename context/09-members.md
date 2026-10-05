@@ -21,54 +21,19 @@ Lists all members of the current mess with their role, balance, Telegram link st
 
 ## API: GET `/api/members`
 
-**Query params:** `mess_id`
-
-**Response:**
-```typescript
-{
-  messName: string
-  members: Array<{
-    id, name, phone: string | null
-    role: string
-    balance: number       // calculated from current month
-    telegramLinked: boolean
-    isGuest: boolean
-    guestFrom: string | null    // YYYY-MM-DD
-    guestUntil: string | null   // YYYY-MM-DD
-  }>
-}
-```
-
-**Server logic:**
-1. Get all active members
-2. For each member, calculate current month balance from `LedgerEntry` rows (sum of CARRY_FORWARD + DEDUCTION for current yearMonth)
-3. Return enriched list
-
-**Balance sign convention:** Positive = overpaid (member gets money back). Negative = owes money.
-
----
+**Roles:** ADMIN or MANAGER. Query `year_month?` (`mess_id` ignored — always the caller's mess). Returns active members with `mealCount` (billable), `guestMeals`, `contributed`, `balance` from `calculatePeriodSummary`, plus `phone`, `role`, `telegramLinked`, guest dates.
 
 ## API: PUT `/api/members/[id]`
 
-**Roles:** ADMIN only.
+**Roles:** ADMIN only; not on yourself. Body `{ role?: 'ADMIN'|'MANAGER'|'MEMBER'|'GUEST', is_active?: boolean, guest_from?, guest_until? }` (`SYSTEM_ADMIN` cannot be assigned).
 
-**Request body:**
-```typescript
-{
-  role?: 'ADMIN' | 'MANAGER' | 'MEMBER' | 'GUEST'
-  is_active?: boolean
-  guest_from?: string | null   // YYYY-MM-DD
-  guest_until?: string | null  // YYYY-MM-DD
-}
-```
+Order matters for meal counting:
+1. `settleDailyLogs` — days so far recorded under the current status
+2. Update + audit `ADMIN_MEMBER_UPDATE`
+3. Reactivation → `recordInactiveGap` (0 meals for days away)
+4. `invalidateDailyLogsMarker`
 
-**Server logic:**
-1. Auth + role check (must be ADMIN)
-2. Prevent admin from demoting themselves
-3. Update `Member` row
-4. Write audit log: action `'UPDATE_MEMBER'`
-
----
+Deactivation/demotion takes effect on the member's very next request (`verifyToken` re-checks the DB).
 
 ## API: GET `/api/members/me`
 
@@ -124,13 +89,9 @@ api.admin.updateMember(memberId, data, token) → Promise<{ ok: boolean }>
 
 ## Guest Member Logic
 
-A member with `role: 'GUEST'` or `isGuest: true` is a temporary member. Key behavior:
-- `guestFrom` and `guestUntil` date range
-- The cron job `deactivate-guests` runs daily at 00:00 and sets `isActive: false` for expired guests
-- Guests appear in the matrix with a `(guest)` label
-- Guests count toward headcount and meal rate during their active period
+Guest residents (`role = GUEST`, `isGuest = true`) are **auto-counted only between `guestFrom` and `guestUntil`**. On the first data read after `guestUntil` their last days are recorded and they are deactivated (audit `AUTO_DEACTIVATE_GUEST`). No cron is involved — see `12-daily-meal-counting.md`.
 
----
+Guests brought by a member for a day (`DailyLog.guestCount`) are different — see the guest policy in `07-settings.md`.
 
 ## i18n Keys
 
@@ -142,7 +103,7 @@ A member with `role: 'GUEST'` or `isGuest: true` is a temporary member. Key beha
 
 ## Common Pitfalls
 
-1. **Balance calculation** in `members/route.ts` uses `LedgerEntry` rows — NOT real-time. It reflects the last close-month carry-forward. For live balance, use `api.members.me()` which uses `calculateMealRate()` dynamically.
+1. **Balance** comes from `calculatePeriodSummary` (live, same as Matrix and My Summary).
 2. **Self-demotion protection**: the PUT route prevents an admin from changing their own role. If `targetId === payload.sub && role !== currentRole`, return 403.
 3. **`isActive: false`** members are excluded from all lists, meals, and calculations. They exist in the DB but are effectively invisible.
-4. **Guest deactivation** is automatic via cron — but `is_active` can also be set manually via `PUT /api/members/[id]`.
+4. **Guest deactivation** is automatic on the first read after `guestUntil` — and can be set manually via `PUT /api/members/[id]`.

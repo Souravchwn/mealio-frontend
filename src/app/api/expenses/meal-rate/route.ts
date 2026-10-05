@@ -9,11 +9,16 @@ export async function GET(req: NextRequest) {
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const messId = searchParams.get('mess_id') || payload.messId
-  const yearMonth = searchParams.get('year_month') || new Date().toISOString().slice(0, 7)
+  // Always the caller's own mess — never a mess id from the request
+  const messId = payload.messId
+  // No year_month → the current open period
+  const yearMonth = searchParams.get('year_month') || null
 
-  // calculateMealRate internally calls calculateMonthStats which uses resolvePeriod
-  const mealRate = await calculateMealRate(messId, yearMonth)
-
-  return NextResponse.json({ mess_id: messId, year_month: yearMonth, meal_rate: mealRate })
+  try {
+    const mealRate = await calculateMealRate(messId, yearMonth)
+    return NextResponse.json({ mess_id: messId, year_month: yearMonth, meal_rate: mealRate })
+  } catch (err) {
+    console.error('[GET /api/expenses/meal-rate] messId=%s', messId, err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
 }

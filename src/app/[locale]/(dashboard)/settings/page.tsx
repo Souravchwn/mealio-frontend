@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
-import { Sun, CloudSun, Moon, Save, AlertTriangle, Copy, Check, Link, Calendar } from "lucide-react";
+import { Sun, CloudSun, Moon, Save, AlertTriangle, Copy, Check, Link, Calendar, Users, Send, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { GuestMealPolicy } from "@/types";
 import styles from "./settings.module.css";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner"] as const;
@@ -40,6 +41,7 @@ function defaultPrefs(): PrefMap {
 
 export default function SettingsPage() {
     const t = useTranslations("settings");
+    const locale = useLocale();
     const { user, token } = useAuth();
 
     const [activeTab, setActiveTab] = useState<Tab>("general");
@@ -70,8 +72,22 @@ export default function SettingsPage() {
     const [linkedGroup, setLinkedGroup] = useState<{ chatId: string; chatName: string } | null>(null);
     const [tgChatId, setTgChatId] = useState("");
     const [tgChatName, setTgChatName] = useState("");
-    const [tgTimezone, setTgTimezone] = useState("Asia/Dhaka");
+    const [tgTimezone, setTgTimezone] = useState("");
     const [linkingTg, setLinkingTg] = useState(false);
+
+    // ── Billing rules (served from Redis via /api/mess/settings) ───────────────
+    const [guestPolicy, setGuestPolicy] = useState<GuestMealPolicy>("HOST");
+    const [bazaarCredit, setBazaarCredit] = useState(false);
+    const [carryForward, setCarryForward] = useState(true);
+    const [weekendDays, setWeekendDays] = useState<number[]>([0, 6]);
+    const [savingWeekend, setSavingWeekend] = useState(false);
+    const [savingBilling, setSavingBilling] = useState(false);
+
+    // ── My Telegram account ────────────────────────────────────────────────────
+    const [tgAccountLinked, setTgAccountLinked] = useState(false);
+    const [tgBotUsername, setTgBotUsername] = useState<string | null>(null);
+    const [tgLinkCode, setTgLinkCode] = useState<{ code: string; expiresAt: string } | null>(null);
+    const [tgCodeLoading, setTgCodeLoading] = useState(false);
 
     const isAdminOrManager = user?.role === "ADMIN" || user?.role === "MANAGER";
     const isAdmin = user?.role === "ADMIN";
@@ -90,6 +106,12 @@ export default function SettingsPage() {
             setPrefs(map);
         }).catch(() => {});
 
+        // My Telegram link status (all users)
+        api.telegramLink.status(token).then((data) => {
+            setTgAccountLinked(data.linked);
+            setTgBotUsername(data.botUsername);
+        }).catch(() => {});
+
         if (!isAdminOrManager) return;
 
         // Mess info
@@ -97,19 +119,19 @@ export default function SettingsPage() {
             const current = data.messes.find((m) => m.isCurrent);
             if (current) {
                 setName(current.name);
-                setInviteCode(current.inviteCode);
+                setInviteCode(current.inviteCode ?? "");
             }
         }).catch(() => {});
 
-        // Month start day — from mess settings
-        fetch("/api/mess/settings", {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((r) => r.ok ? r.json() : null)
-            .then((data) => {
-                if (data?.month_start_day) setMonthStartDay(data.month_start_day);
-            })
-            .catch(() => {});
+        // Mess settings — month start day + billing rules
+        api.admin.getSettings(token).then((data) => {
+            if (data.monthStartDay) setMonthStartDay(data.monthStartDay);
+            setGuestPolicy(data.guestMealPolicy);
+            setBazaarCredit(data.bazaarCountsAsDeposit);
+            setCarryForward(data.carryForwardBalance);
+            if (data.weekendDays) setWeekendDays(data.weekendDays);
+            setTgTimezone(data.timezone);
+        }).catch(() => {});
 
         // Per-slot cutoff configs
         api.mealConfigs.list(token).then((data) => {
@@ -131,7 +153,7 @@ export default function SettingsPage() {
                         setLinkedGroup(data.group);
                         setTgChatId(data.group.chatId ?? "");
                         setTgChatName(data.group.chatName ?? "");
-                        setTgTimezone(data.group.timezone ?? "Asia/Dhaka");
+                        if (data.group.timezone) setTgTimezone(data.group.timezone);
                     }
                 })
                 .catch(() => {});
@@ -195,11 +217,80 @@ export default function SettingsPage() {
         setSavingStartDay(true);
         try {
             await api.admin.updateSettings({ monthStartDay }, token);
-            toast.success("Month start day saved");
+            toast.success(t("monthStart.saved"));
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to save");
         } finally {
             setSavingStartDay(false);
+        }
+    }
+
+    // ── Save billing rules ─────────────────────────────────────────────────────
+    async function saveBillingRules() {
+        if (!token) return;
+        setSavingBilling(true);
+        try {
+            await api.admin.updateSettings({ guestMealPolicy: guestPolicy, bazaarCountsAsDeposit: bazaarCredit, carryForwardBalance: carryForward }, token);
+            toast.success(t("billing.saved"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("billing.saveFailed"));
+        } finally {
+            setSavingBilling(false);
+        }
+    }
+
+    // ── Weekend days ───────────────────────────────────────────────────────────
+    function toggleWeekendDay(day: number) {
+        setWeekendDays((prev) =>
+            prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
+        );
+    }
+
+    async function saveWeekendDays() {
+        if (!token) return;
+        setSavingWeekend(true);
+        try {
+            await api.admin.updateSettings({ weekendDays }, token);
+            toast.success(t("weekend.saved"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("weekend.saveFailed"));
+        } finally {
+            setSavingWeekend(false);
+        }
+    }
+
+    // Localised short weekday names, Sunday (0) … Saturday (6). 2023-01-01 was a Sunday.
+    const weekdayNames = Array.from({ length: 7 }, (_, d) =>
+        new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(new Date(Date.UTC(2023, 0, 1 + d)))
+    );
+
+    // ── My Telegram account ────────────────────────────────────────────────────
+    async function getTelegramCode() {
+        if (!token) return;
+        setTgCodeLoading(true);
+        try {
+            const data = await api.telegramLink.createCode(token);
+            setTgLinkCode({ code: data.code, expiresAt: data.expiresAt });
+            if (data.botUsername) setTgBotUsername(data.botUsername);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("telegramAccount.codeFailed"));
+        } finally {
+            setTgCodeLoading(false);
+        }
+    }
+
+    async function unlinkTelegram() {
+        if (!token) return;
+        setTgCodeLoading(true);
+        try {
+            await api.telegramLink.unlink(token);
+            setTgAccountLinked(false);
+            setTgLinkCode(null);
+            toast.success(t("telegramAccount.unlinked"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("telegramAccount.unlinkFailed"));
+        } finally {
+            setTgCodeLoading(false);
         }
     }
 
@@ -327,12 +418,121 @@ export default function SettingsPage() {
                             ))}
                         </div>
                     </Card>
+
+                    {/* My Telegram account */}
+                    <Card>
+                        <div className={styles.prefHeader}>
+                            <div className={styles.sectionTitleRow}>
+                                <h3 className={styles.sectionTitle}>
+                                    <Send size={18} />
+                                    {t("telegramAccount.title")}
+                                </h3>
+                                {tgAccountLinked && (
+                                    <span className={styles.telegramLinkedBadge}>
+                                        <Check size={12} />
+                                        {t("telegramAccount.linked")}
+                                    </span>
+                                )}
+                            </div>
+                            <p className={styles.helpText}>{t("telegramAccount.description")}</p>
+                        </div>
+
+                        {tgLinkCode && (
+                            <div className={styles.linkCodeBox}>
+                                <span className={styles.inviteCodeText}>/link {tgLinkCode.code}</span>
+                                <p className={styles.helpText}>
+                                    {t("telegramAccount.instructions", {
+                                        bot: tgBotUsername ? `@${tgBotUsername}` : t("telegramAccount.theBot"),
+                                        time: new Date(tgLinkCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                    })}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className={styles.formActions}>
+                            <Button onClick={getTelegramCode} disabled={tgCodeLoading}>
+                                <Link size={16} />
+                                {tgAccountLinked ? t("telegramAccount.relink") : t("telegramAccount.getCode")}
+                            </Button>
+                            {tgAccountLinked && (
+                                <Button variant="secondary" onClick={unlinkTelegram} disabled={tgCodeLoading}>
+                                    <Unlink size={16} />
+                                    {t("telegramAccount.unlink")}
+                                </Button>
+                            )}
+                        </div>
+                    </Card>
                 </>
             )}
 
             {/* ── Mess Settings Tab ─────────────────────────────────────────── */}
             {activeTab === "mess" && isAdminOrManager && (
                 <>
+                    {/* Billing rules */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>
+                            <Users size={18} />
+                            {t("billing.title")}
+                        </h3>
+                        <p className={styles.helpText} style={{ marginBottom: "var(--space-4)" }}>
+                            {t("billing.guestHelp")}
+                        </p>
+
+                        <div className={styles.optionList} role="radiogroup" aria-label={t("billing.guestTitle")}>
+                            {(["HOST", "SHARED"] as const).map((policy) => (
+                                <button
+                                    key={policy}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={guestPolicy === policy}
+                                    disabled={!isAdmin}
+                                    onClick={() => setGuestPolicy(policy)}
+                                    className={cn(styles.option, guestPolicy === policy && styles.optionActive)}
+                                >
+                                    <span className={styles.optionTitle}>{t(`billing.policy.${policy}.title`)}</span>
+                                    <span className={styles.optionDesc}>{t(`billing.policy.${policy}.description`)}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <label className={styles.switchRow}>
+                            <input
+                                type="checkbox"
+                                checked={bazaarCredit}
+                                disabled={!isAdmin}
+                                onChange={(e) => setBazaarCredit(e.target.checked)}
+                            />
+                            <span>
+                                <span className={styles.optionTitle}>{t("billing.bazaarCredit.title")}</span>
+                                <span className={styles.optionDesc}>{t("billing.bazaarCredit.description")}</span>
+                            </span>
+                        </label>
+
+                        <label className={styles.switchRow}>
+                            <input
+                                type="checkbox"
+                                checked={carryForward}
+                                disabled={!isAdmin}
+                                onChange={(e) => setCarryForward(e.target.checked)}
+                            />
+                            <span>
+                                <span className={styles.optionTitle}>{t("billing.carryForward.title")}</span>
+                                <span className={styles.optionDesc}>{t("billing.carryForward.description")}</span>
+                            </span>
+                        </label>
+
+                        {isAdmin ? (
+                            <div className={styles.formActions}>
+                                <Button onClick={saveBillingRules} disabled={savingBilling}>
+                                    <Save size={16} />
+                                    {savingBilling ? t("saving") : t("saveChanges")}
+                                </Button>
+                            </div>
+                        ) : (
+                            <p className={styles.helpText}>{t("billing.adminOnly")}</p>
+                        )}
+                    </Card>
+
                     {/* Per-slot cutoff times */}
                     <Card>
                         <h3 className={styles.sectionTitle}>{t("cutoffTimes")}</h3>
@@ -367,15 +567,44 @@ export default function SettingsPage() {
                         </div>
                     </Card>
 
+                    {/* Weekend days */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>{t("weekend.title")}</h3>
+                        <p className={styles.helpText} style={{ marginBottom: "var(--space-4)" }}>
+                            {t("weekend.help")}
+                        </p>
+                        <div className={styles.dayChips} role="group" aria-label={t("weekend.title")}>
+                            {weekdayNames.map((label, day) => (
+                                <button
+                                    key={day}
+                                    type="button"
+                                    aria-pressed={weekendDays.includes(day)}
+                                    disabled={!isAdmin}
+                                    onClick={() => toggleWeekendDay(day)}
+                                    className={cn(styles.dayChip, weekendDays.includes(day) && styles.dayChipActive)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        {isAdmin && (
+                            <div className={styles.formActions}>
+                                <Button onClick={saveWeekendDays} disabled={savingWeekend || weekendDays.length > 6}>
+                                    <Save size={16} />
+                                    {savingWeekend ? t("saving") : t("saveChanges")}
+                                </Button>
+                            </div>
+                        )}
+                    </Card>
+
                     {/* Month Start Day */}
                     <Card>
                         <h3 className={styles.sectionTitle}>
                             <Calendar size={18} />
-                            Billing Period Start Day
+                            {t("monthStart.title")}
                         </h3>
                         <p className={styles.helpText} style={{ marginBottom: "var(--space-4)" }}>
-                            Set which day of the month your billing cycle begins. For example, setting this to 10 means
-                            each period runs from the 10th to the 9th of the next month.
+                            {t("monthStart.help")}
                         </p>
                         <div className={styles.field}>
                             <div className={styles.inputRow}>
@@ -390,8 +619,8 @@ export default function SettingsPage() {
                                 />
                                 <span className={styles.helpText}>
                                     {monthStartDay === 1
-                                        ? "Calendar month (1st → last day)"
-                                        : `${monthStartDay}th → ${monthStartDay - 1}${monthStartDay - 1 === 1 ? "st" : monthStartDay - 1 === 2 ? "nd" : monthStartDay - 1 === 3 ? "rd" : "th"} of next month`}
+                                        ? t("monthStart.calendar")
+                                        : t("monthStart.range", { start: monthStartDay, end: monthStartDay - 1 })}
                                 </span>
                                 <Button onClick={saveMonthStartDay} disabled={savingStartDay}>
                                     <Save size={16} />
@@ -474,7 +703,7 @@ export default function SettingsPage() {
                                         type="text"
                                         value={tgChatName}
                                         onChange={(e) => setTgChatName(e.target.value)}
-                                        placeholder="e.g. Bashundhara Mess Group"
+                                        placeholder={t("telegramGroup.chatNamePlaceholder")}
                                     />
                                 </div>
                                 <div className={styles.field}>
@@ -504,9 +733,7 @@ export default function SettingsPage() {
                                 <AlertTriangle size={20} />
                                 <h3>{t("dangerZone")}</h3>
                             </div>
-                            <p className={styles.dangerDesc}>
-                                Permanently deletes the mess and all associated data. This cannot be undone.
-                            </p>
+                            <p className={styles.dangerDesc}>{t("dangerDesc")}</p>
                             <Button variant="danger" size="small" disabled>
                                 {t("deleteMess")} ({t("contactSupport")})
                             </Button>

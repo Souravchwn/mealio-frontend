@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { countMealSlots, calculateMemberBalance, nonVoidedExpenseWhere, calculateStatsForRange } from '@/lib/financial'
+import { calculatePeriodSummary, guestMeals } from '@/lib/financial'
 import { resolvePeriod } from '@/lib/period'
+import { getMessSettings } from '@/lib/mess-settings'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -14,90 +15,93 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ detail: 'Admin or Manager access required' }, { status: 403 })
   }
 
+  // Always the caller's own mess — never a mess id from the request
+  const messId = payload.messId
   const { searchParams } = new URL(req.url)
-  const messId = searchParams.get('mess_id') || payload.messId
   const yearMonth = searchParams.get('year_month') || null
 
-  // Resolve to actual period dates
-  const period = await resolvePeriod(messId, yearMonth)
-  const { start, end } = period
+  try {
+    const period = await resolvePeriod(messId, yearMonth)
+    const { start, end } = period
 
-  const [mess, members, logs, expenses] = await Promise.all([
-    prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),
-    prisma.member.findMany({
-      where: { messId, isActive: true },
-      select: { id: true, name: true, role: true, isGuest: true, guestFrom: true, guestUntil: true },
-      orderBy: { joinedAt: 'asc' },
-    }),
-    prisma.dailyLog.findMany({
-      where: { messId, logDate: { gte: start, lte: end } },
-      select: {
-        id: true,
-        memberId: true,
-        logDate: true,
-        breakfastCount: true,
-        lunchCount: true,
-        dinnerCount: true,
-        guestCount: true,
-        frozen: true,
-      },
-    }),
-    prisma.expense.findMany({
-      where: nonVoidedExpenseWhere(messId, start, end),
-      select: { amount: true, addedBy: true },
-    }),
-  ])
+    // Summary first: it backfills missing logs, so the log query below sees them
+    const summary = await calculatePeriodSummary(messId, period)
 
-  const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
-  const totalMeals = countMealSlots(logs)
-  const mealRate = totalMeals > 0 ? totalExpense / totalMeals : 0
+    const [settings, members, logs] = await Promise.all([
+      getMessSettings(messId),
+      prisma.member.findMany({
+        where: { messId, isActive: true },
+        select: { id: true, name: true, role: true, isGuest: true, guestFrom: true, guestUntil: true },
+        orderBy: { joinedAt: 'asc' },
+      }),
+      prisma.dailyLog.findMany({
+        where: { messId, logDate: { gte: start, lte: end } },
+        select: {
+          id: true,
+          memberId: true,
+          logDate: true,
+          breakfastCount: true,
+          lunchCount: true,
+          dinnerCount: true,
+          guestCount: true,
+          frozen: true,
+        },
+      }),
+    ])
 
-  const memberRows = members.map((member) => {
-    const memberLogs = logs.filter((l) => l.memberId === member.id)
-    const memberMeals = countMealSlots(memberLogs)
-    const memberExpenses = expenses
-      .filter((e) => e.addedBy === member.id)
-      .reduce((s, e) => s + Number(e.amount), 0)
-    const totalAmount = memberMeals * mealRate
+    const memberRows = members.map((member) => {
+      const memberLogs = logs.filter((l) => l.memberId === member.id)
+      const s = summary.forMember(member.id)
 
-    return {
-      member_id: member.id,
-      member_name: member.name,
-      member_role: member.role,
-      is_guest: member.isGuest,
-      guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,
-      guest_until: member.guestUntil?.toISOString().slice(0, 10) ?? null,
-      days: memberLogs.map((l) => ({
-        log_id: l.id,
-        member_id: l.memberId,
+      return {
+        member_id: member.id,
         member_name: member.name,
-        date: l.logDate.toISOString().slice(0, 10),
-        breakfast_count: l.breakfastCount,
-        lunch_count: l.lunchCount,
-        dinner_count: l.dinnerCount,
-        // Convenience booleans for UI
-        breakfast: l.breakfastCount > 0,
-        lunch: l.lunchCount > 0,
-        dinner: l.dinnerCount > 0,
-        guest_count: l.guestCount,
-        frozen: l.frozen,
-      })),
-      total_meals: memberMeals,
-      total_amount: totalAmount,
-      balance: calculateMemberBalance(memberExpenses, memberMeals, mealRate),
-    }
-  })
+        member_role: member.role,
+        is_guest: member.isGuest,
+        guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,
+        guest_until: member.guestUntil?.toISOString().slice(0, 10) ?? null,
+        days: memberLogs.map((l) => ({
+          log_id: l.id,
+          member_id: l.memberId,
+          member_name: member.name,
+          date: l.logDate.toISOString().slice(0, 10),
+          breakfast_count: l.breakfastCount,
+          lunch_count: l.lunchCount,
+          dinner_count: l.dinnerCount,
+          // Convenience booleans for UI
+          breakfast: l.breakfastCount > 0,
+          lunch: l.lunchCount > 0,
+          dinner: l.dinnerCount > 0,
+          guest_count: l.guestCount,
+          guest_meals: guestMeals(l),
+          frozen: l.frozen,
+        })),
+        own_meals: s.ownMeals,
+        guest_meals: s.guestMeals,
+        total_meals: s.billableMeals,
+        total_amount: s.mealCost,
+        contributed: s.contributed,
+        balance: s.balance,
+      }
+    })
 
-  return NextResponse.json({
-    mess_id: messId,
-    mess_name: mess?.name ?? '',
-    year_month: period.yearMonth,
-    start_date: period.startDate.toISOString().slice(0, 10),
-    end_date: period.endDate.toISOString().slice(0, 10),
-    is_closed: period.isClosed,
-    meal_rate: mealRate,
-    total_expense: totalExpense,
-    total_meals: totalMeals,
-    members: memberRows,
-  })
+    return NextResponse.json({
+      mess_id: messId,
+      mess_name: settings?.name ?? '',
+      year_month: period.yearMonth,
+      start_date: period.startDate.toISOString().slice(0, 10),
+      end_date: period.endDate.toISOString().slice(0, 10),
+      is_closed: period.isClosed,
+      meal_rate: summary.mealRate,
+      total_expense: summary.totalExpense,
+      total_meals: summary.totalMeals,
+      total_guest_meals: summary.totalGuestMeals,
+      guest_meal_policy: summary.guestMealPolicy,
+      carry_forward_balance: settings?.carryForwardBalance ?? true,
+      members: memberRows,
+    })
+  } catch (err) {
+    console.error('[GET /api/admin/matrix] messId=%s', messId, err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
 }

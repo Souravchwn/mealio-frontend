@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
+import { isDateInClosedPeriod } from '@/lib/period'
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -60,9 +64,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params
   const session = await prisma.bazaarSession.findFirst({
     where: { id, messId: payload.messId },
-    select: { id: true, shoppers: true, note: true, sessionDate: true },
+    select: { id: true, shoppers: true, note: true, sessionDate: true, createdBy: true, isVoided: true },
   })
   if (!session) return NextResponse.json({ detail: 'Session not found' }, { status: 404 })
+  if (session.isVoided) return NextResponse.json({ detail: 'A voided session cannot be edited' }, { status: 400 })
+  if (await isDateInClosedPeriod(payload.messId, session.sessionDate)) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
+  }
 
   const body = await req.json()
   const { date, shoppers, items, note } = body as {
@@ -72,8 +80,22 @@ export async function PUT(req: NextRequest, { params }: Params) {
     note?: string
   }
 
-  if (items !== undefined && items.length === 0) {
+  if (items !== undefined && (!Array.isArray(items) || items.length === 0)) {
     return NextResponse.json({ detail: 'Session must have at least one item' }, { status: 400 })
+  }
+  for (const item of items ?? []) {
+    const num = Number(item.amount)
+    if (!EXPENSE_CATEGORIES.includes(item.category as ExpenseCategory) || isNaN(num) || num <= 0) {
+      return NextResponse.json({ detail: 'Each item needs a valid category and a positive amount' }, { status: 400 })
+    }
+  }
+  if (date !== undefined) {
+    if (typeof date !== 'string' || !DATE_RE.test(date)) {
+      return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
+    }
+    if (await isDateInClosedPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
+    }
   }
 
   const updateData: Record<string, unknown> = {}
@@ -98,7 +120,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
         await tx.expense.createMany({
           data: items.map((item) => ({
             messId: payload.messId,
-            addedBy: payload.sub,
+            // Keep the original recorder — editing must not move bazaar credit to the editor
+            addedBy: session.createdBy ?? payload.sub,
             sessionId: id,
             amount: Number(item.amount),
             category: item.category,
@@ -122,8 +145,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to update session'
-    return NextResponse.json({ detail: msg }, { status: 500 })
+    console.error('[PUT /api/expenses/sessions/%s]', id, err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -151,6 +174,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   })
   if (!session) return NextResponse.json({ detail: 'Session not found' }, { status: 404 })
   if (session.isVoided) return NextResponse.json({ detail: 'Session is already voided' }, { status: 400 })
+  if (await isDateInClosedPeriod(payload.messId, session.sessionDate)) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
+  }
 
   try {
     await prisma.$transaction(async (tx) => {

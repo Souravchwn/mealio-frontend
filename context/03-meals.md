@@ -2,7 +2,9 @@
 
 ## What This Module Does
 
-Lets members toggle their breakfast/lunch/dinner ON or OFF for today, add guests, and set default meal preferences. The entire system is default-driven: DailyLog rows are auto-created from preferences if they don't exist.
+Lets members toggle their breakfast/lunch/dinner for today or future days, add guests, and set default meal preferences.
+
+The system is **default-driven and automatic**: every active member is counted every day from their default preferences — nobody has to log in or tap anything. Members only act when they want an exception. How the automatic counting works (and why it does not depend on who opens the app) is in **`12-daily-meal-counting.md`** — read it before changing anything here.
 
 ---
 
@@ -12,11 +14,14 @@ Lets members toggle their breakfast/lunch/dinner ON or OFF for today, add guests
 |------|------|---------|
 | `src/app/[locale]/(dashboard)/meals/page.tsx` | Page (client) | Toggle UI |
 | `src/app/[locale]/(dashboard)/meals/meals.module.css` | CSS | Toggle page styles |
-| `src/app/api/meals/today/route.ts` | API GET | Load (or auto-create) today's meal log |
-| `src/app/api/meals/toggle/route.ts` | API POST | Toggle a single meal slot |
+| `src/app/api/meals/today/route.ts` | API GET | Load today's (or a given day's) meal log |
+| `src/app/api/meals/toggle/route.ts` | API POST | Change one meal slot |
 | `src/app/api/meals/guest/route.ts` | API POST | Set guest count |
-| `src/app/api/members/meal-preferences/route.ts` | API GET+PUT | Read/write per-member meal preferences |
-| `src/lib/meal-preferences.ts` | Lib (server-only) | getMemberMealDefaults, getBulkMealDefaults |
+| `src/app/api/members/meal-preferences/route.ts` | API GET+PUT | Read/write a member's default meals |
+| `src/lib/meal-preferences.ts` | Lib (server-only) | `getDayType`, `getMemberMealDefaults`, `getBulkMealDefaults` |
+| `src/lib/meal-access.ts` | Lib (server-only) | Who may change which log, and when |
+| `src/lib/daily-logs.ts` | Lib (server-only) | Automatic daily counting (`ensureDailyLogs`, `settleDailyLogs`) |
+| `src/lib/mess-settings.ts` | Lib (server-only) | Mess settings served from Redis (cutoffs, weekend, policies) |
 
 ---
 
@@ -31,64 +36,70 @@ DailyLog {
   breakfastCount   ← INTEGER (0=off, 1=normal, 2+=extra)
   lunchCount       ← INTEGER
   dinnerCount      ← INTEGER
-  guestCount       ← INTEGER
-  frozen           ← BOOLEAN (true after month is closed)
-  isOverride       ← BOOLEAN (false=cron-generated, true=manually changed)
+  guestCount       ← INTEGER — guests eat every meal the host eats that day
+  frozen           ← BOOLEAN (true after month is closed — nothing can change it)
+  isOverride       ← BOOLEAN (false = auto from defaults, true = changed by hand)
   overrideType     ← 'USER' | 'ADMIN' | 'SYSTEM' | null
   toggledAt        ← DateTime
 }
 ```
 
-**Key rule:** 0 = meal OFF, 1 = one portion ON, 2+ = extra portions (for family, etc.)
+**Key rule:** 0 = meal OFF, 1 = one portion ON, 2+ = extra portions (family, etc.). Never more than the meal's `maxCount`.
+
+`overrideType = 'SYSTEM'` marks days written as 0 for a member who was inactive (see `recordInactiveGap`).
+
+---
+
+## Who may change what (`src/lib/meal-access.ts`)
+
+| Who | Whose log | Which days |
+|-----|-----------|-----------|
+| MEMBER / GUEST | own only | today (before that meal's cutoff) and up to 60 days ahead |
+| ADMIN / MANAGER | anyone in their own mess | any day that is not frozen |
+
+- Past days are read-only for members — nobody can lower last week's meals to cut their bill.
+- The target member must be an active member of the caller's mess (`isActiveMemberOfMess`).
+- A meal switched off for the whole mess (`meal_configs.enabled = false`) cannot be turned on.
+- Counts must be whole numbers `0 … maxCount`; guests `0 … MAX_GUEST_COUNT` (20).
+
+The Telegram bot (`/meal`) applies the same limits — see `11-telegram-bot.md`.
 
 ---
 
 ## API: GET `/api/meals/today`
 
-**Query params:** `member_id` (optional, defaults to JWT sub), `log_date` (optional YYYY-MM-DD, defaults to today)
+**Query params:** `member_id` (optional; only ADMIN/MANAGER may pass someone else), `log_date` (optional YYYY-MM-DD, defaults to today in mess timezone)
 
-**Full server-side flow:**
-1. Extract + verify JWT
-2. Find mess → get `timezone` from `telegramGroups[0].timezone` (fallback: `Asia/Dhaka`)
-3. Determine `today` = `Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date())`
-4. Try `prisma.mealConfig.findMany` for per-meal cutoffs → if error/empty, fall back to `mess.cutOffTime`
-5. Determine `cutoffPassed`:
-   - If meal_configs exist: find first config where `now < cutoff` → that's the next upcoming cutoff
-   - If all configs passed: `cutoffPassed = true`
-6. Try `prisma.dailyLog.findFirst` for today
-7. If no log found: call `getMemberMealDefaults(memberId, messId, today)` → create new log
-8. Return log + cutoff info
+**Server-side flow:**
+1. `verifyToken` (re-checks the member is active, returns current role)
+2. `getMessSettings(messId)` — timezone, per-meal cutoffs, weekend days, guest policy (from Redis)
+3. `today` = today in the mess timezone
+4. Per-slot cutoff state for today; past/future days are never cut off
+5. If today: `ensureDailyLogs(messId)` — makes sure today's log exists for **every** member of the mess
+6. Load the log. Today with no log (rare) → create from defaults. Past/future with no log → return zeros, never create phantom rows
+7. Return log + cutoff info + `guest_meal_policy` + `day_type`
 
 **Response (camelCase after api.ts):**
 ```typescript
 {
-  id: string
+  id: string | null
   memberId: string
-  date: string              // YYYY-MM-DD (server-computed in mess timezone — never pass client date)
-  breakfastCount: number
-  lunchCount: number
-  dinnerCount: number
-  breakfast: boolean        // breakfastCount > 0 (convenience)
-  lunch: boolean
-  dinner: boolean
+  date: string              // YYYY-MM-DD in mess timezone — never compute client-side
+  breakfastCount: number; lunchCount: number; dinnerCount: number
+  breakfast: boolean; lunch: boolean; dinner: boolean   // count > 0
   guestCount: number
   frozen: boolean
-  // Backward-compat: next upcoming slot cutoff, or last slot if all passed
-  cutOffTime: string
+  isOverride: boolean
+  cutOffTime: string        // next upcoming slot cutoff, or last slot if all passed
   cutOffPassed: boolean     // true only when ALL slots passed OR day is frozen
-  // Per-slot cutoff — use these to lock individual meal cards
   slotCutoffs: {
     breakfast: { cutoffTime: string; cutoffPassed: boolean }
     lunch:     { cutoffTime: string; cutoffPassed: boolean }
     dinner:    { cutoffTime: string; cutoffPassed: boolean }
   }
+  guestMealPolicy: 'HOST' | 'SHARED'
+  dayType: 'WEEKDAY' | 'WEEKEND'   // per the mess's weekend setting
 }
-```
-
-**Client usage:**
-```typescript
-// Always call without a date param — server resolves today in mess timezone
-const log = await api.meals.getToday(user.id, token)
 ```
 
 ---
@@ -98,206 +109,77 @@ const log = await api.meals.getToday(user.id, token)
 **Request body:**
 ```typescript
 {
-  member_id?: string      // defaults to JWT sub (admin can specify another member)
+  member_id?: string      // defaults to caller; others need ADMIN/MANAGER
   date?: string           // defaults to today in mess timezone
   slot: 'breakfast' | 'lunch' | 'dinner'
-  count?: number          // integer; preferred — 0=off, 1=on, 2+=extra
-  status?: boolean        // legacy; converted to 0 or defaultCount
+  count?: number          // 0 … maxCount
+  status?: boolean        // true = restore member's default portions, false = 0
 }
 ```
 
 **Server-side flow:**
-1. Auth check; role check (MEMBER can only toggle own meals)
-2. Resolve timezone from mess
-3. **Cutoff check** (only for today):
-   - Try `prisma.mealConfig.findFirst({ where: { messId, mealType: SLOT_UPPER[slot] } })`
-   - Get `cutoffHHMM` from config (or fallback to `mess.cutOffTime`)
-   - If `nowHHMM >= cutoffHHMM`: return 403
-4. Find or create log (uses `getMemberMealDefaults` if creating)
-5. If log.frozen: return 403
-6. Determine `newCount`:
-   - If `count` provided: use it directly (`Math.max(0, count)`)
-   - If `status: true`: use `getMemberMealDefaults()[${slot}Count]` (restores preference)
-   - If `status: false`: set to 0
-   - If neither: toggle (0 → defaultCount, >0 → 0)
-7. Update log with `isOverride: true, overrideType: 'USER', toggledAt: new Date()`
-8. Write audit log via `createAudit()`
+1. Auth; `checkMealWriteAccess` (rules above)
+2. Today + `now >= slot cutoff` → 403
+3. Find or create the log (create uses `getMemberMealDefaults`)
+4. Frozen → 403
+5. New count: `count` as given; `status:true` / toggle-on → member's default portions (min 1, capped at `maxCount`); off → 0
+6. Turning on a mess-disabled meal → 400
+7. Update with `isOverride: true, overrideType: 'USER'`; audit `TOGGLE_MEAL` with old and new value
 
-**Response:** `{ ok: true, count: newCount }`
-
-**Client usage:**
-```typescript
-await api.meals.toggleMeal({ memberId: user.id, date, slot: 'lunch', status: true }, token)
-// or with explicit count:
-await api.meals.toggleMeal({ memberId: user.id, date, slot: 'lunch', count: 2 }, token)
-```
+**Response:** `{ ok: true, count }`
 
 ---
 
 ## API: POST `/api/meals/guest`
 
-**Request body:**
-```typescript
-{ member_id: string, date: string, guest_count: number }
-```
+**Request body:** `{ member_id?: string, date?: string, guest_count: number }`
 
-Creates log if missing (from preferences). Updates `guestCount`. Does NOT set `isOverride = true` for guests.
+- Same access rules as toggle. For members, today's guests lock after the **last enabled meal's** cutoff.
+- Creates the log from defaults if missing; frozen → 403; audited.
+- **Billing:** guests eat every meal their host eats that day. Under `guestMealPolicy = HOST` (default) those guest meals are charged to the host only; under `SHARED` they are left out of everyone's count and the cost spreads through the meal rate. See `13-shared-libs.md` → `calculatePeriodSummary`.
 
 ---
 
 ## API: GET `/api/members/meal-preferences`
 
-Returns the current user's 6 default preferences (3 meals × 2 day types).
-
-**Response:**
-```json
-{
-  "preferences": [
-    { "meal_type": "breakfast", "day_type": "WEEKDAY", "enabled": true, "default_count": 1 },
-    { "meal_type": "breakfast", "day_type": "WEEKEND", "enabled": false, "default_count": 1 },
-    ...
-  ]
-}
-```
-
-**Missing rows:** Defaults to `enabled: true, defaultCount: 1` — no row means always ON with count 1.
-
-**Defensive fallback:** If `defaultCount` column doesn't exist (pre-migration DB), retries query without that field.
-
----
+Returns the caller's 6 defaults (3 meals × WEEKDAY/WEEKEND). Missing rows → `enabled: true, default_count: 1`.
 
 ## API: PUT `/api/members/meal-preferences`
 
-**Request body:**
-```typescript
-{
-  meal_type: 'breakfast' | 'lunch' | 'dinner'
-  day_type: 'WEEKDAY' | 'WEEKEND'
-  enabled: boolean
-  default_count?: number    // defaults to 1
-}
-```
+**Request body:** `{ meal_type, day_type: 'WEEKDAY' | 'WEEKEND', enabled: boolean, default_count?: 1 … maxCount }`
 
-**Immediately syncs today's DailyLog** if the changed `day_type` matches today:
-```typescript
-if (todayDayType === day_type && existingLog && !existingLog.frozen) {
-  await prisma.dailyLog.update({
-    where: { id: existingLog.id },
-    data: { [countField]: enabled ? defaultCount : 0 }
-  })
-}
-```
+**A default change is never retroactive:**
+1. `settleDailyLogs(messId)` — every day so far is recorded with the OLD defaults first
+2. Save the preference (audited as `MEAL_PREFERENCE_UPDATE`)
+3. Today's log follows the new default **only** if today is that day type, that meal's cutoff has not passed, the day is not frozen, and the member has not already changed today by hand (`isOverride = false`)
 
-This means changing a preference instantly updates today's log without a page refresh.
+**Response:** `{ ok: true, applied_today: boolean }` — when false, the change starts from the next day.
 
 ---
 
 ## `src/lib/meal-preferences.ts` — Server-Only
 
-### `getDayType(date: string): 'WEEKDAY' | 'WEEKEND'`
+### `getDayType(date, weekendDays = DEFAULT_WEEKEND_DAYS)`
+`weekendDays` are JS weekday numbers (0 = Sun … 6 = Sat) from the mess setting `weekendDays` (default `[0, 6]`; Bangladesh messes usually set `[5, 6]` = Fri + Sat). Uses UTC noon to avoid timezone edges.
 
-```typescript
-const dow = new Date(`${date}T12:00:00.000Z`).getUTCDay()
-return dow === 0 || dow === 6 ? 'WEEKEND' : 'WEEKDAY'
-```
-Uses UTC noon to avoid timezone edge cases.
-
-### `getMemberMealDefaults(memberId, messId, date): Promise<MealDefaults>`
-
-Returns `{ breakfastCount, lunchCount, dinnerCount }` for ONE member.
-
-Three-level fallback:
-1. Query with `defaultCount` column
-2. Catch → retry without `defaultCount` (pre-migration)
-3. Catch → return `{ breakfastCount: 1, lunchCount: 1, dinnerCount: 1 }`
-
-Logic: finds `UserMealPreference` rows → for each, sets count = `enabled ? defaultCount : 0`. Missing rows default to `{ count: 1 }` (all-on).
-
-### `getBulkMealDefaults(memberIds, messId, date): Promise<Map<string, MealDefaults>>`
-
-Same but for multiple members. Returns a `Map<memberId, MealDefaults>`.
-Used by cron job to generate DailyLogs for all members at midnight.
+### `getBulkMealDefaults(memberIds, messId, date)` / `getMemberMealDefaults(memberId, messId, date)`
+Member's preference for that day type (`enabled ? defaultCount : 0`; missing row → 1), **then mess rules**: a meal switched off for the mess → 0, counts capped at `maxCount`.
 
 ---
 
-## Preference-Aware Status Chips (NEW)
+## Meals Page (`meals/page.tsx`)
 
-The meals page loads preferences in parallel with the daily log. For each meal card it shows a small chip below the meal name:
-
-| State | Chip | When |
-|-------|------|------|
-| `default-off` | "Default Off" (gray) | Preference says OFF and slot IS off (system default) |
-| `override-on` | "Override On" (amber) | Preference says OFF but user turned slot ON |
-| `override-off` | "Override Off" (amber) | Preference says ON but slot is OFF (user turned it off) |
-| *(none)* | No chip | Normal: preference ON and slot ON |
-
-Day type is computed client-side (Sat/Sun = WEEKEND, else WEEKDAY). Slight inaccuracy around midnight is acceptable for display purposes.
-
-The API now also returns `is_override: boolean` on the log (false = cron-generated from preferences, true = manually changed).
-
-**Guest note:** The guest section shows a helper text `"+N guest per active meal"` when `guestCount > 0`, clarifying that guests only count for meals where the member is eating.
-
----
-
-## Meals Page (`meals/page.tsx`) — UI State
-
-```typescript
-// Core state
-const [log, setLog] = useState<MealLog | null>(null)
-const [loading, setLoading] = useState(true)
-const [toggling, setToggling] = useState<string | null>(null)  // slot being toggled
-```
-
-**On mount:** calls `api.meals.getToday(user.id, token)` → sets log.
-
-**Toggle optimistic update pattern:**
-```typescript
-setLog(prev => ({ ...prev!, breakfast: !prev!.breakfast }))  // optimistic
-try {
-  await api.meals.toggleMeal(...)
-} catch {
-  setLog(prev => ({ ...prev!, breakfast: prev!.breakfast }))  // revert
-  toast.error(...)
-}
-```
-
-**Cutoff display:**
-- If `cutOffPassed = false`: shows "Cut-off in HH:MM" badge
-- If `cutOffPassed = true`: shows "Cut-off time has passed" warning; toggles are disabled
-
----
-
-## `src/types/index.ts` — Relevant Types
-
-```typescript
-interface DailyLog {
-  id: string
-  memberId: string
-  date: string
-  breakfastCount: number; lunchCount: number; dinnerCount: number
-  breakfast: boolean; lunch: boolean; dinner: boolean  // convenience
-  guestCount: number
-  frozen: boolean
-  overrideType?: string | null
-}
-
-interface MealToggleRequest {
-  memberId: string; date: string
-  slot: MealSlot        // 'BREAKFAST' | 'LUNCH' | 'DINNER'
-  count?: number        // preferred
-  status?: boolean      // legacy
-}
-
-interface GuestUpdateRequest {
-  memberId: string; date: string; guestCount: number
-}
-```
+- Loads `getToday` + preferences in parallel. Day type comes from the server (`log.dayType`) — not computed in the browser.
+- Each card locks on its own `slotCutoffs.<slot>.cutoffPassed`.
+- Status chips compare the slot to today's default: `default-off`, `override-on`, `override-off`.
+- Guest section shows who pays: `meals.guestHostPays` or `meals.guestShared` depending on `guestMealPolicy`.
+- All calls use `serverDate` (`log.date`), never a browser date.
 
 ---
 
 ## i18n Keys
 
-`meals.*`: `title`, `subtitle`, `breakfast`, `lunch`, `dinner`, `on`, `off`, `guestCount`, `addGuest`, `removeGuest`, `cutoffPassed`, `cutoffIn`, `allOn`, `allOff`
+`meals.*`: `title`, `subtitle`, `breakfast`, `lunch`, `dinner`, `on`, `off`, `guestCount`, `addGuest`, `removeGuest`, `cutoffPassed`, `cutoffIn`, `allOn`, `allOff`, `guestPortions`, `guestHostPays`, `guestShared`
 
 `settings.mealPreferences.*`: `title`, `subtitle`, `weekday`, `weekend`, `breakfast`, `lunch`, `dinner`, `saved`
 
@@ -305,9 +187,9 @@ interface GuestUpdateRequest {
 
 ## Common Pitfalls
 
-1. **Meal slot names:** The `slot` field in `MealToggleRequest` uses `MealSlot` enum (`'BREAKFAST'`), but the page often uses lowercase strings. The API route accepts lowercase too (`slotLower = slot.toLowerCase()`).
-2. **Cutoff is per-slot** — use `slotCutoffs.breakfast/lunch/dinner.cutoffPassed` from `getToday` to lock each card independently. Do NOT use the single `cutOffPassed` boolean for this — it's only `true` when ALL slots have passed. Using the wrong one is what allowed toggles after individual slot cutoffs.
-3. **"today" date must come from the server** — never compute it client-side (`new Date().toISOString().slice(0, 10)` is UTC). The server returns `log.date` in mess timezone. Store it as `serverDate` and use that for all toggle/guest API calls.
-4. **Guest lock uses dinner cutoff** — the guest increment/decrement is disabled only after the dinner cutoff (last meal). Before that, guests can be added/removed even after breakfast and lunch have locked.
-5. **Creating logs:** Both `today/route.ts` and `toggle/route.ts` auto-create logs if missing. They call `getMemberMealDefaults()` to seed the initial counts. Don't assume a log exists.
-6. **`isOverride` flag:** The cron sets `isOverride: false`. User/admin toggles set `isOverride: true`. Use this to distinguish auto vs manual changes in the matrix.
+1. **Never write a DailyLog from a new code path without the access rules** — use `checkMealWriteAccess` (web) or the `MealService` (bot). Both enforce cutoff, frozen, max count, and mess-disabled meals.
+2. **Before changing anything that affects defaults** (preferences, meal configs, weekend days, member status) call `settleDailyLogs(messId)` first — otherwise days not yet recorded get filled with the NEW settings.
+3. **Cutoff is per-slot** — use `slotCutoffs.<slot>.cutoffPassed`. `cutOffPassed` is only true when ALL slots have passed.
+4. **"today" comes from the server** in the mess timezone. Never `new Date().toISOString().slice(0, 10)` (that is UTC).
+5. **Future days** can be planned (logs exist), but the meal rate only counts days up to today.
+6. **`isOverride`**: false = auto from defaults, true = changed by hand. A default change never overwrites a hand-changed day.

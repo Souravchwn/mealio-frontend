@@ -17,7 +17,7 @@ export class NoMealCommandHandler implements CommandHandler {
 
   async handle(ctx: CommandContext): Promise<void> {
     if (!ctx.member) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Use \`/link <phone>\``)
+      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Send \`/link\` to see how.`)
       return
     }
     if (!PRIVILEGED_ROLES.has(ctx.member.role)) {
@@ -25,14 +25,14 @@ export class NoMealCommandHandler implements CommandHandler {
       return
     }
 
-    const timezone = ctx.group?.timezone ?? 'Asia/Dhaka'
+    const timezone = ctx.timezone
     const [dateArg, ...rest] = ctx.args
     const hasDateArg = isDateArg(dateArg)
     const targetDate = hasDateArg ? parseDateArg(dateArg, timezone) : localDate(timezone)
     const reason = (hasDateArg ? rest : ctx.args).join(' ').trim() || undefined
 
     const result = await this.noMealService.disableAllMeals(
-      ctx.member.messId, targetDate, ctx.member.name, reason,
+      ctx.member.messId, targetDate, ctx.member.name, reason, ctx.member.id,
     )
     await this.sender.sendMessage(ctx.chatId, result.message)
   }
@@ -50,7 +50,7 @@ export class MealOnCommandHandler implements CommandHandler {
 
   async handle(ctx: CommandContext): Promise<void> {
     if (!ctx.member) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Use \`/link <phone>\``)
+      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Send \`/link\` to see how.`)
       return
     }
     if (!PRIVILEGED_ROLES.has(ctx.member.role)) {
@@ -58,9 +58,9 @@ export class MealOnCommandHandler implements CommandHandler {
       return
     }
 
-    const timezone = ctx.group?.timezone ?? 'Asia/Dhaka'
+    const timezone = ctx.timezone
     const targetDate = parseDateArg(ctx.args[0], timezone)
-    const result = await this.noMealService.enableAllMeals(ctx.member.messId, targetDate, ctx.member.name)
+    const result = await this.noMealService.enableAllMeals(ctx.member.messId, targetDate, ctx.member.name, ctx.member.id)
     await this.sender.sendMessage(ctx.chatId, result.message)
   }
 }

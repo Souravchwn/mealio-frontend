@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { resolvePeriod } from '@/lib/period'
+import { endOfPeriodExclusive } from '@/lib/financial'
 import { createAuditTx } from '@/lib/audit'
 
 // ── GET /api/contributions ────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
   const period = await resolvePeriod(payload.messId, yearMonth)
   const { start, end } = period
 
-  const baseWhere = { messId: payload.messId, entryType: 'CONTRIBUTION' as const, createdAt: { gte: start, lte: end } }
+  const baseWhere = { messId: payload.messId, entryType: 'CONTRIBUTION' as const, createdAt: { gte: start, lt: endOfPeriodExclusive(end) } }
 
   try {
     const [entries, total, totalContributedAgg, memberSummaryRaw] = await Promise.all([

@@ -1,11 +1,18 @@
 /**
  * financial.ts — Server-only shared financial logic.
- * Used by API routes. Never import from client components.
+ * Used by API routes and the Telegram bot. Never import from client components.
+ *
+ * `calculatePeriodSummary()` is the ONE place meal counts, meal rate and
+ * member balances are calculated. Every screen (matrix, members, my-summary,
+ * overview, Telegram /rate and /balance) and month closing use it, so they
+ * always agree.
  */
 
 import { prisma } from '@/lib/prisma'
-import { DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE } from './constants'
-import { resolvePeriod, calculateNextPeriod } from './period'
+import { CURRENCY_SYMBOL, DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, type GuestMealPolicy } from './constants'
+import { resolvePeriod, calculateNextPeriod, type Period, type PeriodRange } from './period'
+import { requireMessSettings, todayIn } from './mess-settings'
+import { ensureDailyLogs } from './daily-logs'
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -19,6 +26,14 @@ export function monthRange(yearMonth: string): { start: Date; end: Date } {
   return { start, end }
 }
 
+/**
+ * Period end dates are stored as DATE (midnight). For timestamp columns
+ * (ledger createdAt) the period must include the whole last day.
+ */
+export function endOfPeriodExclusive(end: Date): Date {
+  return new Date(end.getTime() + 24 * 60 * 60 * 1000)
+}
+
 // ─── Meal counting ────────────────────────────────────────────────────────────
 
 type MealSlotData = {
@@ -28,15 +43,30 @@ type MealSlotData = {
   guestCount: number
 }
 
+/** The member's own portions for one day. */
+export function ownMeals(log: MealSlotData): number {
+  return log.breakfastCount + log.lunchCount + log.dinnerCount
+}
+
 /**
- * Sum all meal portions (breakfastCount + lunchCount + dinnerCount + guestCount)
- * across all log rows. Uses integer counts — 0 means not eating, 1+ means portions.
+ * Guest portions for one day. A guest eats every meal their host eats —
+ * the same rule the cook's headcount uses — so 2 guests with a host on
+ * lunch + dinner = 4 guest meals.
  */
-export function countMealSlots(logs: MealSlotData[]): number {
-  return logs.reduce(
-    (s, l) => s + l.breakfastCount + l.lunchCount + l.dinnerCount + l.guestCount,
-    0
-  )
+export function guestMeals(log: MealSlotData): number {
+  if (log.guestCount <= 0) return 0
+  const slotsEaten =
+    (log.breakfastCount > 0 ? 1 : 0) + (log.lunchCount > 0 ? 1 : 0) + (log.dinnerCount > 0 ? 1 : 0)
+  return log.guestCount * slotsEaten
+}
+
+/**
+ * Billable meals for a set of logs under the mess's guest policy.
+ *  HOST   → own + guest meals (the host pays for their guests)
+ *  SHARED → own meals only (guest food cost is spread through the meal rate)
+ */
+export function countMealSlots(logs: MealSlotData[], policy: GuestMealPolicy): number {
+  return logs.reduce((s, l) => s + ownMeals(l) + (policy === 'HOST' ? guestMeals(l) : 0), 0)
 }
 
 // ─── Cutoff helpers ───────────────────────────────────────────────────────────
@@ -51,8 +81,6 @@ export function extractCutoffTime(cutOffTime: Date | null | undefined): string {
 
 /**
  * Check whether the cutoff has passed for a given date in the mess's timezone.
- * Uses Intl — no external library needed.
- *
  * Returns false for any date other than today (past/future dates have no cutoff).
  */
 export function isCutoffPassed(
@@ -73,26 +101,11 @@ export function isCutoffPassed(
   return nowTimeInTz >= cutoffHHMM
 }
 
-// ─── Balance helpers ──────────────────────────────────────────────────────────
-
-/**
- * Single source of truth for member balance.
- * balance = amount contributed − meals eaten × meal rate
- */
-export function calculateMemberBalance(
-  contributed: number,
-  memberMeals: number,
-  mealRate: number,
-): number {
-  return contributed - memberMeals * mealRate
-}
-
 // ─── Voided-expense filter ────────────────────────────────────────────────────
 
 /**
  * Single source of truth for the Prisma where clause that excludes expenses
- * belonging to voided bazaar sessions. Use this everywhere instead of
- * inlining the OR condition.
+ * belonging to voided bazaar sessions.
  */
 export function nonVoidedExpenseWhere(messId: string, start: Date, end: Date) {
   return {
@@ -102,60 +115,193 @@ export function nonVoidedExpenseWhere(messId: string, start: Date, end: Date) {
   }
 }
 
-// ─── Month stats ──────────────────────────────────────────────────────────────
+// ─── Period summary ───────────────────────────────────────────────────────────
 
-/**
- * Single source of truth for period-level financial stats.
- * Returns totalExpense, totalMeals, and mealRate — all excluding voided sessions.
- * Uses explicit start/end dates from the period.
- */
-export async function calculateMonthStats(
-  messId: string,
-  yearMonth: string,
-): Promise<{ totalExpense: number; totalMeals: number; mealRate: number }> {
-  const period = await resolvePeriod(messId, yearMonth)
-  return calculateStatsForRange(messId, period.start, period.end)
+export interface MemberPeriodSummary {
+  memberId: string
+  /** Member's own portions */
+  ownMeals: number
+  /** Portions eaten by guests this member brought */
+  guestMeals: number
+  /** Meals the member is charged for (own + guests under the HOST policy) */
+  billableMeals: number
+  /** Cash deposits (CONTRIBUTION ledger entries) */
+  deposited: number
+  /** Bazaar spending credited to the member (only when bazaarCountsAsDeposit) */
+  bazaarCredit: number
+  /** Balance carried forward from the previous closed period */
+  carriedForward: number
+  /** deposited + bazaarCredit + carriedForward */
+  contributed: number
+  mealCost: number
+  /** contributed − mealCost. Positive = the mess owes the member. */
+  balance: number
+}
+
+export interface PeriodSummary {
+  guestMealPolicy: GuestMealPolicy
+  bazaarCountsAsDeposit: boolean
+  totalExpense: number
+  /** Sum of billable meals across the mess — the meal-rate denominator */
+  totalMeals: number
+  totalGuestMeals: number
+  mealRate: number
+  members: Map<string, MemberPeriodSummary>
+  /** Summary for one member (zeros if they had no activity) */
+  forMember(memberId: string): MemberPeriodSummary
+}
+
+function emptyMember(memberId: string): MemberPeriodSummary {
+  return {
+    memberId, ownMeals: 0, guestMeals: 0, billableMeals: 0, deposited: 0, bazaarCredit: 0,
+    carriedForward: 0, contributed: 0, mealCost: 0, balance: 0,
+  }
 }
 
 /**
- * Calculate stats for an explicit date range (no yearMonth resolution needed).
+ * Calculate every financial number for a period using the mess settings
+ * (guest policy, bazaar credit rule) served from Redis.
+ * Backfills any missing daily logs first (replaces the old cron job).
  */
-export async function calculateStatsForRange(
+export async function calculatePeriodSummary(
   messId: string,
-  start: Date,
-  end: Date,
-): Promise<{ totalExpense: number; totalMeals: number; mealRate: number }> {
-  const [exps, logs] = await Promise.all([
+  period: Pick<Period, 'id' | 'isClosed'> & PeriodRange,
+): Promise<PeriodSummary> {
+  await ensureDailyLogs(messId)
+  const settings = await requireMessSettings(messId)
+  const policy = settings.guestMealPolicy
+  const { start, end } = period
+
+  // An open period only counts meals up to today. Days members planned ahead
+  // (e.g. "lunch ×2 next Friday") must not change today's meal rate.
+  const todayObj = new Date(`${todayIn(settings.timezone)}T00:00:00.000Z`)
+  const mealEnd = !period.isClosed && todayObj < end ? todayObj : end
+
+  const [logs, expenses, ledger, members] = await Promise.all([
+    prisma.dailyLog.findMany({
+      where: { messId, logDate: { gte: start, lte: mealEnd } },
+      select: { memberId: true, logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+    }),
     prisma.expense.findMany({
       where: nonVoidedExpenseWhere(messId, start, end),
-      select: { amount: true },
+      select: { amount: true, addedBy: true },
     }),
-    prisma.dailyLog.findMany({
-      where: { messId, logDate: { gte: start, lte: end } },
-      select: { breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+    prisma.ledgerEntry.findMany({
+      where: {
+        messId,
+        isVoided: false,
+        OR: [
+          { entryType: 'CONTRIBUTION', createdAt: { gte: start, lt: endOfPeriodExclusive(end) } },
+          { entryType: 'CARRY_FORWARD', messMonthId: period.id },
+        ],
+      },
+      select: { memberId: true, entryType: true, amount: true },
+    }),
+    prisma.member.findMany({
+      where: { messId },
+      select: { id: true, joinedAt: true },
     }),
   ])
 
-  const totalExpense = exps.reduce((s, e) => s + Number(e.amount), 0)
-  const totalMeals = countMealSlots(logs)
-  return { totalExpense, totalMeals, mealRate: totalMeals > 0 ? totalExpense / totalMeals : 0 }
+  // Ignore logs dated before the member joined (phantom rows) — for the member
+  // AND the mess total, so charges still add up to the total expense.
+  const joinedDate = new Map(members.map((m) => [m.id, m.joinedAt.toISOString().slice(0, 10)]))
+  const validLogs = logs.filter((l) => {
+    const joined = joinedDate.get(l.memberId)
+    return !joined || l.logDate.toISOString().slice(0, 10) >= joined
+  })
+
+  const byMember = new Map<string, MemberPeriodSummary>()
+  const get = (id: string) => {
+    let row = byMember.get(id)
+    if (!row) {
+      row = emptyMember(id)
+      byMember.set(id, row)
+    }
+    return row
+  }
+
+  let totalMeals = 0
+  let totalGuestMeals = 0
+  for (const l of validLogs) {
+    const row = get(l.memberId)
+    const own = ownMeals(l)
+    const guests = guestMeals(l)
+    const billable = own + (policy === 'HOST' ? guests : 0)
+    row.ownMeals += own
+    row.guestMeals += guests
+    row.billableMeals += billable
+    totalGuestMeals += guests
+    totalMeals += billable
+  }
+
+  const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
+  const mealRate = totalMeals > 0 ? totalExpense / totalMeals : 0
+
+  if (settings.bazaarCountsAsDeposit) {
+    for (const e of expenses) if (e.addedBy) get(e.addedBy).bazaarCredit += Number(e.amount)
+  }
+  for (const entry of ledger) {
+    const row = get(entry.memberId)
+    if (entry.entryType === 'CONTRIBUTION') row.deposited += Number(entry.amount)
+    else row.carriedForward += Number(entry.amount)
+  }
+
+  for (const row of byMember.values()) {
+    row.contributed = row.deposited + row.bazaarCredit + row.carriedForward
+    row.mealCost = row.billableMeals * mealRate
+    row.balance = row.contributed - row.mealCost
+  }
+
+  return {
+    guestMealPolicy: policy,
+    bazaarCountsAsDeposit: settings.bazaarCountsAsDeposit,
+    totalExpense,
+    totalMeals,
+    totalGuestMeals,
+    mealRate,
+    members: byMember,
+    forMember: (id: string) => byMember.get(id) ?? emptyMember(id),
+  }
 }
 
-/**
- * Convenience wrapper — use calculateMonthStats when you also need
- * totalExpense or totalMeals alongside the rate.
- */
-export async function calculateMealRate(messId: string, yearMonth: string): Promise<number> {
+// ─── Month stats ──────────────────────────────────────────────────────────────
+
+/** Period-level stats: totalExpense, totalMeals and mealRate. */
+export async function calculateMonthStats(
+  messId: string,
+  yearMonth: string | null,
+): Promise<{ totalExpense: number; totalMeals: number; mealRate: number }> {
+  const period = await resolvePeriod(messId, yearMonth)
+  const { totalExpense, totalMeals, mealRate } = await calculatePeriodSummary(messId, period)
+  return { totalExpense, totalMeals, mealRate }
+}
+
+/** Convenience wrapper — returns just the meal rate for a period. */
+export async function calculateMealRate(messId: string, yearMonth: string | null): Promise<number> {
   return (await calculateMonthStats(messId, yearMonth)).mealRate
 }
 
 // ─── Month closing ────────────────────────────────────────────────────────────
 
+export class MonthAlreadyClosedError extends Error {
+  constructor() {
+    super('Month is already closed')
+  }
+}
+
+/** Closing before the last day would leave the remaining days unbilled. */
+export class PeriodNotFinishedError extends Error {
+  constructor(public readonly endDate: string) {
+    super(`This period runs until ${endDate}`)
+  }
+}
+
 /**
  * Close a period: freeze logs, create ledger entries, carry forward balances,
  * and create the next period with optional manager assignment.
  * ⚠️ IRREVERSIBLE — wrapped in a Prisma transaction.
- * Throws if period is already closed.
+ * Throws MonthAlreadyClosedError if the period is already closed.
  */
 export async function closeMonth(
   messId: string,
@@ -163,73 +309,44 @@ export async function closeMonth(
   adminId: string,
   nextManagerId?: string | null,
 ): Promise<{ mealRate: number; totalExpense: number; totalMeals: number; nextPeriod: { yearMonth: string; startDate: string; endDate: string } }> {
-  // Look up the period
   const period = await resolvePeriod(messId, yearMonth)
-  const { start, end } = period
+  if (period.isClosed) throw new MonthAlreadyClosedError()
 
-  if (period.isClosed) throw new Error('Month is already closed')
-
-  // Get mess config for next period calculation
-  const mess = await prisma.mess.findUnique({
-    where: { id: messId },
-    select: { monthStartDay: true },
-  })
-  const monthStartDay = mess?.monthStartDay ?? 1
-
-  const [members, logs, expenses] = await Promise.all([
-    prisma.member.findMany({ where: { messId, isActive: true }, select: { id: true } }),
-    prisma.dailyLog.findMany({
-      where: { messId, logDate: { gte: start, lte: end } },
-      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
-    }),
-    // Exclude expenses from voided sessions
-    prisma.expense.findMany({
-      where: nonVoidedExpenseWhere(messId, start, end),
-      select: { amount: true, addedBy: true },
-    }),
-  ])
-
-  const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
-  const totalMeals = countMealSlots(logs)
-  const mealRate = totalMeals > 0 ? totalExpense / totalMeals : 0
-
-  // Calculate next period dates
-  const nextPeriodDates = calculateNextPeriod(end, monthStartDay)
+  const settings = await requireMessSettings(messId)
+  const endDate = period.end.toISOString().slice(0, 10)
+  if (todayIn(settings.timezone) < endDate) throw new PeriodNotFinishedError(endDate)
+  const summary = await calculatePeriodSummary(messId, period)
+  const { totalExpense, totalMeals, mealRate } = summary
+  const nextPeriodDates = calculateNextPeriod(period.end, settings.monthStartDay)
 
   const nextPeriodResult = await prisma.$transaction(async (tx) => {
-    // Close current period
-    await tx.messMonth.update({
-      where: { id: period.id },
-      data: {
-        isClosed: true,
-        closedAt: new Date(),
-        mealRate,
-        totalExpense,
-      },
+    // The isClosed guard makes two simultaneous close requests safe
+    const closed = await tx.messMonth.updateMany({
+      where: { id: period.id, isClosed: false },
+      data: { isClosed: true, closedAt: new Date(), mealRate, totalExpense },
     })
+    if (closed.count !== 1) throw new MonthAlreadyClosedError()
 
-    // Freeze all logs in the period
     await tx.dailyLog.updateMany({
-      where: { messId, logDate: { gte: start, lte: end } },
+      where: { messId, logDate: { gte: period.start, lte: period.end } },
       data: { frozen: true },
     })
 
-    // Create deduction ledger entries for each member
-    const deductions = members.map((member) => {
-      const memberMeals = countMealSlots(logs.filter((l) => l.memberId === member.id))
-      return {
+    const rows = Array.from(summary.members.values())
+
+    const deductions = rows
+      .filter((r) => r.billableMeals > 0)
+      .map((r) => ({
         messId,
         messMonthId: period.id,
-        memberId: member.id,
+        memberId: r.memberId,
         entryType: 'DEDUCTION',
-        amount: -(memberMeals * mealRate),
-        note: `Meal deduction for ${yearMonth}: ${memberMeals} meals × ৳${mealRate.toFixed(2)}`,
+        amount: -r.mealCost,
+        note: `Meal deduction for ${period.yearMonth}: ${r.billableMeals} meals × ${CURRENCY_SYMBOL}${mealRate.toFixed(2)}`,
         createdBy: adminId,
-      }
-    })
+      }))
     if (deductions.length > 0) await tx.ledgerEntry.createMany({ data: deductions })
 
-    // Create NEXT period
     const nextMonth = await tx.messMonth.upsert({
       where: { messId_yearMonth: { messId, yearMonth: nextPeriodDates.yearMonth } },
       create: {
@@ -243,26 +360,21 @@ export async function closeMonth(
       update: {},
     })
 
-    // Create carry-forward ledger entries into next period
-    const carryForwards = members.map((member) => {
-      const memberLogs = logs.filter((l) => l.memberId === member.id)
-      const memberMeals = countMealSlots(memberLogs)
-      const contributed = expenses
-        .filter((e) => e.addedBy === member.id)
-        .reduce((s, e) => s + Number(e.amount), 0)
-      return {
+    // Carry the full balance (deposits + previous carry-forward − meal cost) forward —
+    // unless the mess settles in cash at month end and starts every month at zero
+    const carryForwards = !settings.carryForwardBalance ? [] : rows
+      .filter((r) => Math.abs(r.balance) >= 0.005)
+      .map((r) => ({
         messId,
         messMonthId: nextMonth.id,
-        memberId: member.id,
+        memberId: r.memberId,
         entryType: 'CARRY_FORWARD',
-        amount: contributed - memberMeals * mealRate,
-        note: `Carry forward from ${yearMonth}`,
+        amount: r.balance,
+        note: `Carry forward from ${period.yearMonth}`,
         createdBy: adminId,
-      }
-    })
+      }))
     if (carryForwards.length > 0) await tx.ledgerEntry.createMany({ data: carryForwards })
 
-    // Audit log
     await tx.auditLog.create({
       data: {
         messId,
@@ -271,10 +383,12 @@ export async function closeMonth(
         targetTable: 'mess_months',
         targetId: period.id,
         newValue: {
-          year_month: yearMonth,
+          year_month: period.yearMonth,
           meal_rate: mealRate,
           total_expense: totalExpense,
           total_meals: totalMeals,
+          guest_meal_policy: summary.guestMealPolicy,
+          carry_forward_balance: settings.carryForwardBalance,
           next_period: nextPeriodDates.yearMonth,
           next_manager_id: nextManagerId || null,
         },

@@ -12,18 +12,14 @@
  * any number of meals with any cutoff times, fully configurable per mess.
  */
 
-import { prisma } from '@/lib/prisma'
+import { getMessSettings } from '@/lib/mess-settings'
+import { MEAL_TYPES } from '@/lib/constants'
 
 export interface MealConfigRow {
   mealType:   string   // BREAKFAST | LUNCH | DINNER
   enabled:    boolean
   cutoffTime: string   // HH:MM in the mess timezone
   maxCount:   number
-}
-
-/** Canonical Prisma @db.Time → HH:MM string. */
-function timeToHHMM(t: Date): string {
-  return t.toISOString().slice(11, 16)
 }
 
 /** Current HH:MM in the given timezone. */
@@ -42,27 +38,12 @@ export class MealConfigRepository {
    * Falls back to a sensible default set if none are configured.
    */
   async getMessConfigs(messId: string): Promise<MealConfigRow[]> {
-    const rows = await prisma.mealConfig.findMany({
-      where: { messId },
-      select: { mealType: true, enabled: true, cutoffTime: true, maxCount: true },
-      orderBy: { cutoffTime: 'asc' },
-    })
-
-    if (rows.length > 0) {
-      return rows.map((r) => ({
-        mealType:   r.mealType,
-        enabled:    r.enabled,
-        cutoffTime: timeToHHMM(r.cutoffTime),
-        maxCount:   r.maxCount,
-      }))
-    }
-
-    // Fallback if meal_configs have not been seeded yet (legacy mess)
-    return [
-      { mealType: 'BREAKFAST', enabled: true, cutoffTime: '08:30', maxCount: 10 },
-      { mealType: 'LUNCH',     enabled: true, cutoffTime: '13:00', maxCount: 10 },
-      { mealType: 'DINNER',    enabled: true, cutoffTime: '21:00', maxCount: 10 },
-    ]
+    // Served from Redis via mess settings (defaults applied there)
+    const settings = await getMessSettings(messId)
+    if (!settings) return []
+    return MEAL_TYPES
+      .map((mealType) => ({ mealType, ...settings.meals[mealType] }))
+      .sort((a, b) => a.cutoffTime.localeCompare(b.cutoffTime))
   }
 
   /**

@@ -22,133 +22,53 @@ Full monthly attendance matrix: every member × every day. Admins can edit indiv
 
 ## API: GET `/api/admin/matrix`
 
-**Roles:** ADMIN only (returns 403 for others).
+**Roles:** ADMIN or MANAGER. **Query:** `year_month` (YYYY-MM). The mess is always the caller's own (`mess_id` is ignored).
 
-**Query params:** `mess_id`, `year_month` (YYYY-MM)
+**Server logic:** `resolvePeriod` → `calculatePeriodSummary` (fills missing days first) → logs for the period → one row per active member with the summary's numbers.
 
-**Server logic:**
-1. Get all active members
-2. Get all DailyLogs for the month with `monthRange(yearMonth)`
-3. Get all Expenses for the month
-4. For each member:
-   - Build `days[]` from logs (one entry per day in the month)
-   - Calculate `totalMeals`, `totalAmount`, `balance`
-5. Return full matrix
-
-**Response (camelCase after api.ts):**
 ```typescript
 {
-  messId, messName, yearMonth
-  mealRate: number
-  totalExpense: number
-  totalMeals: number
+  messId, messName, yearMonth, startDate, endDate, isClosed
+  mealRate, totalExpense
+  totalMeals: number          // billable meals (rate denominator)
+  totalGuestMeals: number
+  guestMealPolicy: 'HOST' | 'SHARED'
+  carryForwardBalance: boolean
   members: MemberMatrixRow[]
 }
-
-interface MemberMatrixRow {
-  memberId, memberName, memberRole
-  isGuest: boolean
-  days: DayEntry[]
-  totalMeals: number
-  totalAmount: number
-  balance: number
-}
-
-interface DayEntry {
-  logId, memberId, memberName
-  date: string              // YYYY-MM-DD
-  breakfastCount: number
-  lunchCount: number
-  dinnerCount: number
-  breakfast: boolean        // count > 0
-  lunch: boolean
-  dinner: boolean
-  guestCount: number
-  frozen: boolean
-}
+MemberMatrixRow { memberId, memberName, memberRole, isGuest, guestFrom?, guestUntil?, days: DayEntry[],
+                  ownMeals, guestMeals, totalMeals /* billable */, totalAmount, contributed, balance }
+DayEntry { logId, date, breakfastCount, lunchCount, dinnerCount, breakfast, lunch, dinner,
+           guestCount, guestMeals?, frozen }
 ```
-
----
+After an admin edit the page refetches, because rate and balances change for everyone.
 
 ## API: PUT `/api/admin/meals`
 
-**Roles:** ADMIN only.
-
-**Request body:**
-```typescript
-{
-  member_id: string
-  date: string              // YYYY-MM-DD
-  slot: 'breakfast' | 'lunch' | 'dinner'
-  count?: number            // integer (preferred)
-  value?: boolean           // legacy boolean
-}
-```
-
-**Server logic:**
-1. Find or create DailyLog using `getMemberMealDefaults()` for initial counts
-2. If `count` provided: use directly
-3. If `value: true`: set to `getMemberMealDefaults()[slotCount]`
-4. If `value: false`: set to 0
-5. Update log with `isOverride: true, overrideType: 'ADMIN'`
-6. Write audit log
-
-**Response:** `{ ok: true, logId: string }`
-
----
+**Roles:** ADMIN only. Body `{ member_id, date, slot, count? | value? }`.
+- `count` 0 … maxCount; `value: true` restores the member's default portions (not always 1); `value: false` → 0
+- Member must be in the admin's mess; frozen day → 400
+- Creates the log from defaults if missing; `isOverride: true, overrideType: 'ADMIN'`; audit `ADMIN_MEAL_OVERRIDE`
 
 ## API: POST `/api/admin/close-month`
 
-**Roles:** ADMIN only.
+**Roles:** ADMIN only. Body `{ year_month: 'YYYY-MM', next_manager_id? }` — `mess_id` is ignored (always the admin's own mess); `next_manager_id` must be an active member.
 
-**Request body:**
-```typescript
-{ mess_id: string, admin_id: string, year_month: string }
-```
+`closeMonth()` (see `13-shared-libs.md`):
+- **Only on or after the period's last day** → 400 otherwise (closing early would leave days unbilled)
+- Already closed → 409 (checked inside the transaction)
+- Freeze logs → `DEDUCTION` per member → next period → `CARRY_FORWARD` (full balance incl. deposits) **only if `carryForwardBalance`** → audit
 
-Calls `closeMonth(messId, yearMonth, adminId)` from `financial.ts`.
-
-**What `closeMonth()` does (atomic Prisma transaction):**
-1. Check month not already closed
-2. Get all members, logs, expenses
-3. Calculate `mealRate = totalExpense / totalMeals`
-4. Upsert `MessMonth` row with `isClosed: true, mealRate, totalExpense`
-5. `updateMany` all DailyLogs in range → `frozen: true`
-6. Create `LedgerEntry` rows (type `DEDUCTION`) per member: amount = `-(memberMeals × mealRate)`
-7. Create `MessMonth` row for NEXT month (if not exists)
-8. Create `LedgerEntry` rows (type `CARRY_FORWARD`) for next month with `balance = contributed - mealCost`
-9. Write audit log: action `'CLOSE_MONTH'`
-
-**Returns:** `{ mealRate, totalExpense, totalMeals }`
-
-**⚠️ IRREVERSIBLE** — once closed, all logs are frozen and cannot be modified.
-
----
+**⚠️ IRREVERSIBLE.** After closing, nothing dated in that period can change: meals, guests, expenses, sessions, deposits, no-cook (web and Telegram).
 
 ## API: POST `/api/admin/no-cook`
 
-**Roles:** ADMIN or MANAGER.
-
-**Request body:**
-```typescript
-{ action: 'on' | 'off', date?: string, reason?: string }
-```
-
-**Action `'off'` (No Cook):**
-1. Get all active members
-2. Set all DailyLog counts to 0 for the date (`breakfastCount: 0, lunchCount: 0, dinnerCount: 0`)
-3. `overrideType: 'ADMIN'`
-4. Send bulk Telegram notification to all linked members
-5. Returns `{ ok, membersUpdated, telegramNotified }`
-
-**Action `'on'` (Restore meals):**
-1. Get all active members
-2. Call `getBulkMealDefaults()` → get each member's preferences
-3. Restore each member's log to their own defaults (not a blanket all-1)
-4. `isOverride: false, overrideType: null` (treated as if cron-generated again)
-5. Send Telegram notification
-
----
+**Roles:** ADMIN or MANAGER. Body `{ action: 'on' | 'off', date?, reason? }` (date defaults to today in mess timezone).
+- Closed-month date → 400
+- `off`: every active member's counts → 0 (`overrideType: 'ADMIN'`)
+- `on`: each member back to their own defaults (`isOverride: false`)
+- Audit `NO_COOK`; Telegram broadcast to linked members
+- Same rules for `/nomeal` and `/mealon` in the bot
 
 ## `matrix/page.tsx` — UI State
 
@@ -225,8 +145,8 @@ api.admin.noCook({ action, date?, reason? }, token)    → Promise<{ ok, members
 
 ## Common Pitfalls
 
-1. **`DayEntry.logId`** is the database ID of the DailyLog. It's `null` for days where no log exists (before cron runs or new member). Handle this when editing cells.
+1. **`DayEntry.logId`** is the database ID of the DailyLog. Days are filled automatically up to today; a missing day means the member had not joined yet (or is a guest outside their stay). Handle this when editing cells.
 2. **Frozen cells** cannot be edited. Check `DayEntry.frozen` on each cell. `MonthMatrixResponse` does NOT have an `isClosed` field — frozen state is per-log, set by `closeMonth()`. Once a month is closed, every `DayEntry.frozen` in that month will be `true`.
 3. **`closeMonth()` creates LedgerEntries in a transaction** — if any step fails, everything rolls back. Common failure: month already closed (throws `"Month is already closed"`).
 4. **No-cook broadcast** sends Telegram DMs to all members with `telegramLinked: true`. Members who haven't done `/link` won't receive the notification but their meals are still set to 0.
-5. **`overrideType`** is set to `'ADMIN'` for no-cook and admin edits. This distinguishes them from `'USER'` (member self-toggle) and `null`/`'SYSTEM'` (cron).
+5. **`overrideType`** is set to `'ADMIN'` for no-cook and admin edits. This distinguishes them from `'USER'` (member self-toggle) `null` (auto-filled from defaults) and `'SYSTEM'` (0-meal day while a member was inactive).

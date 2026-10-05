@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
+import { isDateInClosedPeriod } from '@/lib/period'
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const token = extractToken(req)
@@ -16,10 +20,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const expense = await prisma.expense.findUnique({
     where: { id },
-    select: { id: true, messId: true, amount: true, category: true },
+    select: { id: true, messId: true, amount: true, category: true, expenseDate: true },
   })
   if (!expense || expense.messId !== payload.messId) {
     return NextResponse.json({ detail: 'Expense not found' }, { status: 404 })
+  }
+  if (await isDateInClosedPeriod(payload.messId, expense.expenseDate)) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
   }
 
   const { amount, category, description, date } = await req.json()
@@ -32,9 +39,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     updateData.amount = num
   }
-  if (category !== undefined) updateData.category = category
+  if (category !== undefined) {
+    if (!EXPENSE_CATEGORIES.includes(category as ExpenseCategory)) {
+      return NextResponse.json({ detail: 'Invalid expense category' }, { status: 400 })
+    }
+    updateData.category = category
+  }
   if (description !== undefined) updateData.description = description || null
   if (date !== undefined) {
+    if (typeof date !== 'string' || !DATE_RE.test(date)) {
+      return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
+    }
+    if (await isDateInClosedPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
+    }
     updateData.expenseDate = new Date(`${date as string}T00:00:00.000Z`)
     updateData.yearMonth = (date as string).slice(0, 7)
   }
@@ -74,6 +92,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   })
   if (!expense || expense.messId !== payload.messId) {
     return NextResponse.json({ detail: 'Expense not found' }, { status: 404 })
+  }
+  if (await isDateInClosedPeriod(payload.messId, expense.expenseDate)) {
+    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
   }
 
   const oldValue = {

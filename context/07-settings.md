@@ -86,11 +86,29 @@ async function handleCopyInvite() {
 
 **If linked:** shows green badge with group name.
 
-**Form fields:** Chat ID (required, e.g. `-100123456789`), Group Name (optional), Timezone (default `Asia/Dhaka`)
+**Form fields:** Chat ID (required, e.g. `-100123456789`), Group Name (optional), Timezone (IANA name, validated; default `DEFAULT_TIMEZONE`). The group's timezone IS the mess timezone — saving refreshes settings in Redis. A chat already linked to another mess is rejected (409)
 
 **On submit:** `POST /api/admin/telegram-group` with `{ chat_id, chat_name, timezone }` → updates `linkedGroup` state on success.
 
 ---
+
+### Section — My Telegram (ALL users, General tab)
+
+`GET /api/members/telegram-link` → linked? · `POST` → one-time code (8 chars, 10 min, single use) · `DELETE` → unlink. The member sends `/link <code>` to the bot in a private chat. Phone-number linking was removed (anyone who knew a phone number could take over the account).
+
+### Section — Billing Rules (ADMIN edits, MANAGER read-only)
+
+| Control | Setting | Default | Effect |
+|---------|---------|---------|--------|
+| Who pays for guest meals | `guestMealPolicy` | `HOST` | `HOST`: guest meals added to the host's count. `SHARED`: left out of everyone's count; cost spreads via meal rate |
+| Count bazaar spending as shopper's deposit | `bazaarCountsAsDeposit` | off | On only if members shop with their own money — otherwise money deposited with the manager is counted twice |
+| Carry balances into next month | `carryForwardBalance` | on | Off = settle in cash at month end; next month starts at zero |
+
+These are billing rules: changing one re-prices the whole open month. Change them at the start of a month.
+
+### Section — Weekend Days (ADMIN edits)
+
+7 day chips → `weekendDays` (0 = Sun … 6 = Sat). Decides which of a member's WEEKDAY/WEEKEND defaults apply. Saving calls `settleDailyLogs` first, so past days keep the old weekend. Bangladesh messes usually want Fri + Sat.
 
 ### Section 5 — Danger Zone (ADMIN + MANAGER)
 
@@ -98,18 +116,23 @@ Delete Mess button — currently **disabled** with "(contact support)" label. No
 
 ---
 
-## API: PUT `/api/mess/settings`
+## API: GET / PUT `/api/mess/settings`
 
-**Roles:** ADMIN or MANAGER.
+GET (any member) is served from Redis. PUT is **ADMIN only**, writes Postgres, then `refreshMessSettings`.
 
-**Request body:**
 ```typescript
-{ name?, cut_off_time?, estimated_monthly_budget? }
+{
+  name?: string
+  cut_off_time?: 'HH:MM'
+  estimated_monthly_budget?: number | null
+  month_start_day?: 1 … 28
+  guest_meal_policy?: 'HOST' | 'SHARED'
+  bazaar_counts_as_deposit?: boolean
+  carry_forward_balance?: boolean
+  weekend_days?: number[]          // 0–6, at most 6 days
+}
 ```
-
-Updates `Mess` row. `cutOffTime` is stored as a `@db.Time` column — converted from `"HH:MM"` string to `new Date("1970-01-01THH:MM:00.000Z")`.
-
----
+Response: `{ ok, name, cut_off_time, estimated_monthly_budget, month_start_day, timezone, guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days }`. Audited as `ADMIN_SETTINGS_UPDATE`.
 
 ## API: GET `/api/admin/telegram-group`
 

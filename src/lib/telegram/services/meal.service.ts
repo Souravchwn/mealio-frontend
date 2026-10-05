@@ -7,6 +7,9 @@
  * Count semantics: 0 = skip, 1 = normal, 2+ = extra/family
  */
 
+import { MAX_GUEST_COUNT, type MealTypeUpper } from '@/lib/constants'
+import { ensureDailyLogs } from '@/lib/daily-logs'
+import { getMessSettings } from '@/lib/mess-settings'
 import type { MealRepository } from '../repositories/meal.repository'
 
 export interface MealActionResult {
@@ -45,6 +48,18 @@ export class MealService {
     count: number,
     overrideType: 'USER' | 'ADMIN' | 'SYSTEM',
   ): Promise<MealActionResult> {
+    // Same limits as the web app: mess-wide meal switch and max portions
+    const settings = await getMessSettings(messId)
+    const meal = settings?.meals[slot.toUpperCase() as MealTypeUpper]
+    if (meal && count > 0 && !meal.enabled) {
+      return { ok: false, message: `❌ This meal is turned off for the mess.` }
+    }
+    if (!Number.isInteger(count) || count < 0 || (meal && count > meal.maxCount)) {
+      return { ok: false, message: `❌ Count must be 0–${meal?.maxCount ?? 10}.` }
+    }
+
+    // Make sure today's log exists from the member's defaults before editing it
+    await ensureDailyLogs(messId)
     const log = await this.mealRepo.upsertLog(memberId, messId, date, {})
     if (log.frozen) return { ok: false, message: `🔒 Today's meals are frozen and cannot be changed.` }
 
@@ -73,10 +88,11 @@ export class MealService {
     date: string,
     count: number,
   ): Promise<MealActionResult> {
-    if (count < 0 || isNaN(count)) {
-      return { ok: false, message: `❌ Invalid guest count. Usage: \`/meal guest 2\`` }
+    if (!Number.isInteger(count) || count < 0 || count > MAX_GUEST_COUNT) {
+      return { ok: false, message: `❌ Guest count must be 0–${MAX_GUEST_COUNT}. Usage: \`/meal guest 2\`` }
     }
 
+    await ensureDailyLogs(messId)
     const log = await this.mealRepo.upsertLog(memberId, messId, date, {})
     if (log.frozen) return { ok: false, message: `🔒 Today's meals are frozen.` }
 
@@ -91,18 +107,17 @@ export class MealService {
     date: string,
     slot: Slot,
   ): Promise<number> {
+    await ensureDailyLogs(messId)
     const log = await this.mealRepo.findLog(memberId, messId, date)
-    if (!log) return 1 // default: assume ON
+    if (!log) return 0
     return log[SLOT_FIELD[slot]]
   }
 
   async getStatus(memberId: string, messId: string, date: string): Promise<MealActionResult> {
+    await ensureDailyLogs(messId)
     const log = await this.mealRepo.findLog(memberId, messId, date)
     if (!log) {
-      return {
-        ok: true,
-        message: `📋 No log for today (${date}). All meals are *ON* by default.\n\n🍳 Breakfast: ✅ ON\n🍱 Lunch: ✅ ON\n🌙 Dinner: ✅ ON`,
-      }
+      return { ok: true, message: `📋 You have no meals recorded for ${date}.` }
     }
 
     function fmtSlot(emoji: string, label: string, count: number): string {

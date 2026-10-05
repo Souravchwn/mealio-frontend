@@ -2,6 +2,7 @@ import type { CommandHandler } from '../types'
 import type { CommandContext } from '../../dto'
 import type { ReportService } from '../../services/report.service'
 import type { TelegramSender } from '../../infrastructure/sender'
+import { CURRENCY_SYMBOL as C } from '@/lib/constants'
 
 export class RateCommandHandler implements CommandHandler {
   constructor(
@@ -15,21 +16,15 @@ export class RateCommandHandler implements CommandHandler {
 
   async handle(ctx: CommandContext): Promise<void> {
     if (!ctx.member) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Use \`/link <phone>\``)
+      await this.sender.sendMessage(ctx.chatId, `❌ Account not linked. Send \`/link\` to see how.`)
       return
     }
 
-    const month = new Intl.DateTimeFormat('en-CA', {
-      timeZone: ctx.group?.timezone ?? 'Asia/Dhaka',
-      year: 'numeric',
-      month: '2-digit',
-    }).format(new Date()).slice(0, 7)
-
-    const rate = await this.reportService.getMealRate(ctx.member.messId, month)
+    const rate = await this.reportService.getMealRate(ctx.member.messId)
 
     await this.sender.sendMessage(
       ctx.chatId,
-      `📊 *Meal Rate — ${rate.month}*\n\nTotal Expense: ৳${rate.totalExpense.toFixed(2)}\nTotal Meals: ${rate.totalMeals}\nMeal Rate: ৳${rate.mealRate.toFixed(2)} per meal`,
+      `📊 *Meal Rate — ${rate.month}*\n\nTotal Expense: ${C}${rate.totalExpense.toFixed(2)}\nTotal Meals: ${rate.totalMeals}\nMeal Rate: ${C}${rate.mealRate.toFixed(2)} per meal`,
     )
   }
 }
