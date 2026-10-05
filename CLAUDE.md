@@ -187,9 +187,10 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 |------|-------|-------|---------|--------|
 | Overview | `/overview` | ✅ | ✅ | ✅ |
 | Meals | `/meals` | ✅ | ✅ | ✅ |
-| Expenses | `/expenses` | ✅ | ✅ | ❌ |
+| Expenses | `/expenses` | ✅ | ✅ | ✅ |
 | Headcount | `/headcount` | ✅ | ✅ | ✅ |
 | My Summary | `/my-summary` | ✅ | ✅ | ✅ |
+| Deposits | `/deposits` | ✅ | ✅ | ❌ |
 | Matrix | `/matrix` | ✅ | ❌ | ❌ |
 | Members | `/members` | ✅ | ❌ | ❌ |
 | Audit | `/audit` | ✅ | ❌ | ❌ |
@@ -263,27 +264,39 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 
 ### MODULE 6: Expenses Page
 
-**Route:** `/{locale}/expenses`
+**Route:** `/{locale}/expenses` (all roles — MEMBER can view)
 
 | Layer | Files |
 |-------|-------|
 | Page | `src/app/[locale]/(dashboard)/expenses/page.tsx` |
 | Styles | `src/app/[locale]/(dashboard)/expenses/expenses.module.css` |
-| API routes | `src/app/api/expenses/route.ts`, `src/app/api/expenses/[id]/route.ts`, `src/app/api/expenses/meal-rate/route.ts` |
+| API routes | `src/app/api/expenses/sessions/route.ts`, `src/app/api/expenses/sessions/[id]/route.ts`, `src/app/api/expenses/meal-rate/route.ts`, `src/app/api/contributions/route.ts` |
 | Server utils | `src/lib/financial.ts` (`calculateMealRate`) |
 
-**API calls:**
-- `GET api.expenses.getExpenses(messId, yearMonth, token)` → list
-- `POST api.expenses.addExpense(data, token)` → add (Admin/Manager only)
-- `PUT api.admin.updateExpense(id, data, token)` → edit
-- `DELETE api.admin.deleteExpense(id, token)` → delete
-- `GET api.expenses.getMealRate(messId, yearMonth, token)` → meal rate
+**Two tabs:**
 
-**Roles:** Only `ADMIN` and `MANAGER` can see this page (nav filtered in layout).
+**Bazaar Sessions tab:**
+- `GET api.expenses.sessions.list({ messId, yearMonth, page, limit }, token)` → paginated sessions with `liveMealRate`
+- `POST api.expenses.sessions.create(data, token)` → add session (Admin/Manager only)
+- `DELETE api.expenses.sessions.delete(id, token)` → delete (Admin only)
 
-**Key types:** `ExpenseRequest`, `ExpenseResponse`, `ExpenseCategory`
+**Contributions tab (cash deposits from members):**
+- `GET api.contributions.list({ yearMonth, page: 1, limit: 100 }, token)` → full month list (100 limit for summary accuracy)
+- `POST api.contributions.add({ memberId, amount, date, note }, token)` → record deposit (Admin/Manager only)
+- Creates `LedgerEntry` with `entryType = 'CONTRIBUTION'` — flows directly into member balance
 
-**i18n keys:** `expenses.*`
+**Member summary card:** Collapsible section above the contributions list showing total deposited per member (computed from loaded contributions via `useMemo`).
+
+**Magic Calculator (floating FAB):**
+- Fixed bottom-right, animated pill button with pulsing glow
+- Smart mode: live meal rate, total expense, total deposited, what-if expense calculator (new rate = (total + x) / totalMeals), per-member deposit breakdown
+- Manual mode: standard numpad calculator (4-function with ±, %)
+- `totalMeals` derived as `totalExpense / mealRate` (no extra API call)
+- i18n keys: `calculator.*`
+
+**Key types:** `ExpenseCategory`, `BazaarSessionResponse`, `ContributionResponse`, `BazaarSessionRequest`, `ContributionRequest`
+
+**i18n keys:** `expenses.*`, `calculator.*`
 
 ---
 
@@ -539,6 +552,11 @@ DEFAULT_TIMEZONE = "Asia/Dhaka"
 10. **Prisma:** Server-only. Import from `src/lib/prisma.ts`. Never import Prisma in client components.
 11. **Audit logging:** Use `createAudit()` from `src/lib/audit.ts` for admin operations.
 12. **scripts/ directory:** Excluded from TypeScript build (`tsconfig.json`). Standalone CLI scripts.
+13. **API error handling — strict rule:** Raw DB/Prisma error messages must NEVER reach the frontend. Every API route must follow this pattern:
+    - **Validation errors (400):** Return a clear, user-facing `{ detail: "..." }` explaining what input was wrong.
+    - **Business rule violations (400/403/404):** Return a meaningful `{ detail: "..." }` (e.g. "Member not found", "Inactive member").
+    - **Unexpected errors (500):** `console.error('[ROUTE path] context', err)` on the server, return `{ detail: 'Something went wrong. Please try again.' }` — never `err.message`.
+    - The user must never see database internals, constraint names, table names, or Prisma error codes.
 
 ---
 

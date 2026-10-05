@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
-import { Download, Lock, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import {
+    Download, Lock, ChevronLeft, ChevronRight,
+    Pencil, Maximize2, Minimize2, Filter, X, Calendar, CalendarDays, Users
+} from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
-import { Card } from "@/components/ui/Card/Card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,7 @@ import { Role } from "@/types";
 import { toast } from "sonner";
 import styles from "./matrix.module.css";
 
+/* ─── Date helpers ─── */
 function prevMonth(ym: string): string {
     const [y, m] = ym.split("-").map(Number);
     const d = new Date(y, m - 2, 1);
@@ -31,21 +33,49 @@ function daysInMonth(ym: string): number {
     return new Date(y, m, 0).getDate();
 }
 
+const DAY_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+/** Build day info from a date string like "2026-05-10" */
+function getDayInfoFromDate(dateStr: string): { day: number; dayOfWeek: number; isWeekend: boolean } {
+    const d = new Date(dateStr + "T00:00:00.000Z");
+    const dow = d.getUTCDay();
+    return { day: d.getUTCDate(), dayOfWeek: dow, isWeekend: dow === 0 || dow === 6 };
+}
+
+/** Generate all days between startDate and endDate (inclusive) */
+function getPeriodDays(startDate: string, endDate: string): { date: string; day: number; dayOfWeek: number; isWeekend: boolean }[] {
+    const days: { date: string; day: number; dayOfWeek: number; isWeekend: boolean }[] = [];
+    const start = new Date(startDate + "T00:00:00.000Z");
+    const end = new Date(endDate + "T00:00:00.000Z");
+    const current = new Date(start);
+    while (current <= end) {
+        const dateStr = current.toISOString().slice(0, 10);
+        const { day, dayOfWeek, isWeekend } = getDayInfoFromDate(dateStr);
+        days.push({ date: dateStr, day, dayOfWeek, isWeekend });
+        current.setUTCDate(current.getUTCDate() + 1);
+    }
+    return days;
+}
+
+function getWeekChunksFromDays(days: { date: string; day: number; dayOfWeek: number; isWeekend: boolean }[]) {
+    const chunks: typeof days[] = [];
+    for (let i = 0; i < days.length; i += 7) chunks.push(days.slice(i, i + 7));
+    return chunks;
+}
+
+/* ─── CSV Export ─── */
 function exportCsv(matrix: MonthMatrixResponse) {
-    const days = daysInMonth(matrix.yearMonth);
+    const allDays = getPeriodDays(matrix.startDate, matrix.endDate);
     const header = [
         "Member",
-        ...Array.from({ length: days }, (_, i) => String(i + 1)),
-        "Total Meals",
-        "Amount",
-        "Balance",
+        ...allDays.map(d => d.date.slice(5)), // MM-DD format
+        "Total Meals", "Amount", "Balance",
     ];
     const rows = matrix.members.map((m) => {
-        const dayCols = Array.from({ length: days }, (_, i) => {
-            const day = m.days.find((d) => d.date.endsWith(`-${String(i + 1).padStart(2, "0")}`));
+        const dayCols = allDays.map(({ date }) => {
+            const day = m.days.find((d) => d.date === date);
             if (!day) return "0";
-            const count = (day.breakfast ? 1 : 0) + (day.lunch ? 1 : 0) + (day.dinner ? 1 : 0);
-            return String(count);
+            return String((day.breakfast ? 1 : 0) + (day.lunch ? 1 : 0) + (day.dinner ? 1 : 0));
         });
         return [m.memberName, ...dayCols, m.totalMeals, m.totalAmount.toFixed(2), m.balance.toFixed(2)];
     });
@@ -54,11 +84,12 @@ function exportCsv(matrix: MonthMatrixResponse) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `matrix-${matrix.yearMonth}.csv`;
+    a.download = `matrix-${matrix.startDate}-to-${matrix.endDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
+/* ─── Cell Popover ─── */
 interface CellPopoverProps {
     day: DayEntry | null;
     memberId: string;
@@ -68,7 +99,7 @@ interface CellPopoverProps {
     onClose: () => void;
 }
 
-function CellPopover({ day, memberId, memberName, date, onToggle, onClose }: CellPopoverProps) {
+function CellPopover({ day, memberName, date, onToggle, onClose }: CellPopoverProps) {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -80,9 +111,9 @@ function CellPopover({ day, memberId, memberName, date, onToggle, onClose }: Cel
     }, [onClose]);
 
     const slots = [
-        { key: "breakfast" as const, label: "B", emoji: "🍳" },
-        { key: "lunch" as const, label: "L", emoji: "🍱" },
-        { key: "dinner" as const, label: "D", emoji: "🌙" },
+        { key: "breakfast" as const, label: "Breakfast", emoji: "🍳" },
+        { key: "lunch" as const, label: "Lunch", emoji: "🍱" },
+        { key: "dinner" as const, label: "Dinner", emoji: "🌙" },
     ];
 
     return (
@@ -101,9 +132,11 @@ function CellPopover({ day, memberId, memberName, date, onToggle, onClose }: Cel
                             onClick={() => onToggle(key, !active)}
                             title={key}
                         >
-                            <span>{emoji}</span>
-                            <span>{label}</span>
-                            <span className={styles.slotStatus}>{active ? "ON" : "OFF"}</span>
+                            <span className={styles.slotEmoji}>{emoji}</span>
+                            <span className={styles.slotLabel}>{label}</span>
+                            <span className={cn(styles.slotStatus, active && styles.slotStatusOn)}>
+                                {active ? "ON" : "OFF"}
+                            </span>
                         </button>
                     );
                 })}
@@ -112,9 +145,9 @@ function CellPopover({ day, memberId, memberName, date, onToggle, onClose }: Cel
     );
 }
 
+/* ─── Main Component ─── */
 export default function MatrixPage() {
     const t = useTranslations("matrix");
-    const locale = useLocale();
     const { user, token } = useAuth();
 
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -125,8 +158,36 @@ export default function MatrixPage() {
     const [editMode, setEditMode] = useState(false);
     const [activeCell, setActiveCell] = useState<{ memberId: string; date: string } | null>(null);
 
+    // View
+    const [viewMode, setViewMode] = useState<"monthly" | "weekly">("monthly");
+    const [weekIndex, setWeekIndex] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Filters
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [memberSearch, setMemberSearch] = useState("");
+    const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+    const [showGuests, setShowGuests] = useState(true);
+
     const isAdmin = user?.role === Role.ADMIN;
 
+    // Close month dialog
+    const [showCloseDialog, setShowCloseDialog] = useState(false);
+    const [nextManagerId, setNextManagerId] = useState<string>("");
+    const [managers, setManagers] = useState<{ id: string; name: string }[]>([]);
+
+    // Load managers for close-month picker
+    useEffect(() => {
+        if (!user || !token) return;
+        api.members.list(user.messId, token).then((data) => {
+            const mgrs = data.members.filter((m: { role: string; id: string; name: string }) =>
+                m.role === "ADMIN" || m.role === "MANAGER"
+            ).map((m: { id: string; name: string }) => ({ id: m.id, name: m.name }));
+            setManagers(mgrs);
+        }).catch(() => {});
+    }, [user, token]);
+
+    /* ─── Data Fetching ─── */
     const fetchMatrix = useCallback(async (ym: string) => {
         if (!user || !token) return;
         setLoading(true);
@@ -142,18 +203,34 @@ export default function MatrixPage() {
 
     useEffect(() => {
         void fetchMatrix(selectedMonth);
+        setWeekIndex(0);
     }, [fetchMatrix, selectedMonth]);
 
+    /* ─── Fullscreen keyboard shortcut ─── */
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) {
+            if (e.key === "Escape" && isFullscreen) setIsFullscreen(false);
+        }
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
+    }, [isFullscreen]);
+
+    /* ─── Actions ─── */
     async function handleCloseMonth() {
         if (!user || !token || !matrix) return;
-        if (!confirm(`Close month ${selectedMonth}? This cannot be undone.`)) return;
         setClosing(true);
         try {
             await api.admin.closeMonth(
-                { messId: user.messId, adminId: user.id, yearMonth: selectedMonth },
+                {
+                    messId: user.messId,
+                    adminId: user.id,
+                    yearMonth: selectedMonth,
+                    nextManagerId: nextManagerId || undefined,
+                },
                 token
             );
-            toast.success(`Month ${selectedMonth} closed successfully`);
+            toast.success(`Period closed successfully`);
+            setShowCloseDialog(false);
             void fetchMatrix(selectedMonth);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to close month");
@@ -213,48 +290,111 @@ export default function MatrixPage() {
             await api.admin.editMeal({ memberId, date, slot, value }, token);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to update meal");
-            void fetchMatrix(selectedMonth); // revert on error
+            void fetchMatrix(selectedMonth);
         }
     }
 
-    const numDays = daysInMonth(selectedMonth);
-    const totalExpense = Number(matrix?.totalExpense ?? 0);
-    const totalMeals = matrix?.totalMeals ?? 0;
-    const mealRate = Number(matrix?.mealRate ?? 0);
-    const memberCount = matrix?.members.length ?? 0;
+    /* ─── Filters ─── */
+    const filteredMembers = useMemo(() => {
+        if (!matrix) return [];
+        let filtered = [...matrix.members];
+        if (!showGuests) filtered = filtered.filter((m) => !m.isGuest);
+        if (memberSearch.trim()) {
+            const s = memberSearch.toLowerCase();
+            filtered = filtered.filter((m) => m.memberName.toLowerCase().includes(s));
+        }
+        if (selectedMembers.size > 0) {
+            filtered = filtered.filter((m) => selectedMembers.has(m.memberId));
+        }
+        return filtered;
+    }, [matrix, memberSearch, selectedMembers, showGuests]);
 
+    const filteredStats = useMemo(() => {
+        let totalMeals = 0;
+        let totalAmount = 0;
+        for (const m of filteredMembers) {
+            totalMeals += m.totalMeals;
+            totalAmount += Number(m.totalAmount);
+        }
+        const mealRate = totalMeals > 0 ? totalAmount / totalMeals : 0;
+        return { totalMeals, totalAmount, mealRate };
+    }, [filteredMembers]);
+
+    const activeFilterCount = [
+        memberSearch.trim().length > 0,
+        selectedMembers.size > 0,
+        !showGuests,
+    ].filter(Boolean).length;
+
+    /* ─── Day columns (period-aware) ─── */
+    const periodDays = useMemo(() => {
+        if (!matrix) return [];
+        return getPeriodDays(matrix.startDate, matrix.endDate);
+    }, [matrix]);
+
+    const weekChunks = useMemo(() => getWeekChunksFromDays(periodDays), [periodDays]);
+
+    const displayDays = viewMode === "monthly"
+        ? periodDays
+        : (weekChunks[weekIndex] ?? []);
+
+    // Period label for display
+    const periodLabel = useMemo(() => {
+        if (!matrix) return selectedMonth;
+        const startD = new Date(matrix.startDate + "T00:00:00.000Z");
+        const endD = new Date(matrix.endDate + "T00:00:00.000Z");
+        const startStr = startD.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+        const endStr = endD.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+        return `${startStr} → ${endStr}`;
+    }, [matrix, selectedMonth]);
+
+    /* ─── Row Renderer ─── */
     function renderMemberRow(member: MemberMatrixRow) {
         return (
             <tr key={member.memberId} className={styles.row}>
                 <td className={styles.stickyCol}>
-                    <span className={styles.memberName}>{member.memberName}</span>
-                    {member.isGuest && (
-                        <span className={styles.guestBadge}>Guest</span>
-                    )}
+                    <div className={styles.memberCell}>
+                        <span className={styles.memberAvatar}>
+                            {member.memberName.charAt(0).toUpperCase()}
+                        </span>
+                        <div className={styles.memberInfo}>
+                            <span className={styles.memberName}>{member.memberName}</span>
+                            {member.isGuest && (
+                                <span className={styles.guestBadge}>Guest</span>
+                            )}
+                        </div>
+                    </div>
                 </td>
-                {Array.from({ length: numDays }, (_, i) => {
-                    const dayStr = `${selectedMonth}-${String(i + 1).padStart(2, "0")}`;
-                    const day = member.days.find((d) => d.date === dayStr);
-                    const mealsOn = day
-                        ? (day.breakfast ? 1 : 0) + (day.lunch ? 1 : 0) + (day.dinner ? 1 : 0)
+                {displayDays.map(({ day, date: dayStr, isWeekend }) => {
+                    const day2 = member.days.find((d) => d.date === dayStr);
+                    const mealsOn = day2
+                        ? (day2.breakfast ? 1 : 0) + (day2.lunch ? 1 : 0) + (day2.dinner ? 1 : 0)
                         : 0;
                     const isActive = activeCell?.memberId === member.memberId && activeCell?.date === dayStr;
+                    const hasGuest = !!(day2?.guestCount && day2.guestCount > 0);
 
                     return (
-                        <td key={i} className={cn(styles.dayCell, editMode && styles.dayCellEditable)}>
+                        <td
+                            key={dayStr}
+                            className={cn(
+                                styles.dayCell,
+                                isWeekend && styles.weekendCell,
+                                editMode && styles.dayCellEditable
+                            )}
+                        >
                             <span
                                 className={cn(
                                     styles.cellDot,
                                     mealsOn === 3 && styles.cellFull,
                                     mealsOn > 0 && mealsOn < 3 && styles.cellPartial,
-                                    mealsOn === 0 && day && styles.cellOff,
-                                    !day && styles.cellDefault,
-                                    !!(day?.guestCount && day.guestCount > 0) && styles.cellGuest,
+                                    mealsOn === 0 && day2 && styles.cellOff,
+                                    !day2 && styles.cellDefault,
+                                    hasGuest && styles.cellGuest,
                                     isActive && styles.cellActive
                                 )}
                                 title={
-                                    day
-                                        ? `B:${day.breakfast ? "✓" : "✗"} L:${day.lunch ? "✓" : "✗"} D:${day.dinner ? "✓" : "✗"}${day.guestCount > 0 ? ` G:${day.guestCount}` : ""}`
+                                    day2
+                                        ? `B:${day2.breakfast ? "✓" : "✗"} L:${day2.lunch ? "✓" : "✗"} D:${day2.dinner ? "✓" : "✗"}${day2.guestCount > 0 ? ` +${day2.guestCount}G` : ""}`
                                         : "Default ON"
                                 }
                                 onClick={() => {
@@ -262,11 +402,11 @@ export default function MatrixPage() {
                                     setActiveCell(isActive ? null : { memberId: member.memberId, date: dayStr });
                                 }}
                             >
-                                {day ? mealsOn : "·"}
+                                {day2 ? mealsOn : "·"}
                             </span>
                             {isActive && (
                                 <CellPopover
-                                    day={day ?? null}
+                                    day={day2 ?? null}
                                     memberId={member.memberId}
                                     memberName={member.memberName}
                                     date={dayStr}
@@ -288,6 +428,7 @@ export default function MatrixPage() {
                 <td
                     className={cn(
                         styles.totalCell,
+                        styles.balanceCell,
                         Number(member.balance) >= 0 ? styles.positive : styles.negative
                     )}
                 >
@@ -298,6 +439,7 @@ export default function MatrixPage() {
         );
     }
 
+    /* ─── Access guard ─── */
     if (!isAdmin) {
         return (
             <div className={styles.page}>
@@ -311,125 +453,375 @@ export default function MatrixPage() {
         );
     }
 
-    return (
-        <div className={styles.page}>
+    /* ─── Main render ─── */
+    const matrixTable = (
+        <div className={styles.tableWrap}>
+            {loading ? (
+                <div className={styles.emptyState}>
+                    <div className={styles.spinner} />
+                    <span>Loading matrix…</span>
+                </div>
+            ) : !matrix || filteredMembers.length === 0 ? (
+                <div className={styles.emptyState}>
+                    No data for {selectedMonth}.
+                </div>
+            ) : (
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={cn(styles.stickyCol, styles.headerCell)}>
+                                {t("member")}
+                            </th>
+                            {displayDays.map(({ day, dayOfWeek, isWeekend, date: dayStr }) => (
+                                <th
+                                    key={dayStr}
+                                    className={cn(
+                                        styles.dayHeader,
+                                        isWeekend && styles.weekendHeader
+                                    )}
+                                >
+                                    <div className={styles.dayHeaderInner}>
+                                        <span className={styles.dayNum}>{day}</span>
+                                        <span className={styles.dayName}>{DAY_SHORT[dayOfWeek]}</span>
+                                    </div>
+                                </th>
+                            ))}
+                            <th className={styles.totalHeader}>{t("totalMeals")}</th>
+                            <th className={styles.totalHeader}>{t("amount")}</th>
+                            <th className={styles.totalHeader}>{t("balance")}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredMembers.map(renderMemberRow)}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    );
+
+    const pageInner = (
+        <div className={cn(styles.page, isFullscreen && styles.pageFullscreen)}>
             {/* Header */}
             <div className={styles.header}>
-                <div>
-                    <h2 className={styles.title}>{t("title")}</h2>
-                    <p className={styles.subtitle}>{matrix?.messName ?? t("subtitle")}</p>
+                <div className={styles.headerLeft}>
+                    {isFullscreen && (
+                        <div className={styles.fullscreenBrand}>
+                            <span className={styles.fullscreenTitle}>
+                                {matrix?.messName ?? t("title")}
+                            </span>
+                            <span className={styles.fullscreenMonth}>{periodLabel}</span>
+                        </div>
+                    )}
+                    {!isFullscreen && (
+                        <>
+                            <h2 className={styles.title}>{t("title")}</h2>
+                            <p className={styles.subtitle}>
+                                {matrix?.messName ?? t("subtitle")}
+                                {matrix?.isClosed && (
+                                    <span className={styles.closedBadge}>Closed</span>
+                                )}
+                            </p>
+                        </>
+                    )}
                 </div>
                 <div className={styles.headerActions}>
-                    <Button
-                        variant={editMode ? "primary" : "secondary"}
-                        size="small"
-                        onClick={() => { setEditMode(!editMode); setActiveCell(null); }}
-                    >
-                        <Pencil size={16} />
-                        {editMode ? "Done Editing" : "Edit Meals"}
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            variant={editMode ? "primary" : "secondary"}
+                            size="small"
+                            onClick={() => { setEditMode(!editMode); setActiveCell(null); }}
+                        >
+                            <Pencil size={15} />
+                            {editMode ? "Done" : "Edit"}
+                        </Button>
+                    )}
                     <Button
                         variant="secondary"
                         size="small"
                         onClick={() => matrix && exportCsv(matrix)}
                         disabled={!matrix || loading}
                     >
-                        <Download size={16} />
-                        {t("exportCsv")}
+                        <Download size={15} />
+                        CSV
                     </Button>
                     <Button
+                        variant="secondary"
                         size="small"
-                        onClick={handleCloseMonth}
-                        disabled={closing || loading || !matrix}
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                     >
-                        <Lock size={16} />
-                        {closing ? "Closing…" : t("closeMonth")}
+                        {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                     </Button>
+                    {isAdmin && !matrix?.isClosed && (
+                        <Button
+                            size="small"
+                            onClick={() => setShowCloseDialog(true)}
+                            disabled={closing || loading || !matrix}
+                        >
+                            <Lock size={15} />
+                            {t("closeMonth")}
+                        </Button>
+                    )}
+                    {isFullscreen && (
+                        <button
+                            className={styles.closeBtn}
+                            onClick={() => setIsFullscreen(false)}
+                            aria-label="Close fullscreen"
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
                 </div>
             </div>
 
             {editMode && (
                 <div className={styles.editBanner}>
-                    <Pencil size={14} />
-                    Edit mode — click any day cell to toggle meal slots for that member
+                    <Pencil size={13} />
+                    Edit mode — click any cell to toggle breakfast / lunch / dinner
                 </div>
             )}
 
-            {/* Month Selector */}
-            <div className={styles.monthSelector}>
-                <button
-                    className={styles.monthBtn}
-                    onClick={() => setSelectedMonth(prevMonth(selectedMonth))}
-                >
-                    <ChevronLeft size={20} />
-                </button>
+            {/* Controls Row */}
+            <div className={styles.controlsRow}>
+                {/* View toggle */}
+                <div className={styles.viewToggle}>
+                    <button
+                        className={cn(styles.viewToggleBtn, viewMode === "monthly" && styles.viewToggleBtnActive)}
+                        onClick={() => { setViewMode("monthly"); setWeekIndex(0); }}
+                    >
+                        <CalendarDays size={14} />
+                        Monthly
+                    </button>
+                    <button
+                        className={cn(styles.viewToggleBtn, viewMode === "weekly" && styles.viewToggleBtnActive)}
+                        onClick={() => setViewMode("weekly")}
+                    >
+                        <Calendar size={14} />
+                        Weekly
+                    </button>
+                </div>
+
+                {/* Month navigator */}
+                <div className={styles.monthSelector}>
+                    <button
+                        className={styles.navBtn}
+                        onClick={() => setSelectedMonth(prevMonth(selectedMonth))}
+                        aria-label="Previous month"
+                    >
+                        <ChevronLeft size={18} />
+                    </button>
                 <span className={styles.monthLabel}>
-                    {new Date(selectedMonth + "-01").toLocaleDateString(
-                        "en-US",
-                        { year: "numeric", month: "long" }
-                    )}
+                    {periodLabel}
                 </span>
+                    <button
+                        className={styles.navBtn}
+                        onClick={() => setSelectedMonth(nextMonth(selectedMonth))}
+                        aria-label="Next month"
+                    >
+                        <ChevronRight size={18} />
+                    </button>
+                </div>
+
+                {/* Week navigator (weekly mode only) */}
+                {viewMode === "weekly" && (
+                    <div className={styles.weekNav}>
+                        <button
+                            className={styles.navBtn}
+                            onClick={() => setWeekIndex(Math.max(0, weekIndex - 1))}
+                            disabled={weekIndex === 0}
+                            aria-label="Previous week"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <span className={styles.weekLabel}>
+                            Week {weekIndex + 1} / {weekChunks.length}
+                        </span>
+                        <button
+                            className={styles.navBtn}
+                            onClick={() => setWeekIndex(Math.min(weekChunks.length - 1, weekIndex + 1))}
+                            disabled={weekIndex >= weekChunks.length - 1}
+                            aria-label="Next week"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Filter toggle */}
                 <button
-                    className={styles.monthBtn}
-                    onClick={() => setSelectedMonth(nextMonth(selectedMonth))}
+                    className={cn(styles.filterBtn, filterOpen && styles.filterBtnActive)}
+                    onClick={() => setFilterOpen(!filterOpen)}
                 >
-                    <ChevronRight size={20} />
+                    <Filter size={15} />
+                    Filters
+                    {activeFilterCount > 0 && (
+                        <span className={styles.filterBadge}>{activeFilterCount}</span>
+                    )}
                 </button>
             </div>
+
+            {/* Filter Panel */}
+            {filterOpen && (
+                <div className={styles.filterPanel}>
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>Search Members</label>
+                        <input
+                            type="text"
+                            placeholder="Type name…"
+                            value={memberSearch}
+                            onChange={(e) => setMemberSearch(e.target.value)}
+                            className={styles.filterInput}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterCheckLabel}>
+                            <input
+                                type="checkbox"
+                                checked={showGuests}
+                                onChange={(e) => setShowGuests(e.target.checked)}
+                            />
+                            Show Guests
+                        </label>
+                    </div>
+
+                    {matrix && matrix.members.length > 0 && (
+                        <div className={styles.filterGroup}>
+                            <label className={styles.filterLabel}>Pin Members</label>
+                            <div className={styles.memberCheckboxes}>
+                                {matrix.members.map((m) => (
+                                    <label key={m.memberId} className={styles.checkbox}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedMembers.has(m.memberId)}
+                                            onChange={(e) => {
+                                                const newSet = new Set(selectedMembers);
+                                                if (e.target.checked) newSet.add(m.memberId);
+                                                else newSet.delete(m.memberId);
+                                                setSelectedMembers(newSet);
+                                            }}
+                                        />
+                                        {m.memberName}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <button
+                        className={styles.clearFiltersBtn}
+                        onClick={() => {
+                            setMemberSearch("");
+                            setSelectedMembers(new Set());
+                            setShowGuests(true);
+                        }}
+                    >
+                        <X size={13} /> Clear All
+                    </button>
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className={styles.summaryGrid}>
                 <div className={styles.summaryCard}>
                     <span className={styles.summaryLabel}>{t("summary.totalExpense")}</span>
                     <span className={styles.summaryValue}>
-                        {loading ? "—" : formatCurrency(totalExpense)}
+                        {loading ? "—" : formatCurrency(Number(matrix?.totalExpense ?? 0))}
                     </span>
                 </div>
                 <div className={styles.summaryCard}>
                     <span className={styles.summaryLabel}>{t("summary.totalMeals")}</span>
-                    <span className={styles.summaryValue}>{loading ? "—" : totalMeals}</span>
+                    <span className={styles.summaryValue}>
+                        {loading ? "—" : filteredStats.totalMeals}
+                    </span>
                 </div>
                 <div className={cn(styles.summaryCard, styles.summaryPrimary)}>
                     <span className={styles.summaryLabel}>{t("summary.mealRate")}</span>
                     <span className={styles.summaryValue}>
-                        {loading ? "—" : formatCurrency(mealRate)}
+                        {loading ? "—" : formatCurrency(Number(matrix?.mealRate ?? 0))}
                     </span>
                 </div>
                 <div className={styles.summaryCard}>
                     <span className={styles.summaryLabel}>{t("summary.members")}</span>
-                    <span className={styles.summaryValue}>{loading ? "—" : memberCount}</span>
+                    <span className={styles.summaryValue}>
+                        {loading ? "—" : filteredMembers.length}
+                    </span>
                 </div>
             </div>
 
-            {/* Matrix Table */}
-            <Card noPadding>
-                <div className={styles.tableWrap}>
-                    {loading ? (
-                        <div className={styles.emptyState}>Loading…</div>
-                    ) : !matrix || matrix.members.length === 0 ? (
-                        <div className={styles.emptyState}>No data for {selectedMonth}.</div>
-                    ) : (
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th className={styles.stickyCol}>{t("member")}</th>
-                                    {Array.from({ length: numDays }, (_, i) => (
-                                        <th key={i} className={styles.dayHeader}>
-                                            {i + 1}
-                                        </th>
-                                    ))}
-                                    <th className={styles.totalHeader}>{t("totalMeals")}</th>
-                                    <th className={styles.totalHeader}>{t("amount")}</th>
-                                    <th className={styles.totalHeader}>{t("balance")}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {matrix.members.map(renderMemberRow)}
-                            </tbody>
-                        </table>
-                    )}
+            {/* Table */}
+            <div className={styles.tableCard}>
+                {matrixTable}
+            </div>
+
+            {/* Close Month Dialog */}
+            {showCloseDialog && (
+                <div className={styles.dialogOverlay} onClick={() => setShowCloseDialog(false)}>
+                    <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                        <h3 className={styles.dialogTitle}>
+                            <Lock size={18} />
+                            Close Period
+                        </h3>
+                        <p className={styles.dialogDesc}>
+                            Close the current billing period ({periodLabel})? This will:
+                        </p>
+                        <ul className={styles.dialogList}>
+                            <li>Freeze all meal logs</li>
+                            <li>Calculate final balances</li>
+                            <li>Create the next billing period</li>
+                            <li>Carry forward balances</li>
+                        </ul>
+
+                        <div className={styles.dialogField}>
+                            <label className={styles.dialogLabel}>
+                                <Users size={14} />
+                                Next Period Manager (optional)
+                            </label>
+                            <select
+                                className={styles.dialogSelect}
+                                value={nextManagerId}
+                                onChange={(e) => setNextManagerId(e.target.value)}
+                            >
+                                <option value="">— Keep current managers —</option>
+                                {managers.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className={styles.dialogActions}>
+                            <Button
+                                variant="secondary"
+                                size="small"
+                                onClick={() => setShowCloseDialog(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size="small"
+                                onClick={handleCloseMonth}
+                                disabled={closing}
+                            >
+                                <Lock size={14} />
+                                {closing ? "Closing…" : "Close & Start Next Period"}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-            </Card>
+            )}
         </div>
     );
+
+    if (isFullscreen) {
+        return (
+            <div className={styles.fullscreenOverlay}>
+                {pageInner}
+            </div>
+        );
+    }
+
+    return pageInner;
 }

@@ -104,9 +104,182 @@ CREATE TABLE IF NOT EXISTS telegram_otps (
 
 CREATE INDEX IF NOT EXISTS idx_telegram_otps_uid ON telegram_otps(telegram_id);
 
+-- ── 8. bazaar_sessions table ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bazaar_sessions (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id      UUID REFERENCES messes(id) ON DELETE CASCADE,
+  session_date DATE NOT NULL,
+  year_month   TEXT NOT NULL,
+  shoppers     JSONB NOT NULL DEFAULT '[]',
+  note         TEXT,
+  created_by   UUID REFERENCES members(id) ON DELETE SET NULL,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bazaar_sessions_mess_month ON bazaar_sessions(mess_id, year_month);
+
+ALTER TABLE bazaar_sessions ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'bazaar_sessions' AND policyname = 'No anon access'
+  ) THEN
+    CREATE POLICY "No anon access" ON bazaar_sessions FOR ALL TO anon USING (false);
+  END IF;
+END $$;
+
+-- ── 9. expenses: add session_id column ───────────────────────────────────────
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS session_id UUID REFERENCES bazaar_sessions(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_expenses_session ON expenses(session_id) WHERE session_id IS NOT NULL;
+
+-- ── 10. mess_months table ────────────────────────────────────────────────────
+-- Tracks per-month state (open/closed), meal rate, and total expense snapshot.
+CREATE TABLE IF NOT EXISTS mess_months (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id       UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  year_month    TEXT NOT NULL,
+  is_closed     BOOLEAN NOT NULL DEFAULT false,
+  closed_at     TIMESTAMPTZ,
+  meal_rate     DECIMAL(10, 4),
+  total_expense DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(mess_id, year_month)
+);
+
+-- ── 11. ledger_entries table ──────────────────────────────────────────────────
+-- Tracks all financial movements per member per month:
+--   CONTRIBUTION  — cash deposited by member (recorded by admin/manager)
+--   DEDUCTION     — meal cost charged at month-close
+--   CARRY_FORWARD — net balance rolled into the next month
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id       UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  mess_month_id UUID REFERENCES mess_months(id),
+  member_id     UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  entry_type    TEXT NOT NULL,
+  amount        DECIMAL(10, 2) NOT NULL,
+  note          TEXT,
+  created_by    UUID REFERENCES members(id),
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+-- Fix the entry_type constraint regardless of how the table was originally created
+-- (covers cases where Prisma db push created it with a different or missing constraint)
+ALTER TABLE ledger_entries DROP CONSTRAINT IF EXISTS ledger_entries_entry_type_check;
+ALTER TABLE ledger_entries
+  ADD CONSTRAINT ledger_entries_entry_type_check
+  CHECK (entry_type IN ('CONTRIBUTION', 'DEDUCTION', 'CARRY_FORWARD'));
+
+CREATE INDEX IF NOT EXISTS idx_ledger_member_month ON ledger_entries(member_id, mess_month_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_mess_type    ON ledger_entries(mess_id, entry_type);
+
+ALTER TABLE ledger_entries ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'ledger_entries' AND policyname = 'No anon access'
+  ) THEN
+    CREATE POLICY "No anon access" ON ledger_entries FOR ALL TO anon USING (false);
+  END IF;
+END $$;
+
+-- ── 12. audit_log table ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS audit_log (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id      UUID REFERENCES messes(id),
+  actor_id     UUID REFERENCES members(id),
+  action       TEXT NOT NULL,
+  target_table TEXT,
+  target_id    UUID,
+  old_value    JSONB,
+  new_value    JSONB,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+-- ── 13. telegram_groups table ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS telegram_groups (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  chat_id    TEXT NOT NULL UNIQUE,
+  chat_name  TEXT,
+  mess_id    UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  timezone   TEXT NOT NULL DEFAULT 'Asia/Dhaka',
+  is_active  BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ── 14. mess_memberships table (multi-mess support) ───────────────────────────
+CREATE TABLE IF NOT EXISTS mess_memberships (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id  UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  mess_id    UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  role       TEXT NOT NULL,
+  is_active  BOOLEAN NOT NULL DEFAULT true,
+  joined_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(member_id, mess_id)
+);
+
+-- ── 15. Soft-delete (void) fields for bazaar_sessions ────────────────────────
+ALTER TABLE bazaar_sessions ADD COLUMN IF NOT EXISTS is_voided   BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE bazaar_sessions ADD COLUMN IF NOT EXISTS void_reason TEXT;
+ALTER TABLE bazaar_sessions ADD COLUMN IF NOT EXISTS voided_at   TIMESTAMPTZ;
+ALTER TABLE bazaar_sessions ADD COLUMN IF NOT EXISTS voided_by   UUID;
+
+CREATE INDEX IF NOT EXISTS idx_bazaar_sessions_voided ON bazaar_sessions(mess_id, year_month, is_voided);
+
+-- ── 16. Soft-delete (void) fields for ledger_entries ─────────────────────────
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS is_voided   BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS void_reason TEXT;
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS voided_at   TIMESTAMPTZ;
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS voided_by   UUID;
+
+-- ── 17. daily_cook_notes table (cook's optional note per meal slot per day) ───
+CREATE TABLE IF NOT EXISTS daily_cook_notes (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id     UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  log_date    DATE NOT NULL,
+  slot        TEXT NOT NULL CHECK (slot IN ('BREAKFAST','LUNCH','DINNER')),
+  note        TEXT,
+  updated_by  UUID REFERENCES members(id) ON DELETE SET NULL,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (mess_id, log_date, slot)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cook_notes_mess_date ON daily_cook_notes(mess_id, log_date);
+
+ALTER TABLE daily_cook_notes ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'daily_cook_notes' AND policyname = 'No anon access'
+  ) THEN
+    CREATE POLICY "No anon access" ON daily_cook_notes FOR ALL TO anon USING (false);
+  END IF;
+END $$;
+
 -- ── Done ──────────────────────────────────────────────────────────────────────
 -- After running this script:
 --   1. Deploy the new code to Vercel
 --   2. The app will use breakfast_count/lunch_count/dinner_count for all meal logic
 --   3. meal_configs drives per-meal cutoff times (BREAKFAST 08:30, LUNCH 13:00, DINNER 21:00)
+--   4. bazaar_sessions groups expense items under one shopping trip
+--   5. CONTRIBUTION entries in ledger_entries drive live member balance
+--   6. Run npm run seed to populate demo data with 7 real members + sample deposits
+--   7. Voided sessions/contributions are soft-deleted: is_voided=true, reason stored, excluded from financial calcs
 -- ============================================================
+
+-- ── 18. Custom Month Periods ──────────────────────────────────────────────────
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS month_start_day INTEGER NOT NULL DEFAULT 1;
+
+ALTER TABLE mess_months ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE mess_months ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE mess_months ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES members(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_mess_months_open ON mess_months(mess_id, is_closed);
+
+-- Populate start_date and end_date for existing rows
+UPDATE mess_months 
+SET 
+  start_date = TO_DATE(year_month || '-01', 'YYYY-MM-DD'),
+  end_date = (TO_DATE(year_month || '-01', 'YYYY-MM-DD') + INTERVAL '1 month' - INTERVAL '1 day')::DATE
+WHERE start_date IS NULL;
+
+ALTER TABLE mess_months ALTER COLUMN start_date SET NOT NULL;
+ALTER TABLE mess_months ALTER COLUMN end_date SET NOT NULL;

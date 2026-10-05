@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { monthRange, countMealSlots, calculateMemberBalance } from '@/lib/financial'
+import { countMealSlots, calculateMemberBalance, nonVoidedExpenseWhere, calculateStatsForRange } from '@/lib/financial'
+import { resolvePeriod } from '@/lib/period'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -15,8 +16,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const messId = searchParams.get('mess_id') || payload.messId
-  const yearMonth = searchParams.get('year_month') || new Date().toISOString().slice(0, 7)
-  const { start, end } = monthRange(yearMonth)
+  const yearMonth = searchParams.get('year_month') || null
+
+  // Resolve to actual period dates
+  const period = await resolvePeriod(messId, yearMonth)
+  const { start, end } = period
 
   const [mess, members, logs, expenses] = await Promise.all([
     prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),
@@ -39,7 +43,7 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.expense.findMany({
-      where: { messId, expenseDate: { gte: start, lte: end } },
+      where: nonVoidedExpenseWhere(messId, start, end),
       select: { amount: true, addedBy: true },
     }),
   ])
@@ -87,7 +91,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     mess_id: messId,
     mess_name: mess?.name ?? '',
-    year_month: yearMonth,
+    year_month: period.yearMonth,
+    start_date: period.startDate.toISOString().slice(0, 10),
+    end_date: period.endDate.toISOString().slice(0, 10),
+    is_closed: period.isClosed,
     meal_rate: mealRate,
     total_expense: totalExpense,
     total_meals: totalMeals,

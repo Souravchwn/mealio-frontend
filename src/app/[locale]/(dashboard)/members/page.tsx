@@ -35,7 +35,6 @@ const roleColors: Record<string, string> = {
 
 export default function MembersPage() {
     const t = useTranslations("members");
-    const tg = useTranslations("guest");
     const { user, token } = useAuth();
 
     const [members, setMembers] = useState<MemberRow[]>([]);

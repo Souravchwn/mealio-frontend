@@ -2,7 +2,7 @@
 
 ## What This Module Does
 
-The landing page after login. Shows a personalized greeting + stat cards (meal rate, balance, headcount, expenses) + today's meal status + quick action buttons + recent expenses. Accessible to all roles.
+The first page after login. Shows a personalized greeting + stat cards (meal rate, balance, headcount, expenses) + today's meal status + quick actions + recent expenses. Read-only — no write operations on this page.
 
 ---
 
@@ -17,10 +17,10 @@ The landing page after login. Shows a personalized greeting + stat cards (meal r
 
 ## Data Loading
 
-All API calls are fired in **parallel** using `Promise.allSettled` on mount. Individual failures don't break the page — cards just show `—` or `0`.
+All API calls fired in **parallel** with `Promise.allSettled`. Individual failures show skeleton/fallback — they don't break other sections.
 
 ```typescript
-const [rateRes, expensesRes, headcountRes, todayMealsRes, summaryRes] = await Promise.allSettled([
+Promise.allSettled([
   api.expenses.getMealRate(user.messId, yearMonth, token),
   api.expenses.getExpenses(user.messId, yearMonth, token),
   api.cook.getHeadcount(user.messId, token),
@@ -29,54 +29,94 @@ const [rateRes, expensesRes, headcountRes, todayMealsRes, summaryRes] = await Pr
 ])
 ```
 
+`yearMonth` comes from `getCurrentYearMonth()` (client local time).
+
 ---
 
 ## Sections
 
 ### 1. Greeting
 ```typescript
-getTimeOfDay() → 'morning' | 'afternoon' | 'evening'
-// Used in t("overview.greeting", { timeOfDay: t(`overview.${getTimeOfDay()}`), name: user.name })
+const greeting = t("overview.greeting", { timeOfDay: t(timeOfDay), name: firstName })
+// Also shows: "Monday, 14 Apr 2026 · Mess Name" in .greetingMeta
 ```
+`getTimeOfDay()` → `'morning' | 'afternoon' | 'evening'`.
 
-### 2. Stats Grid (4 cards)
-| Card | Data Source | Notes |
-|------|-------------|-------|
-| Meal Rate | `api.expenses.getMealRate()` | `৳ X.XX per meal` |
-| Your Balance | `api.members.me()` | Positive = overpaid (green), negative = owes (red) |
-| Month Expense | `api.expenses.getExpenses()` → sum | Total for current month |
-| Headcount | `api.cook.getHeadcount()` | Today's lunch count |
+### 2. Stats Grid (4 cards, 2×2 on tablet/mobile)
 
-### 3. Today's Meals
-Shows `breakfast/lunch/dinner` from `api.meals.getToday()`. Read-only preview — not toggleable from here. Links to `/meals` for toggling.
+| Card | Source | Notes |
+|------|--------|-------|
+| Meal Rate | `getMealRate()` | `৳ X.XX` |
+| Your Balance | `members.me()` | **Green if ≥ 0 (overpaid), red if < 0 (owes)**. Icon and top-accent line also change. |
+| Month Expense | `getExpenses()` → sum | Total BDT for current month |
+| Headcount | `getHeadcount()` | Today's lunch count |
 
-### 4. Quick Actions
-Buttons linking to: `/meals`, `/expenses`, `/matrix`, `/headcount`. Each filtered by role (MEMBER doesn't see expenses).
+Loading state shows a shimmer skeleton (`statValueSkeleton`) instead of `—`.
+
+### 3. Today's Meals (read-only preview)
+Three slots: breakfast / lunch / dinner. Uses i18n labels from `meals.*` namespace.
+Active slot: green border + green tint background. Inactive: muted border.
+"Manage" link → `/{locale}/meals`.
+
+### 4. Quick Actions (role-filtered)
+| Action | Visible to |
+|--------|-----------|
+| Toggle Meals | All |
+| Add Expense | ADMIN + MANAGER |
+| View Matrix | ADMIN only |
+| View Headcount | All |
 
 ### 5. Recent Expenses
-Last 5 expenses from `api.expenses.getExpenses()`. Shows category color dot + amount + description + date.
+Last 5 from `getExpenses()`. Category dot + description + amount. Separated by border lines.
+"View all" link only shown to ADMIN + MANAGER.
+Empty state: centered muted text.
 
 ---
 
-## `src/lib/utils.ts` — Functions Used
+## CSS Architecture
+
+### Stat cards
+- Flex column: label row (label + icon) on top, value below
+- `statCardPrimary/Success/Danger/Accent/Info` → colored `::before` top-accent line (revealed on hover)
+- Balance card classes determined dynamically: `stats.balance >= 0` → success, else danger
+- `statValueSkeleton` = gradient shimmer animation while loading
+
+### Layout
+- `.statsGrid` = 4-column on desktop, 2-column ≤1100px, 2-column on mobile
+- `.twoColumn` = `1fr 1.2fr` (left narrower) → stacks at ≤900px
+- `.leftCol` = flex column containing Today's Meals + Quick Actions
+- `.sectionCard` = white card with border — replaces `<Card>` component usage (consistent padding/radius)
+
+### Quick actions
+- Icon changes from primary-light bg → primary solid on hover
+- Uses `var(--color-primary-rgb)` for focus ring box-shadow
+
+---
+
+## i18n Keys Used
+
+- `overview.*`: `greeting`, `morning`, `afternoon`, `evening`, `todayMeals`, `mealRate`, `yourBalance`, `monthExpense`, `headcountToday`, `recentExpenses`, `quickActions`, `toggleMeals`, `addExpense`, `viewMatrix`, `viewHeadcount`
+- `meals.*`: `breakfast`, `lunch`, `dinner`, `on`, `off`
+- `common.*`: (none directly — uses inline strings for "Manage", "View all")
+
+---
+
+## Utilities Used
 
 ```typescript
-getTimeOfDay()          → 'morning' | 'afternoon' | 'evening'  (based on local hour)
+getTimeOfDay()          → 'morning' | 'afternoon' | 'evening'
 formatCurrency(amount)  → '৳ 1,234.56'
-getCategoryColor(cat)   → hex color string for the dot indicator
-getCurrentYearMonth()   → 'YYYY-MM' for current month
+getCategoryColor(cat)   → hex string for expense dot
+getCurrentYearMonth()   → 'YYYY-MM'
 ```
-
----
-
-## i18n Keys
-
-`overview.*`: `greeting`, `morning`, `afternoon`, `evening`, `todayMeals`, `mealRate`, `yourBalance`, `totalMembers`, `monthExpense`, `totalMeals`, `headcountToday`, `recentExpenses`, `quickActions`, `toggleMeals`, `addExpense`, `viewMatrix`, `viewHeadcount`
 
 ---
 
 ## Common Pitfalls
 
-1. **No write operations** — the overview is 100% read-only. Don't add toggles or forms here.
-2. **`Promise.allSettled`** means partial failures are expected. Always check `result.status === 'fulfilled'` before reading `.value`.
-3. **yearMonth** is computed client-side with `getCurrentYearMonth()`. Since it uses `new Date()`, it reflects the client's local time — could differ from the mess timezone for month boundaries.
+1. **No write operations** — overview is 100% read-only. Don't add toggles or forms.
+2. **`Promise.allSettled`** — always check `result.status === "fulfilled"` before reading `.value`.
+3. **Balance sign** — positive = member overpaid (green), negative = member owes (red). Don't reverse this.
+4. **Inline styles removed** — no `style={{ marginTop: ... }}` or any inline styles. All layout via CSS modules.
+5. **Meal labels use i18n** — `tm("breakfast")` from `useTranslations("meals")`, not JS `.charAt(0).toUpperCase()`.
+6. **`animationDelay` on stat cards removed** — there is no animation on `.statCard`, so delay props were silently doing nothing. The page-level `fadeInUp` on `.page` handles the entry.

@@ -38,57 +38,89 @@ export async function GET(req: NextRequest) {
   const logDateObj = new Date(`${today}T00:00:00.000Z`)
   const nowHHMM = localHHMM(timezone)
 
-  // ── Try meal_configs for per-meal cutoffs; fall back to legacy cutoff ──────
-  let cutoffHHMM = mess?.cutOffTime ? mess.cutOffTime.toISOString().slice(11, 16) : '21:00'
-  let cutoffPassed = false
+  // ── Per-slot cutoffs from meal_configs (fall back to legacy) ────────────────
+  const legacyCutoff = mess?.cutOffTime ? mess.cutOffTime.toISOString().slice(11, 16) : '21:00'
+
+  const DEFAULT_SLOT_CUTOFFS: Record<string, string> = {
+    BREAKFAST: '08:30',
+    LUNCH:     '13:00',
+    DINNER:    legacyCutoff,
+  }
+
+  let slotCutoffTimes: Record<string, string> = { ...DEFAULT_SLOT_CUTOFFS }
 
   try {
     const mealConfigs = await prisma.mealConfig.findMany({
-      where: { messId: payload.messId, enabled: true },
-      select: { cutoffTime: true },
-      orderBy: { cutoffTime: 'asc' },
+      where: { messId: payload.messId },
+      select: { mealType: true, cutoffTime: true },
     })
-
-    if (mealConfigs.length > 0) {
-      const next = mealConfigs.find((c) => nowHHMM < c.cutoffTime.toISOString().slice(11, 16))
-      if (next) {
-        cutoffHHMM = next.cutoffTime.toISOString().slice(11, 16)
-        cutoffPassed = false
-      } else {
-        cutoffHHMM = mealConfigs[mealConfigs.length - 1].cutoffTime.toISOString().slice(11, 16)
-        cutoffPassed = true
-      }
-    } else {
-      // No configs seeded yet — use legacy single cutoff
-      cutoffPassed = nowHHMM >= cutoffHHMM
+    for (const c of mealConfigs) {
+      slotCutoffTimes[c.mealType] = c.cutoffTime.toISOString().slice(11, 16)
     }
   } catch {
-    // meal_configs table not yet migrated — fall back to legacy cutoff
-    cutoffPassed = nowHHMM >= cutoffHHMM
+    // meal_configs not yet migrated — use defaults
   }
 
-  // Only enforce cutoff for today
+  // Only enforce cutoff for today; past dates are never blocked
   const todayReal = todayInTimezone(timezone)
-  if (today !== todayReal) cutoffPassed = false
+  const isToday = today === todayReal
 
-  // ── Get or create today's log ─────────────────────────────────────────────
+  const slotCutoffs = {
+    breakfast: { cutoff_time: slotCutoffTimes['BREAKFAST'], cutoff_passed: isToday && nowHHMM >= slotCutoffTimes['BREAKFAST'] },
+    lunch:     { cutoff_time: slotCutoffTimes['LUNCH'],     cutoff_passed: isToday && nowHHMM >= slotCutoffTimes['LUNCH'] },
+    dinner:    { cutoff_time: slotCutoffTimes['DINNER'],    cutoff_passed: isToday && nowHHMM >= slotCutoffTimes['DINNER'] },
+  }
+
+  // Backward-compat single cutoff: next upcoming slot, or last slot if all passed
+  const slots = ['BREAKFAST', 'LUNCH', 'DINNER'] as const
+  const nextSlot = slots.find((s) => !slotCutoffs[s.toLowerCase() as keyof typeof slotCutoffs].cutoff_passed)
+  const cutoffHHMM = nextSlot
+    ? slotCutoffTimes[nextSlot]
+    : slotCutoffTimes['DINNER']
+  const cutoffPassed = !nextSlot && isToday
+
+  // ── Get or create log ────────────────────────────────────────────────────
   let log = await prisma.dailyLog.findFirst({
     where: { memberId, messId: payload.messId, logDate: logDateObj },
   })
 
   if (!log) {
+    if (!isToday) {
+      // Historical or future date with no log → no meals that day.
+      // Do NOT create phantom entries — this prevents inflated meal counts
+      // when pages request past dates (e.g. my-summary 7-day strip) for new members.
+      const isFrozenOrPassedNoLog = true // past/future dates: cutoff always "passed"
+      return NextResponse.json({
+        id:               null,
+        member_id:        memberId,
+        date:             today,
+        breakfast_count:  0,
+        lunch_count:      0,
+        dinner_count:     0,
+        breakfast:        false,
+        lunch:            false,
+        dinner:           false,
+        guest_count:      0,
+        frozen:           false,
+        cut_off_time:     cutoffHHMM,
+        cut_off_passed:   isFrozenOrPassedNoLog,
+        slot_cutoffs:     slotCutoffs,
+      })
+    }
+    // Today with no log — auto-create from member's meal preferences
+    // (cron generate-daily-meals runs at 00:05 but member may have just registered)
     const defaults = await getMemberMealDefaults(memberId, payload.messId, today)
     log = await prisma.dailyLog.create({
       data: {
         memberId,
-        messId: payload.messId,
-        logDate: logDateObj,
+        messId:         payload.messId,
+        logDate:        logDateObj,
         breakfastCount: defaults.breakfastCount,
-        lunchCount: defaults.lunchCount,
-        dinnerCount: defaults.dinnerCount,
-        guestCount: 0,
-        frozen: false,
-        isOverride: false,
+        lunchCount:     defaults.lunchCount,
+        dinnerCount:    defaults.dinnerCount,
+        guestCount:     0,
+        frozen:         false,
+        isOverride:     false,
       },
     })
   }
@@ -107,7 +139,12 @@ export async function GET(req: NextRequest) {
     dinner: log.dinnerCount > 0,
     guest_count: log.guestCount,
     frozen: log.frozen,
+    // false = auto-generated by cron from preferences; true = manually changed
+    is_override: log.isOverride,
+    // Backward-compat (used by overview, etc.)
     cut_off_time: cutoffHHMM,
     cut_off_passed: isFrozenOrPassed,
+    // Per-slot cutoff state
+    slot_cutoffs: slotCutoffs,
   })
 }

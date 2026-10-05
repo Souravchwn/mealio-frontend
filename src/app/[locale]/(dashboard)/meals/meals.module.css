@@ -110,6 +110,16 @@
     box-shadow: 0 4px 24px rgba(16, 185, 129, 0.08);
 }
 
+.mealCardLocked {
+    opacity: 0.6;
+    cursor: default;
+    pointer-events: none;
+}
+
+.mealCardLocked::before {
+    background: var(--color-text-muted) !important;
+}
+
 .mealIcon {
     font-size: 52px;
     margin-bottom: var(--space-4);
@@ -128,6 +138,42 @@
     font-weight: 700;
     margin-bottom: var(--space-5);
     color: var(--color-text);
+}
+
+/* Preference status chip */
+.statusChip {
+    display: inline-block;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    margin-bottom: var(--space-3);
+    letter-spacing: 0.02em;
+}
+
+.chipDefaultOff {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+}
+
+.chipOverride {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+[data-theme="dark"] .chipOverride {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fcd34d;
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Guest note */
+.guestNote {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
 }
 
 /* Toggle Switch */

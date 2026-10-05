@@ -3,6 +3,27 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
 
+export async function GET(req: NextRequest) {
+  const token = extractToken(req)
+  if (!token) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+  const payload = await verifyToken(token)
+  if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+
+  const mess = await prisma.mess.findUnique({
+    where: { id: payload.messId },
+    select: { name: true, cutOffTime: true, estimatedMonthlyBudget: true, monthStartDay: true },
+  })
+
+  if (!mess) return NextResponse.json({ detail: 'Mess not found' }, { status: 404 })
+
+  return NextResponse.json({
+    name: mess.name,
+    cut_off_time: mess.cutOffTime.toISOString().slice(11, 16),
+    estimated_monthly_budget: mess.estimatedMonthlyBudget ? Number(mess.estimatedMonthlyBudget) : null,
+    month_start_day: mess.monthStartDay ?? 1,
+  })
+}
+
 export async function PUT(req: NextRequest) {
   const token = extractToken(req)
   if (!token) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
@@ -13,7 +34,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ detail: 'Admin access required' }, { status: 403 })
   }
 
-  const { name, cut_off_time, estimated_monthly_budget } = await req.json()
+  const { name, cut_off_time, estimated_monthly_budget, month_start_day } = await req.json()
   const updateData: Record<string, unknown> = {}
 
   if (name !== undefined) {
@@ -34,6 +55,14 @@ export async function PUT(req: NextRequest) {
     updateData.estimatedMonthlyBudget = estimated_monthly_budget ?? null
   }
 
+  if (month_start_day !== undefined) {
+    const day = Number(month_start_day)
+    if (isNaN(day) || day < 1 || day > 28 || !Number.isInteger(day)) {
+      return NextResponse.json({ detail: 'month_start_day must be an integer between 1 and 28' }, { status: 400 })
+    }
+    updateData.monthStartDay = day
+  }
+
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ detail: 'No fields to update' }, { status: 400 })
   }
@@ -43,7 +72,7 @@ export async function PUT(req: NextRequest) {
       tx.mess.update({
         where: { id: payload.messId },
         data: updateData,
-        select: { id: true, name: true, cutOffTime: true, estimatedMonthlyBudget: true },
+        select: { id: true, name: true, cutOffTime: true, estimatedMonthlyBudget: true, monthStartDay: true },
       }),
       createAuditTx(tx, {
         messId: payload.messId,
@@ -61,5 +90,6 @@ export async function PUT(req: NextRequest) {
     name: mess.name,
     cut_off_time: mess.cutOffTime.toISOString().slice(11, 16),
     estimated_monthly_budget: mess.estimatedMonthlyBudget ? Number(mess.estimatedMonthlyBudget) : null,
+    month_start_day: mess.monthStartDay,
   })
 }

@@ -15,6 +15,12 @@ export type AuditAction =
   | 'ADMIN_MEMBER_UPDATE'
   | 'ADMIN_SETTINGS_UPDATE'
   | 'CLOSE_MONTH'
+  | 'ADD_BAZAAR_SESSION'
+  | 'EDIT_BAZAAR_SESSION'
+  | 'DELETE_BAZAAR_SESSION'
+  | 'VOID_BAZAAR_SESSION'
+  | 'ADD_CONTRIBUTION'
+  | 'VOID_CONTRIBUTION'
 
 export interface AuditEntry {
   messId: string

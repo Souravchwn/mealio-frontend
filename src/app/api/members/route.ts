@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { monthRange, countMealSlots, calculateMemberBalance } from '@/lib/financial'
+import { countMealSlots, calculateMemberBalance } from '@/lib/financial'
+import { resolvePeriod } from '@/lib/period'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -15,8 +16,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const messId = searchParams.get('mess_id') || payload.messId
-  const yearMonth = searchParams.get('year_month') || new Date().toISOString().slice(0, 7)
-  const { start, end } = monthRange(yearMonth)
+  const yearMonth = searchParams.get('year_month') || null
+
+  // Resolve to actual period dates
+  const period = await resolvePeriod(messId, yearMonth)
+  const { start, end } = period
 
   const [mess, members, expenses, logs] = await Promise.all([
     prisma.mess.findUnique({ where: { id: messId }, select: { name: true } }),

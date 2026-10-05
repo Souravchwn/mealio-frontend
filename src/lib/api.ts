@@ -20,6 +20,10 @@ import type {
     GuestUpdateRequest,
     MessSwitchResponse,
     MealConfig,
+    BazaarSessionResponse,
+    BazaarSessionRequest,
+    ContributionResponse,
+    ContributionRequest,
 } from "@/types";
 
 // Empty base URL = relative paths (Next.js API routes)
@@ -145,6 +149,18 @@ export const api = {
                 params: { messId },
                 token,
             }),
+        getNotes: (token: string, date?: string) =>
+            fetcher<{ date: string; notes: Record<string, string | null> }>("/api/cook/notes", {
+                method: "GET",
+                params: date ? { date } : {},
+                token,
+            }),
+        saveNote: (data: { slot: string; note: string; date?: string }, token: string) =>
+            fetcher<{ ok: boolean }>("/api/cook/notes", {
+                method: "POST",
+                body: data,
+                token,
+            }),
     },
 
     expenses: {
@@ -154,17 +170,65 @@ export const api = {
                 body: data,
                 token,
             }),
-        getExpenses: (messId: string, yearMonth?: string, token?: string) =>
-            fetcher<ExpenseResponse[]>("/api/expenses", {
-                method: "GET",
-                params: { messId, yearMonth },
-                token,
-            }),
+        getExpenses: (
+            params: { messId: string; yearMonth?: string; page?: number; limit?: number },
+            token?: string
+        ) =>
+            fetcher<{
+                expenses: ExpenseResponse[];
+                total: number;
+                page: number;
+                pages: number;
+            }>("/api/expenses", { method: "GET", params, token }),
         getMealRate: (messId: string, yearMonth?: string, token?: string) =>
             fetcher<{ messId: string; yearMonth: string; mealRate: number }>(
                 "/api/expenses/meal-rate",
                 { method: "GET", params: { messId, yearMonth }, token }
             ),
+        sessions: {
+            list: (params: { messId?: string; yearMonth?: string; page?: number; limit?: number }, token: string) =>
+                fetcher<{
+                    sessions: BazaarSessionResponse[];
+                    total: number;
+                    page: number;
+                    pages: number;
+                    liveMealRate: number;
+                    totalExpense: number;
+                }>("/api/expenses/sessions", { method: "GET", params, token }),
+            get: (id: string, token: string) =>
+                fetcher<BazaarSessionResponse>(`/api/expenses/sessions/${id}`, { method: "GET", token }),
+            create: (data: BazaarSessionRequest, token: string) =>
+                fetcher<BazaarSessionResponse>("/api/expenses/sessions", { method: "POST", body: data, token }),
+            update: (
+                id: string,
+                data: Partial<BazaarSessionRequest>,
+                token: string
+            ) =>
+                fetcher<{ ok: boolean }>(`/api/expenses/sessions/${id}`, { method: "PUT", body: data, token }),
+            void: (id: string, reason: string, token: string) =>
+                fetcher<{ ok: boolean }>(`/api/expenses/sessions/${id}`, { method: "DELETE", body: { reason }, token }),
+        },
+    },
+
+    contributions: {
+        list: (params: { yearMonth?: string; page?: number; limit?: number }, token: string) =>
+            fetcher<{
+                contributions: ContributionResponse[];
+                total: number;
+                page: number;
+                pages: number;
+                totalContributed: number;
+                memberSummary: Array<{
+                    memberId: string;
+                    memberName: string;
+                    total: number;
+                    count: number;
+                }>;
+            }>("/api/contributions", { method: "GET", params, token }),
+        add: (data: ContributionRequest, token: string) =>
+            fetcher<ContributionResponse>("/api/contributions", { method: "POST", body: data, token }),
+        void: (id: string, reason: string, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/contributions/${id}`, { method: "DELETE", body: { reason }, token }),
     },
 
     meals: {
@@ -182,8 +246,16 @@ export const api = {
                 dinner: boolean;
                 guestCount: number;
                 frozen: boolean;
+                /** Next upcoming cutoff (or last slot cutoff if all passed) */
                 cutOffTime: string;
+                /** True only when ALL slots have passed their cutoff */
                 cutOffPassed: boolean;
+                /** Per-slot cutoff state — use this to lock individual meal cards */
+                slotCutoffs: {
+                    breakfast: { cutoffTime: string; cutoffPassed: boolean };
+                    lunch:     { cutoffTime: string; cutoffPassed: boolean };
+                    dinner:    { cutoffTime: string; cutoffPassed: boolean };
+                };
             }>("/api/meals/today", {
                 method: "GET",
                 params: { memberId, logDate },
@@ -266,6 +338,7 @@ export const api = {
                 memberId: string;
                 yearMonth: string;
                 mealRate: number;
+                totalExpense: number;
                 myMealCount: number;
                 contributed: number;
                 mealCost: number;
@@ -371,11 +444,27 @@ export const api = {
                 token,
             }),
         updateSettings: (
-            data: { name?: string; cutOffTime?: string; estimatedMonthlyBudget?: number },
+            data: { name?: string; cutOffTime?: string; estimatedMonthlyBudget?: number; monthStartDay?: number },
             token: string
         ) =>
             fetcher<{ ok: boolean }>("/api/mess/settings", {
                 method: "PUT",
+                body: data,
+                token,
+            }),
+        getTelegramGroup: (token: string) =>
+            fetcher<{
+                chatId: string | null;
+                chatName: string | null;
+                timezone: string | null;
+                isLinked: boolean;
+            }>("/api/admin/telegram-group", { method: "GET", token }),
+        linkTelegramGroup: (
+            data: { chatId: string; chatName?: string; timezone?: string },
+            token: string
+        ) =>
+            fetcher<{ ok: boolean }>("/api/admin/telegram-group", {
+                method: "POST",
                 body: data,
                 token,
             }),

@@ -14,6 +14,8 @@ model Mess {
   /// Prefer querying meal_configs for per-meal cutoff enforcement.
   cutOffTime             DateTime @map("cut_off_time") @db.Time(6)
   estimatedMonthlyBudget Decimal? @map("estimated_monthly_budget") @db.Decimal(10, 2)
+  /// Day of the month when the billing period starts (1–28). Default 1 = calendar month.
+  monthStartDay          Int      @default(1) @map("month_start_day")
   isActive               Boolean  @default(true) @map("is_active")
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -21,12 +23,14 @@ model Mess {
   messMonths      MessMonth[]
   dailyLogs       DailyLog[]
   expenses        Expense[]
+  bazaarSessions  BazaarSession[]
   ledgerEntries   LedgerEntry[]
   auditLogs       AuditLog[]
   memberships     MessMembership[]
   telegramGroups  TelegramGroup[]
   mealPreferences UserMealPreference[]
   mealConfigs     MealConfig[]
+  cookNotes       DailyCookNote[]
 
   @@map("messes")
 }
@@ -49,16 +53,18 @@ model Member {
   invitedBy      String?   @map("invited_by") @db.Uuid
   joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
 
-  mess           Mess?           @relation(fields: [messId], references: [id], onDelete: Cascade)
-  inviter        Member?         @relation("InvitedBy", fields: [invitedBy], references: [id])
-  invitees       Member[]        @relation("InvitedBy")
-  dailyLogs      DailyLog[]
-  addedExpenses  Expense[]       @relation("AddedBy")
-  ledgerEntries  LedgerEntry[]   @relation("MemberLedger")
-  createdLedgers LedgerEntry[]   @relation("CreatedBy")
-  auditLogs      AuditLog[]
-  memberships    MessMembership[]
-  mealPreferences UserMealPreference[]
+  mess              Mess?           @relation(fields: [messId], references: [id], onDelete: Cascade)
+  inviter           Member?         @relation("InvitedBy", fields: [invitedBy], references: [id])
+  invitees          Member[]        @relation("InvitedBy")
+  dailyLogs         DailyLog[]
+  addedExpenses     Expense[]       @relation("AddedBy")
+  bazaarSessions    BazaarSession[] @relation("SessionCreator")
+  ledgerEntries     LedgerEntry[]   @relation("MemberLedger")
+  createdLedgers    LedgerEntry[]   @relation("CreatedBy")
+  auditLogs         AuditLog[]
+  memberships       MessMembership[]
+  mealPreferences   UserMealPreference[]
+  managedPeriods    MessMonth[]        @relation("PeriodManager")
 
   @@index([messId], map: "idx_members_mess")
   @@index([telegramUid], map: "idx_members_telegram")
@@ -69,6 +75,11 @@ model MessMonth {
   id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   messId       String    @map("mess_id") @db.Uuid
   yearMonth    String    @map("year_month")
+  /// Explicit period boundaries — replaces calendar-month derivation
+  startDate    DateTime  @map("start_date") @db.Date
+  endDate      DateTime  @map("end_date") @db.Date
+  /// The designated manager(s) for this period (nullable — inherits current managers)
+  managerId    String?   @map("manager_id") @db.Uuid
   isClosed     Boolean   @default(false) @map("is_closed")
   closedAt     DateTime? @map("closed_at") @db.Timestamptz(6)
   mealRate     Decimal?  @map("meal_rate") @db.Decimal(10, 4)
@@ -76,9 +87,11 @@ model MessMonth {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   mess          Mess          @relation(fields: [messId], references: [id], onDelete: Cascade)
+  manager       Member?       @relation("PeriodManager", fields: [managerId], references: [id])
   ledgerEntries LedgerEntry[]
 
   @@unique([messId, yearMonth])
+  @@index([messId, isClosed], map: "idx_mess_months_open")
   @@map("mess_months")
 }
 
@@ -136,6 +149,8 @@ model Expense {
   id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   messId      String   @map("mess_id") @db.Uuid
   addedBy     String?  @map("added_by") @db.Uuid
+  /// Optional link to a BazaarSession — null for legacy/standalone expenses
+  sessionId   String?  @map("session_id") @db.Uuid
   amount      Decimal  @db.Decimal(10, 2)
   category    String
   description String?
@@ -143,23 +158,56 @@ model Expense {
   yearMonth   String   @map("year_month")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  mess          Mess    @relation(fields: [messId], references: [id], onDelete: Cascade)
-  addedByMember Member? @relation("AddedBy", fields: [addedBy], references: [id])
+  mess          Mess           @relation(fields: [messId], references: [id], onDelete: Cascade)
+  addedByMember Member?        @relation("AddedBy", fields: [addedBy], references: [id])
+  session       BazaarSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
   @@index([messId, yearMonth], map: "idx_expenses_mess_month")
+  @@index([sessionId], map: "idx_expenses_session")
   @@map("expenses")
 }
 
-model LedgerEntry {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  messId      String   @map("mess_id") @db.Uuid
-  messMonthId String?  @map("mess_month_id") @db.Uuid
-  memberId    String   @map("member_id") @db.Uuid
-  entryType   String   @map("entry_type")
-  amount      Decimal  @db.Decimal(10, 2)
+/// A shopping trip — groups multiple Expense items under one session.
+/// shoppers: JSON array of { id: string, name: string } who physically went to market.
+model BazaarSession {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String    @map("mess_id") @db.Uuid
+  sessionDate DateTime  @map("session_date") @db.Date
+  yearMonth   String    @map("year_month")
+  /// JSON: [{ id: string, name: string }]
+  shoppers    Json      @default("[]")
   note        String?
-  createdBy   String?  @map("created_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Soft delete — voided sessions stay in DB for audit trail
+  isVoided    Boolean   @default(false) @map("is_voided")
+  voidReason  String?   @map("void_reason")
+  voidedAt    DateTime? @map("voided_at") @db.Timestamptz(6)
+  voidedBy    String?   @map("voided_by") @db.Uuid
+
+  mess     Mess      @relation(fields: [messId], references: [id], onDelete: Cascade)
+  creator  Member?   @relation("SessionCreator", fields: [createdBy], references: [id])
+  expenses Expense[]
+
+  @@index([messId, yearMonth], map: "idx_bazaar_sessions_mess_month")
+  @@map("bazaar_sessions")
+}
+
+model LedgerEntry {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId      String    @map("mess_id") @db.Uuid
+  messMonthId String?   @map("mess_month_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
+  entryType   String    @map("entry_type")
+  amount      Decimal   @db.Decimal(10, 2)
+  note        String?
+  createdBy   String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Soft delete — voided contributions stay in DB for audit trail
+  isVoided    Boolean   @default(false) @map("is_voided")
+  voidReason  String?   @map("void_reason")
+  voidedAt    DateTime? @map("voided_at") @db.Timestamptz(6)
+  voidedBy    String?   @map("voided_by") @db.Uuid
 
   mess      Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
   messMonth MessMonth? @relation(fields: [messMonthId], references: [id])
@@ -234,6 +282,24 @@ model MessMembership {
 
   @@unique([memberId, messId])
   @@map("mess_memberships")
+}
+
+/// Cook's optional note for what was cooked per meal slot per day.
+/// Useful for headcount detail view. One row per mess × date × slot.
+model DailyCookNote {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId    String   @map("mess_id") @db.Uuid
+  logDate   DateTime @map("log_date") @db.Date
+  /// BREAKFAST | LUNCH | DINNER
+  slot      String
+  note      String?
+  updatedBy String?  @map("updated_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@unique([messId, logDate, slot])
+  @@map("daily_cook_notes")
 }
 
 /// Per-user, per-mess default meal preferences.

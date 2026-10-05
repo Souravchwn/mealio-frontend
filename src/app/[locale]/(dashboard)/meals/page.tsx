@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Sun, CloudSun, Moon, Clock, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
@@ -19,11 +19,20 @@ const SLOT_MAP: Record<MealSlotKey, MealSlot> = {
     dinner: MealSlot.DINNER,
 };
 
+interface MealPreference {
+    mealType: string;
+    dayType: string;
+    enabled: boolean;
+    defaultCount: number;
+}
+
 export default function MealsPage() {
     const t = useTranslations("meals");
     const { user, token } = useAuth();
 
-    const today = new Date().toISOString().slice(0, 10);
+    // Server-computed "today" in the mess timezone (Asia/Dhaka).
+    // Do NOT compute this client-side — client UTC date can differ from mess-timezone date.
+    const [serverDate, setServerDate] = useState<string>("");
 
     const [meals, setMeals] = useState<Record<MealSlotKey, boolean>>({
         breakfast: false,
@@ -31,17 +40,29 @@ export default function MealsPage() {
         dinner: false,
     });
     const [guestCount, setGuestCount] = useState(0);
+    // Per-slot cutoff: each slot locks independently once its cutoff passes
+    const [slotCutoffs, setSlotCutoffs] = useState<Record<MealSlotKey, boolean>>({
+        breakfast: false,
+        lunch: false,
+        dinner: false,
+    });
+    // Header badge: next upcoming cutoff time + whether all slots are passed
     const [cutoffPassed, setCutoffPassed] = useState(false);
     const [cutoffTime, setCutoffTime] = useState("");
     const [loading, setLoading] = useState(true);
     const [toggling, setToggling] = useState<MealSlotKey | null>(null);
     const [updatingGuest, setUpdatingGuest] = useState(false);
+    const [preferences, setPreferences] = useState<MealPreference[]>([]);
 
     const loadToday = useCallback(async () => {
         if (!user || !token) return;
         try {
-            const log = await api.meals.getToday(user.id, token, today);
-            // count > 0 = meal is active
+            // Load meal log and preferences in parallel
+            const [log, prefResult] = await Promise.all([
+                api.meals.getToday(user.id, token),
+                api.mealPreferences.getAll(token),
+            ]);
+            setServerDate(log.date);
             setMeals({
                 breakfast: log.breakfastCount > 0,
                 lunch: log.lunchCount > 0,
@@ -50,25 +71,72 @@ export default function MealsPage() {
             setGuestCount(log.guestCount);
             setCutoffPassed(log.cutOffPassed);
             setCutoffTime(log.cutOffTime);
+            // Per-slot cutoff — falls back gracefully if server doesn't return it yet
+            if (log.slotCutoffs) {
+                setSlotCutoffs({
+                    breakfast: log.slotCutoffs.breakfast?.cutoffPassed ?? false,
+                    lunch:     log.slotCutoffs.lunch?.cutoffPassed ?? false,
+                    dinner:    log.slotCutoffs.dinner?.cutoffPassed ?? false,
+                });
+            }
+            setPreferences(prefResult.preferences);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to load today's meals");
         } finally {
             setLoading(false);
         }
-    }, [user, token, today]);
+    }, [user, token]);
 
     useEffect(() => {
         loadToday();
     }, [loadToday]);
 
+    // Determine today's day type client-side (for preference cross-reference display only)
+    // Note: slight inaccuracy possible around midnight vs mess timezone — acceptable for display.
+    const todayDayType = useMemo(() => {
+        const dow = new Date().getDay(); // 0=Sun, 6=Sat
+        return dow === 0 || dow === 6 ? "WEEKEND" : "WEEKDAY";
+    }, []);
+
+    // Get the preference for a slot + today's day type
+    const getPref = useCallback(
+        (slot: MealSlotKey): MealPreference | undefined =>
+            preferences.find(
+                (p) => p.mealType === slot.toUpperCase() && p.dayType === todayDayType
+            ),
+        [preferences, todayDayType]
+    );
+
+    /**
+     * Derive the slot's display status by comparing its current state against
+     * the member's preference for today's day type.
+     *
+     * - "default-off"  → preference says OFF and slot is OFF (system default)
+     * - "override-on"  → preference says OFF but slot is ON (member overrode it)
+     * - "override-off" → preference says ON  but slot is OFF (member manually turned off)
+     * - null           → preference says ON and slot is ON (normal state, no badge)
+     */
+    const getSlotStatus = useCallback(
+        (slot: MealSlotKey): "default-off" | "override-on" | "override-off" | null => {
+            const pref = getPref(slot);
+            if (!pref) return null;
+            const isOn = meals[slot];
+            if (!pref.enabled && !isOn) return "default-off";
+            if (!pref.enabled && isOn) return "override-on";
+            if (pref.enabled && !isOn) return "override-off";
+            return null;
+        },
+        [meals, getPref]
+    );
+
     async function toggleMeal(slot: MealSlotKey) {
-        if (cutoffPassed || toggling !== null || !user || !token) return;
+        if (slotCutoffs[slot] || toggling !== null || !user || !token || !serverDate) return;
         const newStatus = !meals[slot];
         setMeals((prev) => ({ ...prev, [slot]: newStatus }));
         setToggling(slot);
         try {
             await api.meals.toggleMeal(
-                { memberId: user.id, date: today, slot: SLOT_MAP[slot], status: newStatus },
+                { memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status: newStatus },
                 token
             );
         } catch (err) {
@@ -80,14 +148,22 @@ export default function MealsPage() {
     }
 
     async function setAllMeals(status: boolean) {
-        if (cutoffPassed || !user || !token) return;
-        const slots: MealSlotKey[] = ["breakfast", "lunch", "dinner"];
-        setMeals({ breakfast: status, lunch: status, dinner: status });
+        if (!user || !token || !serverDate) return;
+        // Only act on slots that haven't passed their cutoff yet
+        const openSlots = (["breakfast", "lunch", "dinner"] as MealSlotKey[]).filter(
+            (s) => !slotCutoffs[s]
+        );
+        if (openSlots.length === 0) return;
+        setMeals((prev) => {
+            const next = { ...prev };
+            for (const s of openSlots) next[s] = status;
+            return next;
+        });
         try {
             await Promise.all(
-                slots.map((slot) =>
+                openSlots.map((slot) =>
                     api.meals.toggleMeal(
-                        { memberId: user.id, date: today, slot: SLOT_MAP[slot], status },
+                        { memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status },
                         token
                     )
                 )
@@ -99,12 +175,13 @@ export default function MealsPage() {
     }
 
     async function changeGuest(delta: number) {
-        if (cutoffPassed || updatingGuest || !user || !token) return;
+        // Block guest changes only after dinner cutoff (last meal of day)
+        if (slotCutoffs.dinner || updatingGuest || !user || !token || !serverDate) return;
         const newCount = Math.max(0, guestCount + delta);
         setGuestCount(newCount);
         setUpdatingGuest(true);
         try {
-            await api.meals.updateGuest({ memberId: user.id, date: today, guestCount: newCount }, token);
+            await api.meals.updateGuest({ memberId: user.id, date: serverDate, guestCount: newCount }, token);
         } catch (err) {
             setGuestCount(guestCount);
             toast.error(err instanceof Error ? err.message : "Failed to update guest count");
@@ -163,7 +240,7 @@ export default function MealsPage() {
                     variant="secondary"
                     size="small"
                     onClick={() => setAllMeals(true)}
-                    disabled={cutoffPassed || loading}
+                    disabled={loading || (slotCutoffs.breakfast && slotCutoffs.lunch && slotCutoffs.dinner)}
                 >
                     {t("allOn")}
                 </Button>
@@ -171,7 +248,7 @@ export default function MealsPage() {
                     variant="ghost"
                     size="small"
                     onClick={() => setAllMeals(false)}
-                    disabled={cutoffPassed || loading}
+                    disabled={loading || (slotCutoffs.breakfast && slotCutoffs.lunch && slotCutoffs.dinner)}
                 >
                     {t("allOff")}
                 </Button>
@@ -179,18 +256,39 @@ export default function MealsPage() {
 
             {/* Meal Cards */}
             <div className={styles.mealCards}>
-                {mealSlots.map((slot) => (
+                {mealSlots.map((slot) => {
+                    const locked = slotCutoffs[slot.key];
+                    const status = getSlotStatus(slot.key);
+                    return (
                     <div
                         key={slot.key}
                         className={cn(
                             styles.mealCard,
-                            meals[slot.key] && styles.mealCardActive
+                            meals[slot.key] && styles.mealCardActive,
+                            locked && styles.mealCardLocked
                         )}
-                        onClick={() => !cutoffPassed && !loading && toggleMeal(slot.key)}
+                        onClick={() => !locked && !loading && toggleMeal(slot.key)}
                     >
                         <span className={styles.mealIcon}>{slot.icon}</span>
                         <div className={styles.mealCardContent}>
                             <h3 className={styles.mealName}>{slot.label}</h3>
+
+                            {/* Preference status chip */}
+                            {status === "default-off" && (
+                                <span className={cn(styles.statusChip, styles.chipDefaultOff)}>
+                                    {t("defaultOff")}
+                                </span>
+                            )}
+                            {status === "override-on" && (
+                                <span className={cn(styles.statusChip, styles.chipOverride)}>
+                                    {t("overrideOn")}
+                                </span>
+                            )}
+                            {status === "override-off" && (
+                                <span className={cn(styles.statusChip, styles.chipOverride)}>
+                                    {t("overrideOff")}
+                                </span>
+                            )}
 
                             <div className={styles.toggleWrap}>
                                 <span className={cn(styles.toggleLabel, styles.toggleOff)}>
@@ -200,10 +298,10 @@ export default function MealsPage() {
                                     className={cn(
                                         styles.toggle,
                                         meals[slot.key] && styles.toggleActive,
-                                        (cutoffPassed || toggling === slot.key) && styles.toggleDisabled
+                                        (locked || toggling === slot.key) && styles.toggleDisabled
                                     )}
                                     onClick={(e) => { e.stopPropagation(); toggleMeal(slot.key); }}
-                                    disabled={cutoffPassed || toggling !== null || loading}
+                                    disabled={locked || toggling !== null || loading}
                                     role="switch"
                                     aria-checked={meals[slot.key]}
                                     aria-label={`Toggle ${slot.label}`}
@@ -216,13 +314,19 @@ export default function MealsPage() {
                             </div>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Guest Section */}
             <div className={styles.guestSection}>
                 <div className={styles.guestHeader}>
                     <h3 className={styles.guestTitle}>{t("guestCount")}</h3>
+                    {guestCount > 0 && (
+                        <span className={styles.guestNote}>
+                            {t("guestPortions", { n: guestCount })}
+                        </span>
+                    )}
                 </div>
 
                 <div className={styles.guestControls}>

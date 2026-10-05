@@ -64,7 +64,7 @@ DailyLog {
 {
   id: string
   memberId: string
-  date: string              // YYYY-MM-DD
+  date: string              // YYYY-MM-DD (server-computed in mess timezone — never pass client date)
   breakfastCount: number
   lunchCount: number
   dinnerCount: number
@@ -73,13 +73,21 @@ DailyLog {
   dinner: boolean
   guestCount: number
   frozen: boolean
-  cutOffTime: string        // HH:MM of next upcoming cutoff
-  cutOffPassed: boolean     // true if all cutoffs passed OR day is frozen
+  // Backward-compat: next upcoming slot cutoff, or last slot if all passed
+  cutOffTime: string
+  cutOffPassed: boolean     // true only when ALL slots passed OR day is frozen
+  // Per-slot cutoff — use these to lock individual meal cards
+  slotCutoffs: {
+    breakfast: { cutoffTime: string; cutoffPassed: boolean }
+    lunch:     { cutoffTime: string; cutoffPassed: boolean }
+    dinner:    { cutoffTime: string; cutoffPassed: boolean }
+  }
 }
 ```
 
 **Client usage:**
 ```typescript
+// Always call without a date param — server resolves today in mess timezone
 const log = await api.meals.getToday(user.id, token)
 ```
 
@@ -212,6 +220,25 @@ Used by cron job to generate DailyLogs for all members at midnight.
 
 ---
 
+## Preference-Aware Status Chips (NEW)
+
+The meals page loads preferences in parallel with the daily log. For each meal card it shows a small chip below the meal name:
+
+| State | Chip | When |
+|-------|------|------|
+| `default-off` | "Default Off" (gray) | Preference says OFF and slot IS off (system default) |
+| `override-on` | "Override On" (amber) | Preference says OFF but user turned slot ON |
+| `override-off` | "Override Off" (amber) | Preference says ON but slot is OFF (user turned it off) |
+| *(none)* | No chip | Normal: preference ON and slot ON |
+
+Day type is computed client-side (Sat/Sun = WEEKEND, else WEEKDAY). Slight inaccuracy around midnight is acceptable for display purposes.
+
+The API now also returns `is_override: boolean` on the log (false = cron-generated from preferences, true = manually changed).
+
+**Guest note:** The guest section shows a helper text `"+N guest per active meal"` when `guestCount > 0`, clarifying that guests only count for meals where the member is eating.
+
+---
+
 ## Meals Page (`meals/page.tsx`) — UI State
 
 ```typescript
@@ -279,6 +306,8 @@ interface GuestUpdateRequest {
 ## Common Pitfalls
 
 1. **Meal slot names:** The `slot` field in `MealToggleRequest` uses `MealSlot` enum (`'BREAKFAST'`), but the page often uses lowercase strings. The API route accepts lowercase too (`slotLower = slot.toLowerCase()`).
-2. **Cutoff is per-slot** (from `meal_configs` table) — not a single global time. When checking cutoff in the UI, use `cutOffPassed` from `getToday` response (it already computes the correct per-slot cutoff).
-3. **Creating logs:** Both `today/route.ts` and `toggle/route.ts` auto-create logs if missing. They call `getMemberMealDefaults()` to seed the initial counts. Don't assume a log exists.
-4. **`isOverride` flag:** The cron sets `isOverride: false`. User/admin toggles set `isOverride: true`. Use this to distinguish auto vs manual changes in the matrix.
+2. **Cutoff is per-slot** — use `slotCutoffs.breakfast/lunch/dinner.cutoffPassed` from `getToday` to lock each card independently. Do NOT use the single `cutOffPassed` boolean for this — it's only `true` when ALL slots have passed. Using the wrong one is what allowed toggles after individual slot cutoffs.
+3. **"today" date must come from the server** — never compute it client-side (`new Date().toISOString().slice(0, 10)` is UTC). The server returns `log.date` in mess timezone. Store it as `serverDate` and use that for all toggle/guest API calls.
+4. **Guest lock uses dinner cutoff** — the guest increment/decrement is disabled only after the dinner cutoff (last meal). Before that, guests can be added/removed even after breakfast and lunch have locked.
+5. **Creating logs:** Both `today/route.ts` and `toggle/route.ts` auto-create logs if missing. They call `getMemberMealDefaults()` to seed the initial counts. Don't assume a log exists.
+6. **`isOverride` flag:** The cron sets `isOverride: false`. User/admin toggles set `isOverride: true`. Use this to distinguish auto vs manual changes in the matrix.

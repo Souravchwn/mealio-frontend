@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   const messId = searchParams.get('mess_id') || payload.messId
   const yearMonth = searchParams.get('year_month') || new Date().toISOString().slice(0, 7)
 
+  // calculateMealRate internally calls calculateMonthStats which uses resolvePeriod
   const mealRate = await calculateMealRate(messId, yearMonth)
 
   return NextResponse.json({ mess_id: messId, year_month: yearMonth, meal_rate: mealRate })

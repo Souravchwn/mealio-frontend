@@ -5,10 +5,11 @@
 
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE } from './constants'
+import { resolvePeriod, calculateNextPeriod } from './period'
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
-/** Parse "YYYY-MM" into UTC Date boundaries for Prisma date-range queries. */
+/** Legacy calendar-month range. Kept for migration backfill only. */
 export function monthRange(yearMonth: string): { start: Date; end: Date } {
   const [y, m] = yearMonth.split('-').map(Number)
   const start = new Date(`${yearMonth}-01T00:00:00.000Z`)
@@ -86,18 +87,47 @@ export function calculateMemberBalance(
   return contributed - memberMeals * mealRate
 }
 
-// ─── Rate calculation ─────────────────────────────────────────────────────────
+// ─── Voided-expense filter ────────────────────────────────────────────────────
 
 /**
- * Calculate the live meal rate for a given mess and month.
- * meal_rate = total_expenses / total_meal_slots
+ * Single source of truth for the Prisma where clause that excludes expenses
+ * belonging to voided bazaar sessions. Use this everywhere instead of
+ * inlining the OR condition.
  */
-export async function calculateMealRate(messId: string, yearMonth: string): Promise<number> {
-  const { start, end } = monthRange(yearMonth)
+export function nonVoidedExpenseWhere(messId: string, start: Date, end: Date) {
+  return {
+    messId,
+    expenseDate: { gte: start, lte: end },
+    OR: [{ sessionId: null as string | null }, { session: { isVoided: false } }],
+  }
+}
 
+// ─── Month stats ──────────────────────────────────────────────────────────────
+
+/**
+ * Single source of truth for period-level financial stats.
+ * Returns totalExpense, totalMeals, and mealRate — all excluding voided sessions.
+ * Uses explicit start/end dates from the period.
+ */
+export async function calculateMonthStats(
+  messId: string,
+  yearMonth: string,
+): Promise<{ totalExpense: number; totalMeals: number; mealRate: number }> {
+  const period = await resolvePeriod(messId, yearMonth)
+  return calculateStatsForRange(messId, period.start, period.end)
+}
+
+/**
+ * Calculate stats for an explicit date range (no yearMonth resolution needed).
+ */
+export async function calculateStatsForRange(
+  messId: string,
+  start: Date,
+  end: Date,
+): Promise<{ totalExpense: number; totalMeals: number; mealRate: number }> {
   const [exps, logs] = await Promise.all([
     prisma.expense.findMany({
-      where: { messId, expenseDate: { gte: start, lte: end } },
+      where: nonVoidedExpenseWhere(messId, start, end),
       select: { amount: true },
     }),
     prisma.dailyLog.findMany({
@@ -107,29 +137,44 @@ export async function calculateMealRate(messId: string, yearMonth: string): Prom
   ])
 
   const totalExpense = exps.reduce((s, e) => s + Number(e.amount), 0)
-  const totalSlots = countMealSlots(logs)
-  return totalSlots === 0 ? 0 : totalExpense / totalSlots
+  const totalMeals = countMealSlots(logs)
+  return { totalExpense, totalMeals, mealRate: totalMeals > 0 ? totalExpense / totalMeals : 0 }
+}
+
+/**
+ * Convenience wrapper — use calculateMonthStats when you also need
+ * totalExpense or totalMeals alongside the rate.
+ */
+export async function calculateMealRate(messId: string, yearMonth: string): Promise<number> {
+  return (await calculateMonthStats(messId, yearMonth)).mealRate
 }
 
 // ─── Month closing ────────────────────────────────────────────────────────────
 
 /**
- * Close a month: freeze logs, create ledger entries, carry forward balances.
+ * Close a period: freeze logs, create ledger entries, carry forward balances,
+ * and create the next period with optional manager assignment.
  * ⚠️ IRREVERSIBLE — wrapped in a Prisma transaction.
- * Throws if month is already closed.
+ * Throws if period is already closed.
  */
 export async function closeMonth(
   messId: string,
   yearMonth: string,
-  adminId: string
-): Promise<{ mealRate: number; totalExpense: number; totalMeals: number }> {
-  const { start, end } = monthRange(yearMonth)
+  adminId: string,
+  nextManagerId?: string | null,
+): Promise<{ mealRate: number; totalExpense: number; totalMeals: number; nextPeriod: { yearMonth: string; startDate: string; endDate: string } }> {
+  // Look up the period
+  const period = await resolvePeriod(messId, yearMonth)
+  const { start, end } = period
 
-  const existingMonth = await prisma.messMonth.findFirst({
-    where: { messId, yearMonth },
-    select: { isClosed: true },
+  if (period.isClosed) throw new Error('Month is already closed')
+
+  // Get mess config for next period calculation
+  const mess = await prisma.mess.findUnique({
+    where: { id: messId },
+    select: { monthStartDay: true },
   })
-  if (existingMonth?.isClosed) throw new Error('Month is already closed')
+  const monthStartDay = mess?.monthStartDay ?? 1
 
   const [members, logs, expenses] = await Promise.all([
     prisma.member.findMany({ where: { messId, isActive: true }, select: { id: true } }),
@@ -137,8 +182,9 @@ export async function closeMonth(
       where: { messId, logDate: { gte: start, lte: end } },
       select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
     }),
+    // Exclude expenses from voided sessions
     prisma.expense.findMany({
-      where: { messId, expenseDate: { gte: start, lte: end } },
+      where: nonVoidedExpenseWhere(messId, start, end),
       select: { amount: true, addedBy: true },
     }),
   ])
@@ -147,43 +193,57 @@ export async function closeMonth(
   const totalMeals = countMealSlots(logs)
   const mealRate = totalMeals > 0 ? totalExpense / totalMeals : 0
 
-  await prisma.$transaction(async (tx) => {
-    const messMonth = await tx.messMonth.upsert({
-      where: { messId_yearMonth: { messId, yearMonth } },
-      create: { messId, yearMonth, isClosed: true, closedAt: new Date(), mealRate, totalExpense },
-      update: { isClosed: true, closedAt: new Date(), mealRate, totalExpense },
+  // Calculate next period dates
+  const nextPeriodDates = calculateNextPeriod(end, monthStartDay)
+
+  const nextPeriodResult = await prisma.$transaction(async (tx) => {
+    // Close current period
+    await tx.messMonth.update({
+      where: { id: period.id },
+      data: {
+        isClosed: true,
+        closedAt: new Date(),
+        mealRate,
+        totalExpense,
+      },
     })
 
+    // Freeze all logs in the period
     await tx.dailyLog.updateMany({
       where: { messId, logDate: { gte: start, lte: end } },
       data: { frozen: true },
     })
 
+    // Create deduction ledger entries for each member
     const deductions = members.map((member) => {
       const memberMeals = countMealSlots(logs.filter((l) => l.memberId === member.id))
       return {
         messId,
-        messMonthId: messMonth.id,
+        messMonthId: period.id,
         memberId: member.id,
         entryType: 'DEDUCTION',
         amount: -(memberMeals * mealRate),
-        note: `Meal deduction for ${yearMonth}: ${memberMeals} meals \u00d7 \u09f3${mealRate.toFixed(2)}`,
+        note: `Meal deduction for ${yearMonth}: ${memberMeals} meals × ৳${mealRate.toFixed(2)}`,
         createdBy: adminId,
       }
     })
     if (deductions.length > 0) await tx.ledgerEntry.createMany({ data: deductions })
 
-    // Next month for carry-forward
-    const [y, m] = yearMonth.split('-').map(Number)
-    const nextDate = new Date(y, m, 1) // m is 1-indexed, so new Date(y, m, 1) = first day of next month
-    const nextYearMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`
-
+    // Create NEXT period
     const nextMonth = await tx.messMonth.upsert({
-      where: { messId_yearMonth: { messId, yearMonth: nextYearMonth } },
-      create: { messId, yearMonth: nextYearMonth, isClosed: false },
+      where: { messId_yearMonth: { messId, yearMonth: nextPeriodDates.yearMonth } },
+      create: {
+        messId,
+        yearMonth: nextPeriodDates.yearMonth,
+        startDate: nextPeriodDates.startDate,
+        endDate: nextPeriodDates.endDate,
+        managerId: nextManagerId || null,
+        isClosed: false,
+      },
       update: {},
     })
 
+    // Create carry-forward ledger entries into next period
     const carryForwards = members.map((member) => {
       const memberLogs = logs.filter((l) => l.memberId === member.id)
       const memberMeals = countMealSlots(memberLogs)
@@ -202,17 +262,36 @@ export async function closeMonth(
     })
     if (carryForwards.length > 0) await tx.ledgerEntry.createMany({ data: carryForwards })
 
+    // Audit log
     await tx.auditLog.create({
       data: {
         messId,
         actorId: adminId,
         action: 'CLOSE_MONTH',
         targetTable: 'mess_months',
-        targetId: messMonth.id,
-        newValue: { year_month: yearMonth, meal_rate: mealRate, total_expense: totalExpense, total_meals: totalMeals },
+        targetId: period.id,
+        newValue: {
+          year_month: yearMonth,
+          meal_rate: mealRate,
+          total_expense: totalExpense,
+          total_meals: totalMeals,
+          next_period: nextPeriodDates.yearMonth,
+          next_manager_id: nextManagerId || null,
+        },
       },
     })
+
+    return nextMonth
   })
 
-  return { mealRate, totalExpense, totalMeals }
+  return {
+    mealRate,
+    totalExpense,
+    totalMeals,
+    nextPeriod: {
+      yearMonth: nextPeriodResult.yearMonth,
+      startDate: nextPeriodResult.startDate.toISOString().slice(0, 10),
+      endDate: nextPeriodResult.endDate.toISOString().slice(0, 10),
+    },
+  }
 }

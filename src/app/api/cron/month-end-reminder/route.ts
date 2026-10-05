@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Runs at 8 PM on days 28-31 via Vercel cron
-// Sends month-end reminder to ADMIN members via Telegram if it's the last day of the month
+// Runs daily at 8 PM via Vercel cron
+// Sends a reminder to ADMIN members when the current open period is about to end
+// (within 2 days of the period's endDate)
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret) {
@@ -17,37 +18,36 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, reason: 'No Telegram bot token configured' })
   }
 
-  const now = new Date()
-  const today = now.toISOString().slice(0, 10)
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1
-  const lastDayOfMonth = new Date(year, month, 0).getDate()
+  const today = new Date()
+  today.setUTCHours(0, 0, 0, 0)
 
-  if (now.getDate() !== lastDayOfMonth) {
-    return NextResponse.json({ ok: true, reason: 'Not last day of month' })
-  }
+  // Find all open periods that end within the next 2 days
+  const twoDaysFromNow = new Date(today)
+  twoDaysFromNow.setUTCDate(twoDaysFromNow.getUTCDate() + 2)
 
-  const yearMonth = `${year}-${String(month).padStart(2, '0')}`
-
-  const messes = await prisma.mess.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true },
+  const openPeriods = await prisma.messMonth.findMany({
+    where: {
+      isClosed: false,
+      endDate: { lte: twoDaysFromNow },
+    },
+    select: {
+      yearMonth: true,
+      startDate: true,
+      endDate: true,
+      mess: { select: { id: true, name: true } },
+    },
   })
 
   let reminded = 0
 
-  for (const mess of messes) {
-    const monthRecord = await prisma.messMonth.findFirst({
-      where: { messId: mess.id, yearMonth },
-      select: { isClosed: true },
-    })
-
-    if (monthRecord?.isClosed) continue
-
+  for (const period of openPeriods) {
     const admins = await prisma.member.findMany({
-      where: { messId: mess.id, role: 'ADMIN', isActive: true, telegramLinked: true },
+      where: { messId: period.mess.id, role: 'ADMIN', isActive: true, telegramLinked: true },
       select: { telegramUid: true, name: true },
     })
+
+    const startStr = period.startDate.toISOString().slice(0, 10)
+    const endStr = period.endDate.toISOString().slice(0, 10)
 
     for (const admin of admins) {
       if (!admin.telegramUid) continue
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: admin.telegramUid.toString(),
-          text: `📅 *Month-End Reminder — ${mess.name}*\n\nToday (${today}) is the last day of ${yearMonth}.\n\nPlease close the month from the Mealio admin dashboard to:\n• Freeze all meal logs\n• Calculate final balances\n• Carry forward to next month\n\n🔗 Go to Matrix → Close Month`,
+          text: `📅 *Period-End Reminder — ${period.mess.name}*\n\nThe current billing period (${startStr} → ${endStr}) is about to end.\n\nPlease close the month from the Mealio admin dashboard to:\n• Freeze all meal logs\n• Calculate final balances\n• Carry forward to next period\n\n🔗 Go to Matrix → Close Month`,
           parse_mode: 'Markdown',
         }),
       })
@@ -64,5 +64,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, reminded })
+  return NextResponse.json({ ok: true, reminded, periodsChecked: openPeriods.length })
 }

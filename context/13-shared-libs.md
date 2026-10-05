@@ -272,6 +272,52 @@ Creates an `AuditLog` row. Used by all admin-level operations. Failures are swal
 
 ---
 
+## `src/app/globals.css` — Global Design System
+
+**Affects the entire app.** Contains:
+- CSS custom properties (design tokens): colors, spacing, typography, shadows, transitions, z-index, layout widths
+- Dark mode overrides under `[data-theme="dark"]`
+- Reset (`*, body, a, button, input, img, ul`)
+- Utility classes: `.sr-only`, `.focus-ring`, `.glass`, `.gradient-text`
+- Global animation keyframes: `fadeIn`, `fadeInUp`, `fadeInDown`, `slideInLeft`, `slideInRight`, `scaleIn`, `pulse`, `shimmer`, `spin`, `countUp`, `float`, `gradientShift`
+- Animation utility classes: `.animate-fadeIn`, `.animate-fadeInUp`, `.animate-scaleIn`, `.animate-pulse`, `.animate-spin`, `.animate-float`
+- Stagger delay helpers: `.stagger-1` through `.stagger-6`
+- `prefers-reduced-motion` override (disables all animations)
+
+### Scrollbar (global)
+```css
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: linear-gradient(to bottom, --color-primary, #a855f7); border-radius: full; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: --color-primary transparent; }
+```
+
+### Key CSS Variables (light defaults)
+| Token | Value | Purpose |
+|-------|-------|---------|
+| `--color-primary` | `#6366f1` | Indigo — brand primary |
+| `--color-accent` | `#f59e0b` | Amber — secondary accent |
+| `--color-success` | `#10b981` | Green |
+| `--color-danger` | `#ef4444` | Red |
+| `--color-bg` | `#f8fafc` | Page background |
+| `--color-bg-card` | `#ffffff` | Card / surface |
+| `--color-bg-subtle` | `#f1f5f9` | Alternate section bg |
+| `--color-text` | `#0f172a` | Primary text |
+| `--color-text-secondary` | `#64748b` | Secondary text |
+| `--color-text-muted` | `#94a3b8` | Muted / placeholder |
+| `--color-border` | `#e2e8f0` | Default border |
+| `--sidebar-width` | `260px` | Dashboard sidebar |
+| `--topbar-height` | `64px` | Dashboard topbar |
+| `--max-content-width` | `1280px` | Page max-width cap |
+
+> **When adding new global tokens:** add to both `:root` and `[data-theme="dark"]` blocks.
+
+---
+
 ## `src/lib/prisma.ts`
 
 ```typescript

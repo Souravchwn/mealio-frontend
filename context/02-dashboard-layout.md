@@ -54,68 +54,77 @@ Audit      → /{locale}/audit
 Settings   → /{locale}/settings
 ```
 
-**Note:** MANAGER sees Settings nav in the page (isAdmin check in settings page) but Settings is NOT in their nav. MANAGER can only reach Settings by direct URL.
-
 ### Active detection
 ```typescript
 const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
 ```
 
 ### topbarRight order (left to right)
-1. `MessSwitcher` — dropdown to switch between messes (Admin: always shown; others: only if 2+ messes)
+1. `MessSwitcher` — dropdown to switch between messes
 2. `ThemeToggle` — light/dark
-3. Bell icon — notifications (placeholder, no functionality)
+3. Bell icon (`.iconBtn`) — notifications placeholder
+
+### Logout button
+Uses `.logoutBtn` class (no inline styles). Hover turns red (`var(--color-danger)`).
 
 ### Bottom nav (mobile)
-Shows first 5 items from `filteredMain`. Icon + label.
+Shows first 5 items from `filteredMain`. Active state shows a small dot indicator below the icon via `::after`.
 
 ---
 
-## `MessSwitcher.tsx`
+## Design System — Layout Shell
 
-### Visibility rule
-```typescript
-if (user?.role !== "ADMIN" && messes.length < 2) return null
-```
-So: ADMIN always sees it (even with 1 mess — to create new ones). Others see it only if they belong to 2+ messes.
+### Sidebar
+- Background: `var(--color-bg-sidebar)` = `#0f0a2e` (dark navy). Dark in both modes.
+- Active nav item: `rgba(99,102,241,0.15)` background + 3px left bar (`var(--color-primary)`) + icon glow.
+- Active icon: `color: var(--color-primary)` + `filter: drop-shadow` glow.
 
-### Data loading
-On mount, calls `api.mess.list(token)` → sets local `messes` state. No global state used.
+### Topbar
+- Background: `var(--color-bg)` (page background — **not** card white, **no** blur/glass).
+- Border: `1px solid var(--color-border)` at bottom.
+- **No `backdrop-filter`** — the earlier frosted-glass approach used an undefined `--color-bg-card-rgb` variable (fell back to hardcoded white `255 255 255`). Fixed to use plain `var(--color-bg)`.
+- Topbar is intentionally a different color from the sidebar — it belongs to the content area, not the nav shell. The visual separation is correct UX.
 
-### Switching a mess
-```typescript
-async function handleSwitch(messId: string) {
-  const res = await api.mess.switchMess(messId, token)
-  login({ ...user, messId: res.mess.id, messName: res.mess.name }, res.accessToken)
-  router.refresh()
-  window.location.reload()
-}
-```
-The full page reload is intentional — it ensures all components re-initialize with the new mess context.
-
-### "Create New" option
-Shown only to `ADMIN`. Navigates to `/{locale}/mess/create`.
-
-### Dropdown items
-Each mess renders with a colored dot (active) or empty dot (inactive). Active mess button is `disabled`.
-
-### Close on outside click
-Uses `useRef` + `document.addEventListener("mousedown", ...)` pattern. Cleanup on unmount.
+### Content area
+- `max-width: 1200px`, centered, `padding: var(--space-6)`.
 
 ---
 
-## CSS Variables Used (from `globals.css`)
+## CSS Class Reference
+
+| Class | Purpose |
+|-------|---------|
+| `.sidebar` | Fixed left nav panel |
+| `.sidebarOpen` | Mobile: slide in |
+| `.navItem` | Nav link base |
+| `.navItemActive` | Active link (indigo bg + left bar) |
+| `.navItemIcon` | Icon wrapper (active gets primary color + glow) |
+| `.navLabel` | Section label ("Menu" / "Admin") |
+| `.logoutBtn` | Logout icon button (red on hover) |
+| `.topbar` | Sticky page header |
+| `.pageTitle` | Current page name in topbar |
+| `.iconBtn` | Generic topbar icon button (Bell, etc.) |
+| `.menuButton` | Hamburger (hidden on desktop, shown ≤1024px) |
+| `.bottomNav` | Mobile bottom nav container |
+| `.bottomNavItem` | Bottom nav link |
+| `.bottomNavItemActive` | Active bottom item (primary color + dot) |
+| `.content` | Page content wrapper |
+| `.overlay` | Mobile sidebar backdrop |
+
+---
+
+## CSS Variables Used
 
 | Variable | Usage |
 |----------|-------|
-| `--sidebar-width` | Sidebar fixed width |
-| `--topbar-height` | Topbar height |
+| `--sidebar-width` | Sidebar fixed width (260px) |
+| `--topbar-height` | Topbar height (64px) |
 | `--color-bg-sidebar` | Sidebar background (dark) |
-| `--color-bg-sidebar-hover` | Nav item hover |
-| `--color-primary` | Active nav indicator + dots |
+| `--color-bg` | Topbar + page background |
+| `--color-primary` | Active nav indicator, dots, glow |
+| `--color-danger` | Logout button hover |
 | `--z-fixed` | Sidebar z-index |
 | `--z-sticky` | Topbar z-index |
-| `--z-dropdown` | MessSwitcher dropdown |
 
 ---
 
@@ -123,37 +132,40 @@ Uses `useRef` + `document.addEventListener("mousedown", ...)` pattern. Cleanup o
 
 | Breakpoint | Behavior |
 |------------|----------|
-| > 1024px | Sidebar fixed at left; `.main` has `margin-left: var(--sidebar-width)` |
-| ≤ 1024px | Sidebar hidden (`translateX(-100%)`), hamburger button shown; `.bottomNav` appears |
-| ≤ 640px | Content padding reduced; topbar height 56px; page title font smaller |
+| > 1024px | Sidebar fixed left; `.main` has `margin-left: var(--sidebar-width)` |
+| ≤ 1024px | Sidebar hidden (`translateX(-100%)`), hamburger shown; `.bottomNav` appears |
+| ≤ 640px | Content padding `var(--space-4)`; topbar height 56px; page title `text-sm` |
+
+---
+
+## MessSwitcher
+
+### Visibility rule
+```typescript
+if (user?.role !== "ADMIN" && messes.length < 2) return null
+```
+ADMIN always sees it. Others see it only if they belong to 2+ messes.
+
+### Switching
+```typescript
+const res = await api.mess.switchMess(messId, token)
+login({ ...user, messId: res.mess.id, messName: res.mess.name }, res.accessToken)
+router.refresh()
+window.location.reload()  // intentional — ensures all components re-init
+```
 
 ---
 
 ## i18n Keys
 
-`nav.*` namespace:
-- `overview`, `meals`, `mealHistory`, `expenses`, `expenseAnalytics`, `headcount`, `mySummary`, `matrix`, `members`, `audit`, `settings`, `logout`, `profile`
+`nav.*`: `overview`, `meals`, `mealHistory`, `expenses`, `headcount`, `mySummary`, `matrix`, `members`, `audit`, `settings`, `logout`, `profile`
 
-`messSwitcher.*`:
-- `label` ("Switch Mess"), `switching` ("Switching..."), `createNew` ("Create New Mess")
+`messSwitcher.*`: `label`, `switching`
 
 ---
 
 ## Adding a New Nav Item
 
-1. Add to `mainNav` or `adminNav` array with `{ key, href, icon, roles }`
+1. Add to `mainNav` or `adminNav` with `{ key, href, icon, roles }`
 2. Add `nav.yourKey` to `messages/en.json` and `messages/bn.json`
-3. Add corresponding `key` to `useTranslations("nav")` — already covers any key under `nav.*`
-4. Create the page at `src/app/[locale]/(dashboard)/your-route/page.tsx`
-
----
-
-## Adding a New Composed Component
-
-Follow the `ThemeToggle` pattern:
-```
-src/components/composed/YourComponent/
-  YourComponent.tsx         ← "use client"
-  YourComponent.module.css
-```
-Import and place in `layout.tsx` topbar or sidebar as needed.
+3. Create the page at `src/app/[locale]/(dashboard)/your-route/page.tsx`

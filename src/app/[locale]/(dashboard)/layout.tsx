@@ -54,6 +54,11 @@ export default function DashboardLayout({
         }
     }, [isAuthenticated, isLoading, locale, router]);
 
+    // Close sidebar on route change
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [pathname]);
+
     if (isLoading) {
         return (
             <div className={styles.loadingScreen}>
@@ -95,7 +100,7 @@ export default function DashboardLayout({
             key: "expenses",
             href: `${basePath}/expenses`,
             icon: <Receipt size={20} />,
-            roles: ["ADMIN", "MANAGER"],
+            roles: ["ADMIN", "MANAGER", "MEMBER"],
         },
         {
             key: "headcount",
@@ -107,6 +112,13 @@ export default function DashboardLayout({
             key: "mySummary",
             href: `${basePath}/my-summary`,
             icon: <BarChart2 size={20} />,
+            roles: ["ADMIN", "MANAGER", "MEMBER"],
+        },
+        // Settings: appears in sidebar for all roles (not in bottom nav — slice(0,5) excludes it)
+        {
+            key: "settings",
+            href: `${basePath}/settings`,
+            icon: <Settings size={20} />,
             roles: ["ADMIN", "MANAGER", "MEMBER"],
         },
     ];
@@ -128,12 +140,6 @@ export default function DashboardLayout({
             key: "audit",
             href: `${basePath}/audit`,
             icon: <FileText size={20} />,
-            roles: ["ADMIN"],
-        },
-        {
-            key: "settings",
-            href: `${basePath}/settings`,
-            icon: <Settings size={20} />,
             roles: ["ADMIN"],
         },
     ];
@@ -159,16 +165,15 @@ export default function DashboardLayout({
 
     return (
         <div className={styles.layout}>
-            {/* Sidebar Overlay (mobile) */}
+            {/* Sidebar Backdrop */}
             <div
-                className={cn(styles.overlay, sidebarOpen && styles.overlayVisible)}
+                className={cn(styles.backdrop, sidebarOpen && styles.backdropVisible)}
                 onClick={() => setSidebarOpen(false)}
+                aria-hidden="true"
             />
 
-            {/* Sidebar */}
-            <aside
-                className={cn(styles.sidebar, sidebarOpen && styles.sidebarOpen)}
-            >
+            {/* Floating Sidebar */}
+            <aside className={cn(styles.sidebar, sidebarOpen && styles.sidebarOpen)}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.sidebarLogo}>
                         <Utensils size={20} color="white" />
@@ -179,6 +184,13 @@ export default function DashboardLayout({
                             {currentUser.messName}
                         </span>
                     </div>
+                    <button
+                        className={styles.sidebarClose}
+                        onClick={() => setSidebarOpen(false)}
+                        aria-label="Close menu"
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
 
                 <nav className={styles.sidebarNav}>
@@ -191,7 +203,6 @@ export default function DashboardLayout({
                                 styles.navItem,
                                 isActive(item.href) && styles.navItemActive
                             )}
-                            onClick={() => setSidebarOpen(false)}
                         >
                             <span className={styles.navItemIcon}>{item.icon}</span>
                             {t(item.key)}
@@ -209,7 +220,6 @@ export default function DashboardLayout({
                                         styles.navItem,
                                         isActive(item.href) && styles.navItemActive
                                     )}
-                                    onClick={() => setSidebarOpen(false)}
                                 >
                                     <span className={styles.navItemIcon}>{item.icon}</span>
                                     {t(item.key)}
@@ -231,14 +241,7 @@ export default function DashboardLayout({
                         <button
                             onClick={handleLogout}
                             aria-label="Logout"
-                            style={{ 
-                                background: 'none', 
-                                border: 'none', 
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                opacity: 0.5
-                            }}
+                            className={styles.logoutBtn}
                         >
                             <LogOut size={16} />
                         </button>
@@ -256,7 +259,7 @@ export default function DashboardLayout({
                             onClick={() => setSidebarOpen(!sidebarOpen)}
                             aria-label="Toggle menu"
                         >
-                            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                            <Menu size={22} />
                         </button>
                         <h1 className={styles.pageTitle}>{pageTitle}</h1>
                     </div>
@@ -264,12 +267,8 @@ export default function DashboardLayout({
                     <div className={styles.topbarRight}>
                         <MessSwitcher />
                         <ThemeToggle />
-                        <button
-                            className={styles.menuButton}
-                            style={{ display: "flex" }}
-                            aria-label="Notifications"
-                        >
-                            <Bell size={20} />
+                        <button className={styles.iconBtn} aria-label="Notifications">
+                            <Bell size={18} />
                         </button>
                     </div>
                 </header>

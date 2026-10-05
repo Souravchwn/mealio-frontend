@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { Copy, Check, Plus } from "lucide-react";
@@ -14,8 +13,7 @@ import styles from "./create.module.css";
 
 export default function CreateMessPage() {
     const t = useTranslations("createMess");
-    const { token, user, login } = useAuth();
-    const router = useRouter();
+    const { token, user } = useAuth();
     const locale = useLocale();
 
     const [name, setName] = useState("");

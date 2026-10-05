@@ -49,15 +49,24 @@ export default function MySummaryPage() {
 
         const fetchData = async () => {
             try {
-                const [expensesRes, rateRes] = await Promise.allSettled([
-                    api.expenses.getExpenses(user.messId, currentMonth, token),
-                    api.expenses.getMealRate(user.messId, currentMonth, token),
-                ]);
+                // members/me is the single source of truth for all financial stats.
+                // It returns full-month data filtered to logDate >= member.joinedAt.
+                const meRes = await api.members.me(token, currentMonth);
 
-                const expenses = expensesRes.status === "fulfilled" ? expensesRes.value : [];
-                const mealRate = rateRes.status === "fulfilled" ? Number(rateRes.value.mealRate) : 0;
+                setSummary({
+                    breakfastCount: 0,  // slot breakdown not in members/me — kept for UI shape
+                    lunchCount:     0,
+                    dinnerCount:    0,
+                    guestMeals:     0,
+                    totalSlots:     meRes.myMealCount,
+                    mealCost:       meRes.mealCost,
+                    contributed:    meRes.contributed,
+                    balance:        meRes.balance,
+                    mealRate:       meRes.mealRate,
+                });
 
-                // Fetch last 7 days of logs
+                // 7-day calendar strip — getToday no longer auto-creates for historical dates,
+                // so these are safe to call without generating phantom logs.
                 const today = new Date();
                 const weekLogPromises: Promise<WeekLog | null>[] = [];
 
@@ -92,31 +101,6 @@ export default function MySummaryPage() {
                 const resolvedLogs = (await Promise.all(weekLogPromises)).filter(Boolean) as WeekLog[];
                 setWeekLogs(resolvedLogs);
 
-                // Compute monthly totals from week logs context; use meal rate for cost
-                // For full month summary, we compute from matrix if available
-                const contributed = expenses
-                    .filter((e) => e.memberId === user.id)
-                    .reduce((s, e) => s + Number(e.amount), 0);
-
-                // Estimate from week logs (only last 7 days visible here)
-                const bfCount = resolvedLogs.filter((l) => l.breakfast).length;
-                const lunchCount = resolvedLogs.filter((l) => l.lunch).length;
-                const dinnerCount = resolvedLogs.filter((l) => l.dinner).length;
-                const totalSlots = bfCount + lunchCount + dinnerCount;
-                const mealCost = totalSlots * mealRate;
-                const balance = contributed - mealCost;
-
-                setSummary({
-                    breakfastCount: bfCount,
-                    lunchCount,
-                    dinnerCount,
-                    guestMeals: 0,
-                    totalSlots,
-                    mealCost,
-                    contributed,
-                    balance,
-                    mealRate,
-                });
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Failed to load summary");
             } finally {

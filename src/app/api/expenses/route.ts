@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { monthRange, calculateMealRate } from '@/lib/financial'
+import { calculateMealRate, nonVoidedExpenseWhere } from '@/lib/financial'
+import { resolvePeriod } from '@/lib/period'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -10,32 +11,46 @@ export async function GET(req: NextRequest) {
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const messId = searchParams.get('mess_id') || payload.messId
-  const yearMonth = searchParams.get('year_month') || new Date().toISOString().slice(0, 7)
-  const { start, end } = monthRange(yearMonth)
+  const messId    = searchParams.get('mess_id') || payload.messId
+  const yearMonth = searchParams.get('year_month') || null
+  const page      = Math.max(1, parseInt(searchParams.get('page')  || '1',  10))
+  const limit     = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
 
-  const expenses = await prisma.expense.findMany({
-    where: { messId, expenseDate: { gte: start, lte: end } },
-    include: { addedByMember: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
+  // Resolve to actual period dates
+  const period = await resolvePeriod(messId, yearMonth)
+  const { start, end } = period
 
-  const liveMealRate = await calculateMealRate(messId, yearMonth)
+  const where = nonVoidedExpenseWhere(messId, start, end)
 
-  return NextResponse.json(
-    expenses.map((e) => ({
-      id: e.id,
-      mess_id: e.messId,
-      member_id: e.addedBy,
-      member_name: e.addedByMember?.name ?? '',
-      amount: Number(e.amount),
-      category: e.category,
-      description: e.description,
-      date: e.expenseDate.toISOString().slice(0, 10),
-      created_at: e.createdAt.toISOString(),
+  const [expenses, total, liveMealRate] = await Promise.all([
+    prisma.expense.findMany({
+      where,
+      include: { addedByMember: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.expense.count({ where }),
+    calculateMealRate(messId, period.yearMonth),
+  ])
+
+  return NextResponse.json({
+    expenses: expenses.map((e) => ({
+      id:             e.id,
+      mess_id:        e.messId,
+      member_id:      e.addedBy,
+      member_name:    e.addedByMember?.name ?? '',
+      amount:         Number(e.amount),
+      category:       e.category,
+      description:    e.description,
+      date:           e.expenseDate.toISOString().slice(0, 10),
+      created_at:     e.createdAt.toISOString(),
       live_meal_rate: liveMealRate,
-    }))
-  )
+    })),
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+  })
 }
 
 export async function POST(req: NextRequest) {

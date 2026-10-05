@@ -9,8 +9,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const payload = await verifyToken(token)
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
-  if (payload.role !== 'ADMIN') {
-    return NextResponse.json({ detail: 'Admin access required' }, { status: 403 })
+  if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
+    return NextResponse.json({ detail: 'Admin or Manager access required' }, { status: 403 })
   }
 
   const { id } = await params
@@ -63,8 +63,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const payload = await verifyToken(token)
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
-  if (payload.role !== 'ADMIN') {
-    return NextResponse.json({ detail: 'Admin access required' }, { status: 403 })
+  if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
+    return NextResponse.json({ detail: 'Admin or Manager access required' }, { status: 403 })
   }
 
   const { id } = await params

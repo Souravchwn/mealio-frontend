@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '30', 10)))
   const action = searchParams.get('action') ?? undefined
 
-  const where = {
+  const where: Prisma.AuditLogWhereInput = {
     messId: payload.messId,
     ...(action ? { action } : {}),
   }

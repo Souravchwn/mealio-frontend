@@ -22,12 +22,16 @@
         "thisMonth": "This Month"
     },
     "landing": {
+        "nav": {
+            "signIn": "Sign In"
+        },
         "hero": {
+            "badge": "Mess management, reimagined",
             "title": "Your Mess,",
             "titleHighlight": "Simplified.",
             "subtitle": "Stop chasing meal counts in endless group chats. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
             "cta": "Get Started Free",
-            "ctaSecondary": "See How It Works"
+            "ctaSecondary": "Explore Features"
         },
         "stats": {
             "messes": "Active Messes",
@@ -87,10 +91,9 @@
             "button": "Create Your Mess"
         },
         "footer": {
-            "madeWith": "Made with ❤️ for the mess culture of",
-            "bangladesh": "Bangladesh",
-            "and": "&",
-            "india": "India",
+            "features": "Features",
+            "roles": "Who It's For",
+            "getStarted": "Get Started",
             "copyright": "© 2026 Mealio. All rights reserved."
         }
     },
@@ -174,6 +177,10 @@
         "cutoffIn": "Cut-off in {time}",
         "allOn": "All Meals ON",
         "allOff": "All Meals OFF",
+        "defaultOff": "Default Off",
+        "overrideOn": "Override On",
+        "overrideOff": "Override Off",
+        "guestPortions": "+{n} guest per active meal",
         "history": {
             "title": "Meal History",
             "subtitle": "Your meal attendance calendar"
@@ -185,16 +192,30 @@
     },
     "expenses": {
         "title": "Bazaar Expenses",
-        "subtitle": "Track and manage daily bazaar spending",
-        "addExpense": "Add Expense",
+        "subtitle": "Daily bazaar trips and member contributions",
+        "addSession": "Add Bazaar Session",
+        "addContribution": "Record Contribution",
         "amount": "Amount (৳)",
         "category": "Category",
-        "description": "Description",
+        "description": "Description (optional)",
         "date": "Date",
         "mealRate": "Current Meal Rate",
         "totalExpense": "Total Expense",
         "addedBy": "Added by",
-        "noExpenses": "No expenses recorded yet",
+        "noSessions": "No bazaar sessions this month",
+        "noContributions": "No contributions recorded",
+        "sessionsTab": "Bazaar Sessions",
+        "contributionsTab": "Contributions",
+        "shoppers": "Who went",
+        "items": "items",
+        "item": "item",
+        "note": "Note (optional)",
+        "addItem": "+ Add Item",
+        "removeItem": "Remove",
+        "member": "Member",
+        "sessionDate": "Session Date",
+        "contributionNote": "Note (optional)",
+        "recordedBy": "Recorded by",
         "categories": {
             "PROTEIN": "Protein",
             "CARB": "Carbohydrate",
@@ -203,13 +224,6 @@
             "OIL": "Oil",
             "UTILITY": "Utility",
             "OTHER": "Other"
-        },
-        "analytics": {
-            "title": "Expense Analytics",
-            "subtitle": "Understand your spending patterns",
-            "byCategory": "By Category",
-            "dailyTrend": "Daily Trend",
-            "monthComparison": "Month Comparison"
         }
     },
     "headcount": {
@@ -220,7 +234,23 @@
         "total": "Total",
         "lastUpdated": "Last updated",
         "preparing": "Preparing for",
-        "people": "people"
+        "people": "people",
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "cutoffAt": "Cutoff at {time}",
+        "mealCooked": "Meal Cooked",
+        "cutoffWas": "Cutoff was {time}",
+        "detailTitle": "{meal} Detail",
+        "cookNote": "Cook's Note",
+        "cookNotePlaceholder": "What was cooked today? (optional)",
+        "saveNote": "Save Note",
+        "noteSaved": "Note saved!",
+        "whoIsHaving": "Having this meal",
+        "notHaving": "Not having",
+        "mealOn": "Having",
+        "mealOff": "Not having",
+        "noMeals": "No one is having this meal"
     },
     "matrix": {
         "title": "Month Matrix",
@@ -306,17 +336,33 @@
         "lunchCutoffHelp": "Before this time /meal off targets lunch; after it targets dinner",
         "inviteCode": "Invite Code",
         "regenerateCode": "Regenerate Code",
-        "saveChanges": "Save Changes",
+        "saveChanges": "Save",
+        "saving": "Saving…",
+        "messSaved": "Mess name updated!",
+        "cutoffTimes": "Meal Cut-off Times",
+        "cutoffTimesHelp": "Set the deadline for each meal — members cannot toggle after these times",
+        "breakfastCutoff": "Breakfast",
+        "lunchCutoff": "Lunch",
+        "dinnerCutoff": "Dinner",
+        "saveCutoffs": "Save Cutoff Times",
+        "cutoffsSaved": "Cutoff times updated!",
         "dangerZone": "Danger Zone",
         "deleteMess": "Delete Mess",
+        "contactSupport": "contact support",
+        "tabs": {
+            "general": "General",
+            "mess": "Mess Settings"
+        },
         "mealPreferences": {
             "title": "My Default Meal Preferences",
-            "subtitle": "Choose which meals are ON by default. You can always override for a specific day.",
+            "subtitle": "Choose which meals are ON by default. You can always override for a specific day on the Meals page.",
             "weekday": "Weekdays (Mon–Fri)",
             "weekend": "Weekend (Sat–Sun)",
             "breakfast": "Breakfast",
             "lunch": "Lunch",
             "dinner": "Dinner",
+            "on": "ON",
+            "off": "OFF",
             "saved": "Preferences saved"
         },
         "inviteCard": {
@@ -355,5 +401,21 @@
     "messSwitcher": {
         "label": "Switch Mess",
         "switching": "Switching..."
+    },
+    "calculator": {
+        "title": "Smart Calculator",
+        "smart": "Smart",
+        "manual": "Manual",
+        "mealRate": "Meal Rate",
+        "totalExpense": "Total Expense",
+        "totalDeposited": "Total Deposited",
+        "whatIf": "What if you add…",
+        "whatIfPlaceholder": "৳ amount",
+        "newRate": "New rate",
+        "rateChange": "Change",
+        "memberDeposits": "Member Deposits",
+        "perMeal": "/ meal",
+        "noData": "No expense data yet",
+        "noDeposits": "No deposits this month"
     }
 }

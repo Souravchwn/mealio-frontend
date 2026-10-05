@@ -65,6 +65,32 @@ export const mockHeadcountResponse: HeadcountResponse = {
     guestCount: 3,
     totalHeadcount: 15,
     source: "database",
+    slots: {
+        breakfast: {
+            memberCount: 8, guestCount: 3, total: 11, cutoffTime: "08:30", cutoffPassed: false,
+            members: [
+                { id: "mem-1", name: "John Doe", count: 1, guestCount: 1, hasLog: true },
+                { id: "mem-2", name: "Jane Smith", count: 1, guestCount: 0, hasLog: true },
+                { id: "mem-3", name: "Mike Johnson", count: 1, guestCount: 1, hasLog: true },
+            ],
+        },
+        lunch: {
+            memberCount: 12, guestCount: 3, total: 15, cutoffTime: "13:00", cutoffPassed: false,
+            members: [
+                { id: "mem-1", name: "John Doe", count: 1, guestCount: 0, hasLog: true },
+                { id: "mem-2", name: "Jane Smith", count: 1, guestCount: 1, hasLog: true },
+                { id: "mem-3", name: "Mike Johnson", count: 1, guestCount: 1, hasLog: true },
+            ],
+        },
+        dinner: {
+            memberCount: 10, guestCount: 3, total: 13, cutoffTime: "21:00", cutoffPassed: false,
+            members: [
+                { id: "mem-1", name: "John Doe", count: 1, guestCount: 1, hasLog: true },
+                { id: "mem-2", name: "Jane Smith", count: 0, guestCount: 0, hasLog: false },
+                { id: "mem-3", name: "Mike Johnson", count: 1, guestCount: 1, hasLog: true },
+            ],
+        },
+    },
 };
 
 const MOCK_MESS_ID = "11111111-1111-1111-1111-111111111111";
@@ -154,6 +180,9 @@ export const mockMonthMatrix: MonthMatrixResponse = {
     messId: MOCK_MESS_ID,
     messName: "Downtown Mess",
     yearMonth: "2025-03",
+    startDate: "2025-03-01",
+    endDate: "2025-03-31",
+    isClosed: false,
     mealRate: 85.75,
     totalExpense: 45000,
     totalMeals: 524,
