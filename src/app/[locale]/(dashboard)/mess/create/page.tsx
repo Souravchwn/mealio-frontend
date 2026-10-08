@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
+import { TimePicker } from "@/components/ui/TimePicker/TimePicker";
 import { Card } from "@/components/ui/Card/Card";
 import { Copy, Check, Plus } from "lucide-react";
 import { api } from "@/lib/api";
@@ -39,7 +40,7 @@ export default function CreateMessPage() {
             setCreated({ inviteCode: res.inviteCode, name: res.name });
             toast.success(t("inviteReady"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to create mess");
+            toast.error(err instanceof Error ? err.message : t("createFailed"));
         } finally {
             setCreating(false);
         }
@@ -62,7 +63,7 @@ export default function CreateMessPage() {
             <div className={styles.page}>
                 <Card className={styles.card}>
                     <div className={styles.successIcon}>
-                        <Plus size={28} color="white" />
+                        <Check size={30} strokeWidth={3} />
                     </div>
                     <h2 className={styles.title}>{t("inviteReady")}</h2>
                     <p className={styles.subtitle}>{created.name}</p>
@@ -71,7 +72,7 @@ export default function CreateMessPage() {
                         <span className={styles.codeText}>{created.inviteCode}</span>
                         <Button variant="secondary" size="small" type="button" onClick={handleCopy}>
                             {copied ? <Check size={16} /> : <Copy size={16} />}
-                            {copied ? "Copied!" : "Copy"}
+                            {copied ? t("copied") : t("copy")}
                         </Button>
                     </div>
                     <div className={styles.actions}>
@@ -108,6 +109,7 @@ export default function CreateMessPage() {
                         <input
                             className={styles.input}
                             type="number"
+                            inputMode="numeric"
                             min="0"
                             value={budget}
                             onChange={(e) => setBudget(e.target.value)}
@@ -117,12 +119,7 @@ export default function CreateMessPage() {
 
                     <div className={styles.field}>
                         <label className={styles.label}>{t("cutoffTime")}</label>
-                        <input
-                            className={styles.input}
-                            type="time"
-                            value={cutOffTime}
-                            onChange={(e) => setCutOffTime(e.target.value)}
-                        />
+                        <TimePicker value={cutOffTime} onChange={setCutOffTime} aria-label={t("cutoffTime")} />
                     </div>
 
                     <div className={styles.actions}>

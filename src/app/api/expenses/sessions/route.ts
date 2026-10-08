@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { calculateMonthStats } from '@/lib/financial'
-import { resolvePeriod, isDateInClosedPeriod } from '@/lib/period'
+import { resolvePeriod, checkDateInOpenPeriod } from '@/lib/period'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 import { createAuditTx } from '@/lib/audit'
+import { MAX_AMOUNT, MEMO_SELECT, parseMemoUploads, serializeMemo } from '@/lib/memos'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
           select: { id: true, amount: true, category: true, description: true },
           orderBy: { createdAt: 'asc' },
         },
+        memos: { select: MEMO_SELECT, orderBy: { createdAt: 'asc' } },
       },
       orderBy: { sessionDate: 'desc' },
       skip: (page - 1) * limit,
@@ -54,6 +56,8 @@ export async function GET(req: NextRequest) {
       year_month: s.yearMonth,
       shoppers: s.shoppers,
       note: s.note,
+      entry_mode: s.entryMode,
+      memos: s.memos.map(serializeMemo),
       created_by_name: s.creator?.name ?? null,
       total: s.expenses.reduce((sum, e) => sum + Number(e.amount), 0),
       items: s.expenses.map((e) => ({
@@ -85,12 +89,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'Only Admin or Manager can add bazaar sessions' }, { status: 403 })
   }
 
-  const body = await req.json()
-  const { date, shoppers, items, note } = body as {
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ detail: 'Invalid request body' }, { status: 400 })
+  }
+  const { date, shoppers, note } = body as {
     date: string
     shoppers: Array<{ id: string; name: string }>
-    items: Array<{ category: string; amount: number; description?: string }>
     note?: string
+  }
+  const mode = body.mode === 'MEMO_TOTAL' ? 'MEMO_TOTAL' : 'ITEMIZED'
+
+  const parsedMemos = parseMemoUploads(body.memos)
+  if ('error' in parsedMemos) return NextResponse.json({ detail: parsedMemos.error }, { status: 400 })
+  const memos = parsedMemos.memos
+
+  // Memo mode: one total, backed by a photo of the paper memo
+  let items = body.items as Array<{ category: string; amount: number; description?: string }>
+  if (mode === 'MEMO_TOTAL') {
+    const total = Number(body.total)
+    if (!Number.isFinite(total) || total <= 0 || total > MAX_AMOUNT) {
+      return NextResponse.json({ detail: 'Enter the total shown on the memo.' }, { status: 400 })
+    }
+    if (memos.length === 0) {
+      return NextResponse.json({ detail: 'Add a photo of the memo so the total can be checked.' }, { status: 400 })
+    }
+    items = [{ category: 'OTHER', amount: Math.round(total * 100) / 100, description: note?.trim() || 'Memo total' }]
   }
 
   if (!date || !Array.isArray(items) || items.length === 0) {
@@ -102,9 +128,8 @@ export async function POST(req: NextRequest) {
   if (shoppers !== undefined && !Array.isArray(shoppers)) {
     return NextResponse.json({ detail: 'shoppers must be a list' }, { status: 400 })
   }
-  if (await isDateInClosedPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))) {
-    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
-  }
+  const dateCheck = await checkDateInOpenPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))
+  if (!dateCheck.ok) return NextResponse.json({ detail: dateCheck.detail, code: 'DATE_OUTSIDE_PERIOD' }, { status: 400 })
 
   for (const item of items) {
     if (!item.category || !item.amount) {
@@ -114,7 +139,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: 'Invalid expense category' }, { status: 400 })
     }
     const num = Number(item.amount)
-    if (isNaN(num) || num <= 0) {
+    if (isNaN(num) || num <= 0 || num > MAX_AMOUNT) {
       return NextResponse.json({ detail: 'All item amounts must be positive numbers' }, { status: 400 })
     }
   }
@@ -132,8 +157,22 @@ export async function POST(req: NextRequest) {
           shoppers: shoppers ?? [],
           note: note || null,
           createdBy: payload.sub,
+          entryMode: mode,
         },
       })
+
+      if (memos.length > 0) {
+        await tx.bazaarMemo.createMany({
+          data: memos.map((m) => ({
+            sessionId: session.id,
+            messId: payload.messId,
+            mimeType: m.mimeType,
+            sizeBytes: m.bytes.length,
+            data: m.bytes,
+            uploadedBy: payload.sub,
+          })),
+        })
+      }
 
       await tx.expense.createMany({
         data: items.map((item) => ({
@@ -158,6 +197,8 @@ export async function POST(req: NextRequest) {
           date,
           shoppers: shoppers ?? [],
           item_count: items.length,
+          mode,
+          memo_count: memos.length,
           total: items.reduce((s, i) => s + Number(i.amount), 0),
         },
       })
@@ -173,6 +214,7 @@ export async function POST(req: NextRequest) {
           select: { id: true, amount: true, category: true, description: true },
           orderBy: { createdAt: 'asc' },
         },
+        memos: { select: MEMO_SELECT, orderBy: { createdAt: 'asc' } },
       },
     })
 
@@ -183,6 +225,8 @@ export async function POST(req: NextRequest) {
       year_month: created!.yearMonth,
       shoppers: created!.shoppers,
       note: created!.note,
+      entry_mode: created!.entryMode,
+      memos: created!.memos.map(serializeMemo),
       created_by_name: created!.creator?.name ?? null,
       total: created!.expenses.reduce((sum, e) => sum + Number(e.amount), 0),
       items: created!.expenses.map((e) => ({

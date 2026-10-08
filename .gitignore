@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# real mess data and generated logins (never commit)
+/scripts/data/*.local.*

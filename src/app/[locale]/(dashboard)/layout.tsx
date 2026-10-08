@@ -1,29 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
+import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
 import {
     Utensils,
-    LayoutDashboard,
+    Home,
     UtensilsCrossed,
     Receipt,
     ChefHat,
     Grid3X3,
     Users,
-    FileText,
+    ScrollText,
     Settings,
     LogOut,
-    Menu,
+    LayoutGrid,
     X,
-    Bell,
-    BarChart2,
+    Wallet,
+    ChevronRight,
+    LifeBuoy,
+    Archive,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
+import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
 import { MessSwitcher } from "@/components/composed/MessSwitcher/MessSwitcher";
+import { PeriodNotice } from "@/components/composed/PeriodNotice/PeriodNotice";
+import { PeriodProvider } from "@/contexts/PeriodContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./dashboard.module.css";
@@ -31,271 +34,266 @@ import styles from "./dashboard.module.css";
 interface NavItem {
     key: string;
     href: string;
-    icon: React.ReactNode;
+    icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
     roles: string[];
 }
 
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+const ALL = ["ADMIN", "MANAGER", "MEMBER", "GUEST"];
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const t = useTranslations("nav");
     const locale = useLocale();
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout, isAuthenticated, isLoading } = useAuth();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sheetOpen, setSheetOpen] = useState(false);
 
-    // Redirect to login if not authenticated (wait for localStorage hydration first)
+    // Redirect to login if not authenticated (after hydration)
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
-            router.push(`/${locale}/login`);
-        }
-    }, [isAuthenticated, isLoading, locale, router]);
+        if (!isLoading && !isAuthenticated) router.replace(`/${locale}/login?next=${encodeURIComponent(pathname)}`);
+    }, [isAuthenticated, isLoading, locale, router, pathname]);
 
-    // Close sidebar on route change
+    // Close the "More" sheet with Escape
     useEffect(() => {
-        setSidebarOpen(false);
-    }, [pathname]);
+        if (!sheetOpen) return;
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetOpen(false);
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [sheetOpen]);
 
-    if (isLoading) {
+    if (isLoading || !user) {
         return (
             <div className={styles.loadingScreen}>
                 <div className={styles.loadingLogo}>
-                    <Utensils size={22} color="white" />
+                    <Utensils size={24} />
                 </div>
             </div>
         );
     }
+
+    const base = `/${locale}`;
+    const nav: Record<string, NavItem> = {
+        overview: { key: "overview", href: `${base}/overview`, icon: Home, roles: ALL },
+        meals: { key: "meals", href: `${base}/meals`, icon: UtensilsCrossed, roles: ALL },
+        expenses: { key: "expenses", href: `${base}/expenses`, icon: Receipt, roles: ALL },
+        mySummary: { key: "mySummary", href: `${base}/my-summary`, icon: Wallet, roles: ALL },
+        headcount: { key: "headcount", href: `${base}/headcount`, icon: ChefHat, roles: ALL },
+        settings: { key: "settings", href: `${base}/settings`, icon: Settings, roles: ALL },
+        matrix: { key: "matrix", href: `${base}/matrix`, icon: Grid3X3, roles: ["ADMIN", "MANAGER"] },
+        members: { key: "members", href: `${base}/members`, icon: Users, roles: ["ADMIN"] },
+        audit: { key: "audit", href: `${base}/audit`, icon: ScrollText, roles: ["ADMIN"] },
+        support: { key: "support", href: `${base}/support`, icon: LifeBuoy, roles: ALL },
+        archive: { key: "archive", href: `${base}/archive`, icon: Archive, roles: ALL },
+    };
+
+    const can = (item: NavItem) => item.roles.includes(user.role);
+    const mainItems = [nav.overview, nav.meals, nav.expenses, nav.mySummary, nav.headcount, nav.archive, nav.settings, nav.support].filter(can);
+    const adminItems = [nav.matrix, nav.members, nav.audit].filter(can);
+    // "More" sheet: everything that is not a bottom tab
+    const moreItems = [nav.headcount, nav.matrix, nav.members, nav.audit, nav.archive, nav.settings, nav.support].filter(can);
+
+    const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+    const current = Object.values(nav).find((item) => isActive(item.href));
+    const pageTitle = current ? t(current.key) : t("overview");
+    const moreActive = moreItems.some((item) => isActive(item.href));
 
     const handleLogout = () => {
         logout();
         router.push(`/${locale}/login`);
     };
 
-    // Before auth resolves (the guard redirects if logged out) show an empty,
-    // least-privileged placeholder — never a fake user or mess name.
-    const currentUser = user || {
-        name: "",
-        role: "GUEST" as const,
-        messName: "",
+    const renderNavLink = (item: NavItem) => {
+        const Icon = item.icon;
+        const active = isActive(item.href);
+        return (
+            <Link
+                key={item.key}
+                href={item.href}
+                className={cn(styles.navItem, active && styles.navItemActive)}
+                aria-current={active ? "page" : undefined}
+            >
+                <span className={styles.navItemIcon}>
+                    <Icon size={20} strokeWidth={active ? 2.4 : 2} />
+                </span>
+                <span className={styles.navItemLabel}>{t(item.key)}</span>
+            </Link>
+        );
     };
 
-    const basePath = `/${locale}`;
+    const renderTab = (item: NavItem, label: string) => {
+        const Icon = item.icon;
+        const active = isActive(item.href);
+        return (
+            <Link
+                href={item.href}
+                className={cn(styles.tab, active && styles.tabActive)}
+                aria-current={active ? "page" : undefined}
+            >
+                <span className={styles.tabIcon}>
+                    <Icon size={22} strokeWidth={active ? 2.4 : 2} />
+                </span>
+                <span className={styles.tabLabel}>{label}</span>
+            </Link>
+        );
+    };
 
-    const mainNav: NavItem[] = [
-        {
-            key: "overview",
-            href: `${basePath}/overview`,
-            icon: <LayoutDashboard size={20} />,
-            roles: ["ADMIN", "MANAGER", "MEMBER"],
-        },
-        {
-            key: "meals",
-            href: `${basePath}/meals`,
-            icon: <UtensilsCrossed size={20} />,
-            roles: ["ADMIN", "MANAGER", "MEMBER"],
-        },
-        {
-            key: "expenses",
-            href: `${basePath}/expenses`,
-            icon: <Receipt size={20} />,
-            roles: ["ADMIN", "MANAGER", "MEMBER"],
-        },
-        {
-            key: "headcount",
-            href: `${basePath}/headcount`,
-            icon: <ChefHat size={20} />,
-            roles: ["ADMIN", "MANAGER", "MEMBER"],
-        },
-        {
-            key: "mySummary",
-            href: `${basePath}/my-summary`,
-            icon: <BarChart2 size={20} />,
-            roles: ["ADMIN", "MANAGER", "MEMBER"],
-        },
-        // Settings: appears in sidebar for all roles (not in bottom nav — slice(0,5) excludes it)
-        {
-            key: "settings",
-            href: `${basePath}/settings`,
-            icon: <Settings size={20} />,
-            roles: ["ADMIN", "MANAGER", "MEMBER"],
-        },
-    ];
-
-    const adminNav: NavItem[] = [
-        {
-            key: "matrix",
-            href: `${basePath}/matrix`,
-            icon: <Grid3X3 size={20} />,
-            roles: ["ADMIN"],
-        },
-        {
-            key: "members",
-            href: `${basePath}/members`,
-            icon: <Users size={20} />,
-            roles: ["ADMIN"],
-        },
-        {
-            key: "audit",
-            href: `${basePath}/audit`,
-            icon: <FileText size={20} />,
-            roles: ["ADMIN"],
-        },
-    ];
-
-    const userRole = currentUser.role;
-    const filteredMain = mainNav.filter((item) =>
-        item.roles.includes(userRole)
-    );
-    const filteredAdmin = adminNav.filter((item) =>
-        item.roles.includes(userRole)
-    );
-
-    const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
-
-    // Get current page title
-    const currentNavItem = [...mainNav, ...adminNav].find((item) =>
-        isActive(item.href)
-    );
-    const pageTitle = currentNavItem ? t(currentNavItem.key) : t("overview");
-
-    // Bottom nav — show all filtered main items (up to 5)
-    const bottomNavItems = filteredMain.slice(0, 5);
+    const mealsActive = isActive(nav.meals.href);
 
     return (
         <div className={styles.layout}>
-            {/* Sidebar Backdrop */}
-            <div
-                className={cn(styles.backdrop, sidebarOpen && styles.backdropVisible)}
-                onClick={() => setSidebarOpen(false)}
-                aria-hidden="true"
-            />
-
-            {/* Floating Sidebar */}
-            <aside className={cn(styles.sidebar, sidebarOpen && styles.sidebarOpen)}>
-                <div className={styles.sidebarHeader}>
-                    <div className={styles.sidebarLogo}>
-                        <Utensils size={20} color="white" />
-                    </div>
-                    <div className={styles.sidebarBrand}>
-                        <span className={styles.sidebarTitle}>Mealio</span>
-                        <span className={styles.sidebarMessName}>
-                            {currentUser.messName}
-                        </span>
-                    </div>
-                    <button
-                        className={styles.sidebarClose}
-                        onClick={() => setSidebarOpen(false)}
-                        aria-label="Close menu"
-                    >
-                        <X size={18} />
-                    </button>
-                </div>
+            {/* ── Desktop sidebar ─────────────────────────────────────────── */}
+            <aside className={styles.sidebar} aria-label={t("menu")}>
+                <Link href={nav.overview.href} className={styles.brand}>
+                    <span className={styles.brandMark}>
+                        <Utensils size={18} />
+                    </span>
+                    <span className={styles.brandText}>Mealio</span>
+                </Link>
 
                 <nav className={styles.sidebarNav}>
-                    <span className={styles.navLabel}>Menu</span>
-                    {filteredMain.map((item) => (
-                        <Link
-                            key={item.key}
-                            href={item.href}
-                            className={cn(
-                                styles.navItem,
-                                isActive(item.href) && styles.navItemActive
-                            )}
-                        >
-                            <span className={styles.navItemIcon}>{item.icon}</span>
-                            {t(item.key)}
-                        </Link>
-                    ))}
-
-                    {filteredAdmin.length > 0 && (
+                    {mainItems.map(renderNavLink)}
+                    {adminItems.length > 0 && (
                         <>
-                            <span className={styles.navLabel}>Admin</span>
-                            {filteredAdmin.map((item) => (
-                                <Link
-                                    key={item.key}
-                                    href={item.href}
-                                    className={cn(
-                                        styles.navItem,
-                                        isActive(item.href) && styles.navItemActive
-                                    )}
-                                >
-                                    <span className={styles.navItemIcon}>{item.icon}</span>
-                                    {t(item.key)}
-                                </Link>
-                            ))}
+                            <span className={styles.navLabel}>{t("admin")}</span>
+                            {adminItems.map(renderNavLink)}
                         </>
                     )}
                 </nav>
 
                 <div className={styles.sidebarFooter}>
+                    <div className={styles.sidebarPrefs}>
+                        <LocaleSwitcher />
+                        <ThemeToggle />
+                    </div>
                     <div className={styles.userCard}>
-                        <div className={styles.userAvatar}>
-                            {getInitials(currentUser.name)}
-                        </div>
-                        <div className={styles.userInfo}>
-                            <div className={styles.userName}>{currentUser.name}</div>
-                            <div className={styles.userRole}>{currentUser.role}</div>
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            aria-label="Logout"
-                            className={styles.logoutBtn}
-                        >
-                            <LogOut size={16} />
+                        <span className={styles.avatar}>{getInitials(user.name)}</span>
+                        <span className={styles.userInfo}>
+                            <span className={styles.userName}>{user.name}</span>
+                            <span className={styles.userRole}>{user.role.toLowerCase()}</span>
+                        </span>
+                        <button onClick={handleLogout} aria-label={t("logout")} className={styles.logoutBtn}>
+                            <LogOut size={18} />
                         </button>
                     </div>
                 </div>
             </aside>
 
-            {/* Main */}
+            {/* ── Main column ─────────────────────────────────────────────── */}
             <div className={styles.main}>
-                {/* Topbar */}
                 <header className={styles.topbar}>
-                    <div className={styles.topbarLeft}>
-                        <button
-                            className={styles.menuButton}
-                            onClick={() => setSidebarOpen(!sidebarOpen)}
-                            aria-label="Toggle menu"
-                        >
-                            <Menu size={22} />
-                        </button>
-                        <h1 className={styles.pageTitle}>{pageTitle}</h1>
-                    </div>
-
+                    <Link href={nav.overview.href} className={styles.topbarBrand} aria-label="Mealio">
+                        <span className={styles.brandMark}>
+                            <Utensils size={16} />
+                        </span>
+                    </Link>
+                    <h1 className={styles.pageTitle}>{pageTitle}</h1>
                     <div className={styles.topbarRight}>
                         <MessSwitcher />
-                        <ThemeToggle />
-                        <button className={styles.iconBtn} aria-label="Notifications">
-                            <Bell size={18} />
+                        <span className={styles.topbarTheme}>
+                            <ThemeToggle />
+                        </span>
+                        <button
+                            className={styles.avatarBtn}
+                            onClick={() => setSheetOpen(true)}
+                            aria-label={t("more")}
+                        >
+                            {getInitials(user.name)}
                         </button>
                     </div>
                 </header>
 
-                {/* Page Content */}
-                <main className={styles.content}>{children}</main>
+                <main className={styles.content} id="main">
+                    <PeriodProvider>
+                        <PeriodNotice />
+                        {children}
+                    </PeriodProvider>
+                </main>
             </div>
 
-            {/* Mobile Bottom Nav */}
-            <nav className={styles.bottomNav}>
-                <div className={styles.bottomNavInner}>
-                    {bottomNavItems.map((item) => (
-                        <Link
-                            key={item.key}
-                            href={item.href}
-                            className={cn(
-                                styles.bottomNavItem,
-                                isActive(item.href) && styles.bottomNavItemActive
-                            )}
-                        >
-                            {item.icon}
-                            <span>{t(item.key)}</span>
-                        </Link>
-                    ))}
-                </div>
+            {/* ── Mobile bottom tab bar ───────────────────────────────────── */}
+            <nav className={styles.tabBar} aria-label={t("menu")}>
+                {renderTab(nav.overview, t("home"))}
+                {renderTab(nav.expenses, t("bazaar"))}
+                <Link
+                    href={nav.meals.href}
+                    className={cn(styles.tabCenter, mealsActive && styles.tabCenterActive)}
+                    aria-current={mealsActive ? "page" : undefined}
+                    aria-label={t("meals")}
+                >
+                    <span className={styles.tabCenterBubble}>
+                        <UtensilsCrossed size={24} strokeWidth={2.4} />
+                    </span>
+                    <span className={styles.tabLabel}>{t("mealsShort")}</span>
+                </Link>
+                {renderTab(nav.mySummary, t("me"))}
+                <button
+                    className={cn(styles.tab, moreActive && styles.tabActive)}
+                    onClick={() => setSheetOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={sheetOpen}
+                >
+                    <span className={styles.tabIcon}>
+                        <LayoutGrid size={22} strokeWidth={moreActive ? 2.4 : 2} />
+                    </span>
+                    <span className={styles.tabLabel}>{t("more")}</span>
+                </button>
             </nav>
+
+            {/* ── "More" bottom sheet ─────────────────────────────────────── */}
+            {sheetOpen && (
+                <div className={styles.sheetLayer} role="dialog" aria-modal="true" aria-label={t("more")}>
+                    <button className={styles.scrim} onClick={() => setSheetOpen(false)} aria-label={t("close")} />
+                    <div className={styles.sheet}>
+                        <span className={styles.sheetHandle} aria-hidden />
+                        <div className={styles.sheetHeader}>
+                            <span className={styles.avatarLg}>{getInitials(user.name)}</span>
+                            <span className={styles.userInfo}>
+                                <span className={styles.sheetName}>{user.name}</span>
+                                <span className={styles.userRole}>
+                                    {user.messName} · {user.role.toLowerCase()}
+                                </span>
+                            </span>
+                            <button className={styles.sheetClose} onClick={() => setSheetOpen(false)} aria-label={t("close")}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className={styles.sheetGrid}>
+                            {moreItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <Link
+                                        key={item.key}
+                                        href={item.href}
+                                        className={cn(styles.sheetTile, isActive(item.href) && styles.sheetTileActive)}
+                                        onClick={() => setSheetOpen(false)}
+                                    >
+                                        <span className={styles.sheetTileIcon}>
+                                            <Icon size={22} />
+                                        </span>
+                                        <span className={styles.sheetTileLabel}>{t(item.key)}</span>
+                                        <ChevronRight size={16} className={styles.sheetTileChevron} />
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        <div className={styles.sheetPrefs}>
+                            <span className={styles.sheetPrefLabel}>{t("language")}</span>
+                            <LocaleSwitcher />
+                        </div>
+                        <div className={styles.sheetPrefs}>
+                            <span className={styles.sheetPrefLabel}>{t("theme")}</span>
+                            <ThemeToggle />
+                        </div>
+
+                        <button className={styles.sheetLogout} onClick={handleLogout}>
+                            <LogOut size={18} />
+                            {t("logout")}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

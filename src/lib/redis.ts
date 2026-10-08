@@ -18,7 +18,7 @@ export function getRedis(): Redis | null {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN
   if (!url || !token) {
     if (!_warned && process.env.NODE_ENV === 'production') {
-      console.warn('[redis] UPSTASH_REDIS_REST_URL/TOKEN not set — falling back to Postgres for settings')
+      console.warn('[redis] UPSTASH_REDIS_REST_URL/TOKEN not set, falling back to Postgres for settings')
       _warned = true
     }
     _redis = null

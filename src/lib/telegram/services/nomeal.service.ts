@@ -58,7 +58,7 @@ export class NoMealService {
     // Notify linked members asynchronously (after DB commit)
     const reasonLine = reason ? `\n📝 *Reason:* ${reason}` : ''
     const broadcastMsg =
-      `🚫 *No Meals — ${date}*\n\nAll meals have been turned *OFF* for ${date}.${reasonLine}\n\n_Posted by ${actorName}_\n_You can still turn your own meals back on with \`/meal on\` if needed._`
+      `🚫 *No Meals · ${date}*\n\nAll meals have been turned *OFF* for ${date}.${reasonLine}\n\n_Posted by ${actorName}_\n_You can still turn your own meals back on with \`/meal on\` if needed._`
 
     const linked = allMembers.filter((m) => m.telegramLinked && m.telegramUid)
     const chatIds = linked.map((m) => Number(m.telegramUid))
@@ -92,7 +92,7 @@ export class NoMealService {
     })
 
     const broadcastMsg =
-      `✅ *Meals Restored — ${date}*\n\nMeals have been restored to your personal defaults for ${date}.\n\n_Posted by ${actorName}_\n_Adjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\`_`
+      `✅ *Meals Restored · ${date}*\n\nMeals have been restored to your personal defaults for ${date}.\n\n_Posted by ${actorName}_\n_Adjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\`_`
 
     const linked = allMembers.filter((m) => m.telegramLinked && m.telegramUid)
     const chatIds = linked.map((m) => Number(m.telegramUid))

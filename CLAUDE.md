@@ -12,11 +12,16 @@ npm run dev       # Start development server (http://localhost:3000)
 npm run build     # Production build (also runs TypeScript check)
 npm run lint      # Run ESLint
 npm run seed -- --yes   # Seed demo data (dev DB only — public passwords)
+npm run platform-admin -- --email you@x.com --name "Name"   # Create/reset a /console staff admin
+npm run test:isolation  # Tenant isolation test (needs npm run dev running)
+npm run test:closed     # Closed-month integrity test (needs npm run dev running)
+npm run import:sheet -- scripts/data/<file>.local.json   # Load a mess's real sheet (local DB only)
+npm run reconcile:sheet -- scripts/data/<file>.local.json # Compare the site with that sheet
 npx prisma generate   # Regenerate Prisma client after schema changes
 npx prisma studio     # Open Prisma GUI to inspect database
 ```
 
-There are no tests configured in this project.
+There is no unit test suite. `npm run test:isolation` is an integration test against the running dev server: run it, and `npm run test:closed`, after adding or changing any API route.
 
 ## Environment
 
@@ -34,6 +39,8 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 | `NEXT_PUBLIC_APP_URL` | Public app URL |
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | `en` or `bn` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | `false` in production |
+| `PLATFORM_JWT_SECRET` | Optional separate secret for /console sessions (falls back to `JWT_SECRET`) |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Optional email (reset links, verification). Without them, resets use admin or console codes |
 
 ## Database
 
@@ -198,7 +205,9 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 | Matrix | `/matrix` | ✅ | ❌ | ❌ |
 | Members | `/members` | ✅ | ❌ | ❌ |
 | Audit | `/audit` | ✅ | ❌ | ❌ |
-| Settings | `/settings` | ✅ | ❌ | ❌ |
+| Settings | `/settings` | ✅ | ✅ | ✅ |
+| Help & support | `/support` | ✅ | ✅ | ✅ |
+| Archive | `/archive` | ✅ | ✅ | ✅ |
 
 **i18n keys:** `nav.*`
 
@@ -297,6 +306,10 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 - Manual mode: standard numpad calculator (4-function with ±, %)
 - `totalMeals` derived as `totalExpense / mealRate` (no extra API call)
 - i18n keys: `calculator.*`
+
+**Memo photos:** a trip can be `ITEMIZED` or `MEMO_TOTAL` (photo of the paper memo + one total); photos are stored in `BazaarMemo`, see `context/04-expenses.md`.
+
+**Dropdowns:** never use a native `<select>`. Use `src/components/ui/Select/Select.tsx`.
 
 **Key types:** `ExpenseCategory`, `BazaarSessionResponse`, `ContributionResponse`, `BazaarSessionRequest`, `ContributionRequest`
 
@@ -501,6 +514,28 @@ Before changing anything that affects defaults (preferences, meal configs, weeke
 Full flow and the risk list: `context/12-daily-meal-counting.md`.
 
 The old Telegram cutoff warning and month-end reminder were removed with the crons.
+
+### MODULE 16: SaaS platform (sign-up, recovery, support, console)
+
+Full reference: `context/16-saas-platform.md`. Key points:
+
+- Sign-up has two modes: `create` (new mess, caller becomes ADMIN and `Mess.ownerId`) and `join` (invite code). Joins wait for admin approval when `requireJoinApproval` is on (default): `joinStatus = PENDING`, `isActive = false`.
+- Limits come from `src/lib/plans.ts` (`getPlan(mess.plan)`). Everyone is FREE for now.
+- Password recovery: email link when Resend is configured, otherwise an 8-char one-time code from the mess admin (Members page) or staff (console).
+- `verifyToken()` rejects deleted, pending or inactive members, tokens older than `passwordChangedAt`, and deleted or suspended messes.
+- Log notable auth and abuse events with `logSecurityEvent()`. Log staff actions with `platformAudit()`.
+- Public pages (`/support`, `/privacy`, `/terms`) live in the `(public)` route group.
+- `/console` is the staff portal: separate `PlatformAdmin` login (`requirePlatformAdmin(req)` in API routes), English only. Never accept a mess token there, and never accept a platform token in mess routes.
+
+### MODULE 17: Periods, closed months and the archive
+
+Full reference: `context/17-periods-and-archive.md`. Rules that must not be broken:
+
+- Money records (bazaar, expenses, deposits) must be dated inside the OPEN period: use `checkDateInOpenPeriod()` from `src/lib/period.ts`, never only `isDateInClosedPeriod()`.
+- Pages ask for the current period by sending no month. Never use the calendar month (`getCurrentYearMonth()`) to pick a period.
+- A closed period is frozen: `closeMonth()` stores `MessMonth.snapshot` and `calculatePeriodSummary()` reads it for closed periods. Never recalculate a closed month from current settings.
+- The archive (`/api/archive`, `/archive`) is open to every member and read-only. It must show only closed months and must never include member names that were anonymised.
+- Real mess data lives in `scripts/data/*.local.*` (git-ignored). Never commit it.
 
 ### Billing rules (mess settings)
 

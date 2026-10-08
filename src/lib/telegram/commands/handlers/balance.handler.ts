@@ -29,7 +29,7 @@ export class BalanceCommandHandler implements CommandHandler {
     const sign = bal.balance >= 0 ? '+' : ''
     await this.sender.sendMessage(
       ctx.chatId,
-      `💰 *Balance — ${bal.month}*\n\nContributed: ${C}${bal.contributed.toFixed(2)}\nMeal Cost: ${C}${bal.mealCost.toFixed(2)}\nBalance: ${sign}${C}${bal.balance.toFixed(2)}\n\n${bal.balance >= 0 ? '✅ You are ahead' : '⚠️ You owe the mess'}`,
+      `💰 *Balance · ${bal.month}*\n\nContributed: ${C}${bal.contributed.toFixed(2)}\nMeal Cost: ${C}${bal.mealCost.toFixed(2)}\nBalance: ${sign}${C}${bal.balance.toFixed(2)}\n\n${bal.balance >= 0 ? '✅ You are ahead' : '⚠️ You owe the mess'}`,
     )
   }
 }

@@ -19,6 +19,8 @@ function toResponse(s: MessSettings) {
     bazaar_counts_as_deposit: s.bazaarCountsAsDeposit,
     carry_forward_balance: s.carryForwardBalance,
     weekend_days: s.weekendDays,
+    require_join_approval: s.requireJoinApproval,
+    plan: s.plan,
   }
 }
 
@@ -54,7 +56,7 @@ export async function PUT(req: NextRequest) {
   }
   const {
     name, cut_off_time, estimated_monthly_budget, month_start_day,
-    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days,
+    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval,
   } = body
   const updateData: Record<string, unknown> = {}
 
@@ -115,12 +117,19 @@ export async function PUT(req: NextRequest) {
     updateData.carryForwardBalance = carry_forward_balance
   }
 
+  if (require_join_approval !== undefined) {
+    if (typeof require_join_approval !== 'boolean') {
+      return NextResponse.json({ detail: 'require_join_approval must be true or false' }, { status: 400 })
+    }
+    updateData.requireJoinApproval = require_join_approval
+  }
+
   if (weekend_days !== undefined) {
     if (
       !Array.isArray(weekend_days) || weekend_days.length > 6 ||
       !weekend_days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
     ) {
-      return NextResponse.json({ detail: 'weekend_days must be a list of weekday numbers 0–6 (at least one weekday must remain)' }, { status: 400 })
+      return NextResponse.json({ detail: 'weekend_days must be a list of weekday numbers from 0 to 6, leaving at least one weekday' }, { status: 400 })
     }
     updateData.weekendDays = Array.from(new Set(weekend_days as number[])).sort().join(',')
   }

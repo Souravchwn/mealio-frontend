@@ -195,8 +195,8 @@ export function calculateNextPeriod(
   const nextMonth = next.getUTCMonth() + 1
   const yearMonth = `${nextYear}-${String(nextMonth).padStart(2, '0')}`
 
-  const { startDate, endDate } = calculatePeriodDates(yearMonth, monthStartDay)
-  // Override startDate to be exactly next day after prev end (handles edge cases)
+  // The period always starts exactly the day after the previous one ends; only its end comes from the calendar
+  const { endDate } = calculatePeriodDates(yearMonth, monthStartDay)
   return { startDate: next, endDate, yearMonth }
 }
 
@@ -216,6 +216,30 @@ export function formatPeriodLabel(startDate: Date, endDate: Date): string {
     timeZone: 'UTC',
   })
   return `${startStr} → ${endStr}`
+}
+
+export type DateCheck = { ok: true } | { ok: false; detail: string }
+
+const fmtDay = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+/**
+ * Money records (expenses, bazaar trips, deposits) must be dated inside the OPEN period.
+ * A record dated anywhere else would be stored but counted in no period, so it would
+ * silently vanish from the books. Say so up front instead.
+ */
+export async function checkDateInOpenPeriod(messId: string, date: Date): Promise<DateCheck> {
+  const open = await resolvePeriod(messId)
+  if (date >= open.start && date <= open.end) return { ok: true }
+  if (await isDateInClosedPeriod(messId, date)) {
+    return { ok: false, detail: 'That date is in a closed month and can no longer be changed' }
+  }
+  if (date > open.end) {
+    return {
+      ok: false,
+      detail: `That date is after this period ends (${fmtDay(open.end)}). Close the period first, then add it to the new one.`,
+    }
+  }
+  return { ok: false, detail: `That date is before this period starts (${fmtDay(open.start)}).` }
 }
 
 /**

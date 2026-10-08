@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
-import { Card } from "@/components/ui/Card/Card";
+import { useLocale, useTranslations } from "next-intl";
 import {
-    FileText, Utensils, DollarSign, Users,
-    Settings, ChevronLeft, ChevronRight, RefreshCw
+    ScrollText, UtensilsCrossed, Receipt, Users, Settings, ChevronLeft, ChevronRight, RefreshCw,
+    Lock, Wallet, Ban, ChevronDown,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,51 +22,54 @@ type AuditEntry = {
     createdAt: string;
 };
 
-const ACTION_FILTERS = [
-    { value: "", label: "All Actions" },
-    { value: "TOGGLE_MEAL", label: "Meal Toggles" },
-    { value: "ADMIN_MEAL_OVERRIDE", label: "Meal Overrides" },
-    { value: "ADMIN_EXPENSE_EDIT", label: "Expense Edits" },
-    { value: "ADMIN_EXPENSE_DELETE", label: "Expense Deletes" },
-    { value: "ADMIN_MEMBER_UPDATE", label: "Member Updates" },
-    { value: "ADMIN_SETTINGS_UPDATE", label: "Settings Changes" },
-    { value: "CLOSE_MONTH", label: "Month Close" },
-];
+/** Filter chips: label key + the action codes they match (first one is sent to the API). */
+const FILTERS = [
+    { key: "all", action: "" },
+    { key: "meals", action: "TOGGLE_MEAL" },
+    { key: "overrides", action: "ADMIN_MEAL_OVERRIDE" },
+    { key: "noCook", action: "NO_COOK" },
+    { key: "bazaar", action: "ADD_BAZAAR_SESSION" },
+    { key: "deposits", action: "ADD_CONTRIBUTION" },
+    { key: "members", action: "ADMIN_MEMBER_UPDATE" },
+    { key: "settings", action: "ADMIN_SETTINGS_UPDATE" },
+    { key: "closeMonth", action: "CLOSE_MONTH" },
+] as const;
 
 function actionIcon(action: string) {
-    if (action.includes("MEAL")) return <Utensils size={14} />;
-    if (action.includes("EXPENSE")) return <DollarSign size={14} />;
-    if (action.includes("MEMBER")) return <Users size={14} />;
-    if (action.includes("SETTINGS") || action.includes("MONTH")) return <Settings size={14} />;
-    return <FileText size={14} />;
+    if (action.startsWith("VOID") || action.includes("DELETE")) return <Ban size={18} />;
+    if (action.includes("MEAL") || action === "NO_COOK") return <UtensilsCrossed size={18} />;
+    if (action.includes("CONTRIBUTION")) return <Wallet size={18} />;
+    if (action.includes("EXPENSE") || action.includes("BAZAAR")) return <Receipt size={18} />;
+    if (action.includes("MEMBER") || action.includes("GUEST")) return <Users size={18} />;
+    if (action.includes("MONTH")) return <Lock size={18} />;
+    if (action.includes("SETTINGS")) return <Settings size={18} />;
+    return <ScrollText size={18} />;
 }
 
-function actionLabel(action: string): string {
-    return action
-        .replace(/^ADMIN_/, "")
-        .replace(/_/g, " ")
-        .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+function actionTone(action: string): string {
+    if (action.startsWith("VOID") || action.includes("DELETE")) return styles.toneDanger;
+    if (action.includes("OVERRIDE") || action.includes("EDIT") || action === "NO_COOK") return styles.toneWarning;
+    if (action.includes("MONTH")) return styles.toneInfo;
+    if (action.includes("CONTRIBUTION")) return styles.toneSuccess;
+    return styles.toneDefault;
 }
 
-function actionColor(action: string): string {
-    if (action.includes("DELETE")) return styles.tagDanger;
-    if (action.includes("OVERRIDE") || action.includes("EDIT")) return styles.tagWarning;
-    if (action.includes("CLOSE")) return styles.tagInfo;
-    return styles.tagDefault;
+/** "ADMIN_MEMBER_UPDATE" → "Member update" (fallback when no translation exists) */
+function humanize(action: string): string {
+    const s = action.replace(/^ADMIN_/, "").replace(/_/g, " ").toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function formatDiff(value: unknown): string {
-    if (!value) return "—";
-    try {
-        return JSON.stringify(value, null, 2);
-    } catch {
-        return String(value);
-    }
+function show(value: unknown): string {
+    if (value === null || value === undefined || value === "") return "—";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
 }
 
 export default function AuditPage() {
     const t = useTranslations("audit");
+    const tc = useTranslations("common");
+    const locale = useLocale();
     const { token } = useAuth();
 
     const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -82,152 +84,135 @@ export default function AuditPage() {
         if (!token) return;
         setLoading(true);
         try {
-            const data = await api.admin.getAuditLog(
-                { page, limit: 20, action: actionFilter || undefined },
-                token
-            );
+            const data = await api.admin.getAuditLog({ page, limit: 20, action: actionFilter || undefined }, token);
             setEntries(data.entries as AuditEntry[]);
             setTotal(data.total);
             setPages(data.pages);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to load audit log");
+            toast.error(err instanceof Error ? err.message : t("loadFailed"));
         } finally {
             setLoading(false);
         }
-    }, [token, page, actionFilter]);
+    }, [token, page, actionFilter, t]);
 
     useEffect(() => {
         void fetchAudit();
     }, [fetchAudit]);
 
-    // Reset to page 1 when filter changes
-    useEffect(() => {
-        setPage(1);
-    }, [actionFilter]);
+    const label = (action: string) => (t.has(`actions.${action}`) ? t(`actions.${action}`) : humanize(action));
+    const fmtWhen = (iso: string) =>
+        new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 
     return (
         <div className={styles.page}>
-            <div className={styles.header}>
+            <header className={styles.header}>
                 <div>
                     <h2 className={styles.title}>{t("title")}</h2>
-                    <p className={styles.subtitle}>{t("subtitle")}</p>
+                    <p className={styles.subtitle}>
+                        {loading ? tc("loading") : t("recordCount", { n: total })}
+                    </p>
                 </div>
-                <button
-                    className={styles.refreshBtn}
-                    onClick={() => void fetchAudit()}
-                    disabled={loading}
-                    aria-label="Refresh"
-                >
-                    <RefreshCw size={16} className={loading ? styles.spinning : undefined} />
+                <button className={styles.refreshBtn} onClick={() => void fetchAudit()} disabled={loading} aria-label={t("refresh")}>
+                    <RefreshCw size={18} className={loading ? styles.spinning : undefined} />
                 </button>
-            </div>
+            </header>
 
-            {/* Filters */}
-            <div className={styles.filters}>
-                {ACTION_FILTERS.map((f) => (
+            {/* Filter chips — horizontal scroll on phones */}
+            <div className={styles.filters} role="group" aria-label={t("filterLabel")}>
+                {FILTERS.map((f) => (
                     <button
-                        key={f.value}
-                        className={cn(styles.filterBtn, actionFilter === f.value && styles.filterBtnActive)}
-                        onClick={() => setActionFilter(f.value)}
+                        key={f.key}
+                        className={cn(styles.filterBtn, actionFilter === f.action && styles.filterBtnActive)}
+                        onClick={() => {
+                            setActionFilter(f.action);
+                            setPage(1);
+                        }}
+                        aria-pressed={actionFilter === f.action}
                     >
-                        {f.label}
+                        {t(`filters.${f.key}`)}
                     </button>
                 ))}
             </div>
 
-            {/* Count */}
-            <p className={styles.count}>
-                {loading ? "Loading…" : `${total} record${total !== 1 ? "s" : ""}`}
-            </p>
-
-            {/* List */}
-            <div className={styles.auditList}>
-                {!loading && entries.length === 0 && (
-                    <Card>
-                        <div className={styles.empty}>No audit records found.</div>
-                    </Card>
-                )}
-                {entries.map((entry) => {
-                    const isExpanded = expanded === entry.id;
-                    return (
-                        <div
-                            key={entry.id}
-                            className={cn(styles.auditCard, isExpanded && styles.auditCardExpanded)}
-                            onClick={() => setExpanded(isExpanded ? null : entry.id)}
-                        >
-                            <div className={styles.auditRow}>
-                                <div className={cn(styles.actionIcon, actionColor(entry.action))}>
-                                    {actionIcon(entry.action)}
-                                </div>
-                                <div className={styles.auditInfo}>
-                                    <div className={styles.auditTitle}>
-                                        <strong>{entry.actorName}</strong>
-                                        <span className={cn(styles.actionTag, actionColor(entry.action))}>
-                                            {actionLabel(entry.action)}
+            <ul className={styles.auditList}>
+                {loading && entries.length === 0
+                    ? [0, 1, 2, 3, 4].map((i) => <li key={i} className={styles.skeleton} />)
+                    : entries.length === 0
+                        ? <li className={styles.empty}>{t("empty")}</li>
+                        : entries.map((entry) => {
+                            const isExpanded = expanded === entry.id;
+                            const keys = Array.from(new Set([
+                                ...Object.keys(entry.oldValue ?? {}),
+                                ...Object.keys(entry.newValue ?? {}),
+                            ]));
+                            return (
+                                <li key={entry.id} className={cn(styles.auditCard, isExpanded && styles.auditCardExpanded)}>
+                                    <button
+                                        type="button"
+                                        className={styles.auditRow}
+                                        onClick={() => setExpanded(isExpanded ? null : entry.id)}
+                                        aria-expanded={isExpanded}
+                                    >
+                                        <span className={cn(styles.actionIcon, actionTone(entry.action))}>{actionIcon(entry.action)}</span>
+                                        <span className={styles.auditInfo}>
+                                            <span className={styles.auditTitle}>
+                                                <strong>{entry.actorName || t("system")}</strong>
+                                                <span className={cn(styles.actionTag, actionTone(entry.action))}>{label(entry.action)}</span>
+                                            </span>
+                                            <span className={styles.auditMeta}>{fmtWhen(entry.createdAt)}</span>
                                         </span>
-                                    </div>
-                                    <div className={styles.auditMeta}>
-                                        {entry.targetTable && (
-                                            <span className={styles.metaItem}>{entry.targetTable}</span>
-                                        )}
-                                        <span className={styles.metaItem}>
-                                            {new Date(entry.createdAt).toLocaleString("en-US", {
-                                                month: "short", day: "numeric",
-                                                hour: "2-digit", minute: "2-digit",
-                                            })}
-                                        </span>
-                                    </div>
-                                </div>
-                                <ChevronRight
-                                    size={16}
-                                    className={cn(styles.chevron, isExpanded && styles.chevronOpen)}
-                                />
-                            </div>
+                                        <ChevronDown size={18} className={cn(styles.chevron, isExpanded && styles.chevronOpen)} />
+                                    </button>
 
-                            {isExpanded && (
-                                <div className={styles.diffPanel}>
-                                    {entry.oldValue && (
-                                        <div className={styles.diffBlock}>
-                                            <span className={styles.diffLabel}>{t("oldValue")}</span>
-                                            <pre className={cn(styles.diffCode, styles.diffOld)}>
-                                                {formatDiff(entry.oldValue)}
-                                            </pre>
+                                    {isExpanded && (
+                                        <div className={styles.diffPanel}>
+                                            {keys.length === 0 ? (
+                                                <p className={styles.noDetails}>{t("noDetails")}</p>
+                                            ) : (
+                                                <dl className={styles.diffList}>
+                                                    {keys.map((k) => {
+                                                        const before = entry.oldValue?.[k];
+                                                        const after = entry.newValue?.[k];
+                                                        const changed = entry.oldValue && entry.newValue && show(before) !== show(after);
+                                                        return (
+                                                            <div key={k} className={styles.diffRow}>
+                                                                <dt className={styles.diffKey}>{k.replace(/_/g, " ")}</dt>
+                                                                <dd className={styles.diffVal}>
+                                                                    {entry.oldValue && entry.newValue ? (
+                                                                        <>
+                                                                            <span className={cn(changed && styles.diffOld)}>{show(before)}</span>
+                                                                            {changed && <>
+                                                                                <ChevronRight size={12} className={styles.diffArrow} />
+                                                                                <span className={styles.diffNew}>{show(after)}</span>
+                                                                            </>}
+                                                                        </>
+                                                                    ) : (
+                                                                        <span>{show(after ?? before)}</span>
+                                                                    )}
+                                                                </dd>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </dl>
+                                            )}
+                                            {entry.targetTable && <span className={styles.metaItem}>{entry.targetTable}</span>}
                                         </div>
                                     )}
-                                    {entry.newValue && (
-                                        <div className={styles.diffBlock}>
-                                            <span className={styles.diffLabel}>{t("newValue")}</span>
-                                            <pre className={cn(styles.diffCode, styles.diffNew)}>
-                                                {formatDiff(entry.newValue)}
-                                            </pre>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                                </li>
+                            );
+                        })}
+            </ul>
 
-            {/* Pagination */}
             {pages > 1 && (
-                <div className={styles.pagination}>
-                    <button
-                        className={styles.pageBtn}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                    >
-                        <ChevronLeft size={16} /> Prev
+                <nav className={styles.pagination} aria-label={t("pagination")}>
+                    <button className={styles.pageBtn} onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                        <ChevronLeft size={16} /> {t("prev")}
                     </button>
-                    <span className={styles.pageInfo}>Page {page} of {pages}</span>
-                    <button
-                        className={styles.pageBtn}
-                        onClick={() => setPage((p) => Math.min(pages, p + 1))}
-                        disabled={page === pages}
-                    >
-                        Next <ChevronRight size={16} />
+                    <span className={styles.pageInfo}>{t("pageOf", { page, pages })}</span>
+                    <button className={styles.pageBtn} onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}>
+                        {t("next")} <ChevronRight size={16} />
                     </button>
-                </div>
+                </nav>
             )}
         </div>
     );

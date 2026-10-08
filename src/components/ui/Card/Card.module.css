@@ -1,9 +1,24 @@
 .root {
     background: var(--color-bg-card);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     border: 1px solid var(--color-border);
-    padding: var(--space-6);
-    transition: all var(--transition-base);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
+    transition:
+        transform 200ms var(--ease-out),
+        box-shadow var(--transition-base),
+        border-color var(--transition-base);
+}
+
+@media (min-width: 768px) {
+    .root {
+        padding: var(--space-6);
+        border-radius: var(--radius-2xl);
+    }
+}
+
+.hoverable {
+    cursor: pointer;
 }
 
 .hoverable:hover {
@@ -12,20 +27,24 @@
     transform: translateY(-2px);
 }
 
+.hoverable:active {
+    transform: scale(0.99);
+}
+
 .glow:hover {
     box-shadow: var(--shadow-glow);
-    border-color: rgba(var(--color-primary-rgb), 0.3);
+    border-color: rgba(var(--color-primary-rgb), 0.35);
 }
 
 .glass {
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 [data-theme="dark"] .glass {
-    background: rgba(22, 19, 46, 0.65);
+    background: rgba(23, 21, 31, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 

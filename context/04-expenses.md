@@ -331,3 +331,33 @@ Void modal strings are hardcoded in English (not i18n keys).
 - **Editing a session keeps the original recorder** (`addedBy`) — bazaar credit never moves to the editor.
 - **Bazaar spending is NOT a deposit by default.** Balance = deposits + carry-forward (+ bazaar spending only if `bazaarCountsAsDeposit` is on) − meal cost. See `13-shared-libs.md` → `calculatePeriodSummary`.
 - Deposit totals include the whole last day of the period (`endOfPeriodExclusive`).
+
+---
+
+## Memo photos and "memo total" trips
+
+A bazaar trip is recorded in one of two modes (`BazaarSession.entryMode`):
+
+| Mode | Input | What is stored |
+|------|-------|----------------|
+| `ITEMIZED` | Line items (category, amount, description). Photos optional, as proof. | One `Expense` per item |
+| `MEMO_TOTAL` | 1 to 3 photos of the paper memo plus the total printed on it. Photos required. | One `Expense` (`OTHER`, "Memo total") so the money math is unchanged |
+
+Photos live in `BazaarMemo` (`bytea`, max 3 per trip, max 1.5 MB each, JPEG/PNG/WebP, verified by file signature in `src/lib/memos.ts`).
+The browser shrinks them first (`components/composed/Memo/image.ts`: long edge 1600px, JPEG, under 1 MB).
+Photos are evidence: they can be added (admin or manager, before the month closes) but never edited or deleted.
+
+| Route | Purpose |
+|-------|---------|
+| `POST /api/expenses/sessions` | `mode`, `total`, `memos: [{ data: <base64> }]` along with the usual fields |
+| `POST /api/expenses/sessions/[id]/memos` | Add photos to an existing trip |
+| `GET  /api/expenses/sessions/[id]/memos/[memoId]` | The image. Any member of the same mess. The page fetches it with the token and shows a blob URL. |
+
+Session responses carry `entry_mode` and `memos` (id, mime type, size, no bytes).
+UI: `MemoPicker` (form) and `MemoGallery` (saved photos, full screen viewer, "add photo" for managers).
+
+**Phase 2 (OCR):** read the stored `BazaarMemo` bytes, suggest line items, let the manager confirm. No schema change is needed beyond a status column.
+
+## Dropdowns
+
+The browser `<select>` is not used anywhere. Use `components/ui/Select/Select.tsx` (options with optional hint and colour dot, keyboard and type-ahead, search box above 8 options, flips above the trigger when there is no room).

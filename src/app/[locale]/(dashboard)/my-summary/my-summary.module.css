@@ -1,223 +1,322 @@
 .page {
-    padding: var(--space-6);
-    max-width: 800px;
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    gap: var(--space-5);
+    max-width: 720px;
+    margin: 0 auto;
 }
 
-.header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+.eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
 }
 
 .title {
     font-size: var(--text-2xl);
     font-weight: 700;
-    color: var(--color-text);
-    margin: 0;
-}
-
-.subtitle {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-}
-
-.statsGrid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-4);
-}
-
-@media (min-width: 640px) {
-    .statsGrid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-.statCard {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    animation: fadeIn 0.3s ease both;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.statLabel {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.statValue {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.statValuePositive {
-    color: var(--color-success, #22c55e);
-}
-
-.statValueNegative {
-    color: var(--color-error, #ef4444);
 }
 
 .sectionTitle {
-    font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--color-text);
-    margin: 0 0 var(--space-4) 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
 }
 
-.mealBreakdown {
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.hero {
     display: flex;
     flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6) var(--space-5);
+    border-radius: var(--radius-2xl);
+    color: #fff;
+}
+
+.heroAhead {
+    background: var(--gradient-brand);
+    box-shadow: var(--shadow-glow);
+}
+
+.heroOwe {
+    background: linear-gradient(135deg, #1f1b2e 0%, #3b1530 100%);
+    box-shadow: 0 8px 28px rgb(225 29 72 / 0.25);
+}
+
+.heroLabel {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.heroValue {
+    font-size: clamp(2.5rem, 12vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1;
+}
+
+.heroHint {
+    font-size: var(--text-sm);
+    opacity: 0.85;
+}
+
+/* ── Tiles ───────────────────────────────────────────────────────────────── */
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--space-3);
 }
 
-.mealRow {
+.tile {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.mealRow:last-child {
-    border-bottom: none;
-}
-
-.mealLabel {
-    display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: var(--space-2);
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
+    padding: var(--space-4) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg-card);
+    box-shadow: var(--shadow-sm);
 }
 
-.mealIcon {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-full);
-    background: var(--color-surface-raised);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.tileIcon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
 }
 
-.mealCount {
-    font-size: var(--text-sm);
+.tileViolet {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.tileLime {
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+}
+
+.tilePink {
+    background: rgba(var(--color-pop-rgb), 0.14);
+    color: var(--color-pop);
+}
+
+.tileLabel {
+    margin-top: auto;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--color-text);
-}
-
-.calendarStrip {
-    display: flex;
-    gap: var(--space-2);
-    overflow-x: auto;
-    padding-bottom: var(--space-2);
-}
-
-.calendarDay {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    min-width: 44px;
-    flex-shrink: 0;
-}
-
-.calendarDayLabel {
-    font-size: 10px;
     color: var(--color-text-muted);
-    font-weight: 500;
 }
 
-.calendarDaySlots {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+.tileValue {
+    font-size: var(--text-lg);
+    font-weight: 700;
 }
 
-.calendarSlot {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    background: var(--color-border);
+@media (min-width: 640px) {
+    .tile {
+        padding: var(--space-5);
+    }
+
+    .tileLabel {
+        font-size: var(--text-xs);
+    }
+
+    .tileValue {
+        font-size: var(--text-2xl);
+    }
 }
 
-.calendarSlotOn {
-    background: var(--color-primary);
-}
-
-.calendarSlotOff {
-    background: var(--color-border);
-}
-
-.calendarSlotFrozen {
-    opacity: 0.5;
-}
-
-.financeCard {
+/* ── Receipt ─────────────────────────────────────────────────────────────── */
+.receipt {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    background: var(--color-bg-card);
+    box-shadow: var(--shadow-sm);
 }
 
-.financeRow {
+.receiptRows {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+}
+
+.receiptRow {
+    display: flex;
     align-items: center;
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border);
-    font-size: var(--text-sm);
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
 }
 
-.financeRow:last-child {
-    border-bottom: none;
+.receiptRow + .receiptRow {
+    border-top: 1px dashed var(--color-border);
+}
+
+.receiptTotal {
+    margin-top: var(--space-2);
+    padding: var(--space-4);
+    border: none !important;
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-subtle);
+}
+
+.op {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.opPlus {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.opMinus {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.receiptLabel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    font-weight: 500;
+}
+
+.receiptTotal .receiptLabel {
     font-weight: 700;
-    font-size: var(--text-base);
 }
 
-.financeLabel {
+.receiptSub {
+    font-size: var(--text-xs);
+    font-weight: 400;
     color: var(--color-text-muted);
 }
 
-.financeValue {
+.receiptValue {
+    font-weight: 700;
+}
+
+.receiptTotal .receiptValue {
+    font-size: var(--text-xl);
+}
+
+.positive {
+    color: var(--color-success);
+}
+
+.negative {
+    color: var(--color-danger);
+}
+
+/* ── Week strip ──────────────────────────────────────────────────────────── */
+.weekCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    background: var(--color-bg-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.weekHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.legend {
+    display: inline-flex;
+    gap: 4px;
+    color: var(--color-text-muted);
+}
+
+.week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: var(--space-1);
+}
+
+.day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-3) 0;
+    border-radius: var(--radius-lg);
+}
+
+.dayToday {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+}
+
+.dayName {
+    min-height: 14px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--color-text);
-}
-
-.positiveValue {
-    color: var(--color-success, #22c55e);
-}
-
-.negativeValue {
-    color: var(--color-error, #ef4444);
-}
-
-.loading {
     color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    text-align: center;
-    padding: var(--space-8);
 }
 
-@media (max-width: 640px) {
-    .page {
-        padding: var(--space-4);
-    }
+.dayToday .dayName {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.dayNum {
+    min-height: 22px;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.dayDots {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-border);
+}
+
+.dayToday .dot {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.dotB {
+    background: #f59e0b !important;
+}
+
+.dotL {
+    background: #84cc16 !important;
+}
+
+.dotD {
+    background: #a78bfa !important;
+}
+
+/* ── Skeleton ────────────────────────────────────────────────────────────── */
+.skeleton {
+    display: block;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.22);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonHero {
+    width: 55%;
+    height: 48px;
 }

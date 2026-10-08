@@ -28,6 +28,17 @@ export function formatDate(
     return date.toLocaleDateString("en-US", options);
 }
 
+/** "Oct 7, 3:42 PM" in the viewer's own time zone */
+export function formatDateTime(iso: string | null | undefined): string {
+    if (!iso) return "";
+    return new Date(iso).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+}
+
 
 /**
  * Get current year-month as YYYY-MM
@@ -96,4 +107,16 @@ export function getInitials(name: string): string {
         .join("")
         .toUpperCase()
         .slice(0, 2);
+}
+
+/**
+ * Today's date (YYYY-MM-DD) in the browser's own timezone.
+ * Use this instead of `new Date().toISOString().slice(0, 10)`, which is the UTC date
+ * (in Dhaka that is still "yesterday" until 6 AM).
+ */
+export function localISODate(date: Date = new Date()): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
 }

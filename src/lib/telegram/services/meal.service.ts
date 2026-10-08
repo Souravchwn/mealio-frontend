@@ -55,7 +55,7 @@ export class MealService {
       return { ok: false, message: `❌ This meal is turned off for the mess.` }
     }
     if (!Number.isInteger(count) || count < 0 || (meal && count > meal.maxCount)) {
-      return { ok: false, message: `❌ Count must be 0–${meal?.maxCount ?? 10}.` }
+      return { ok: false, message: `❌ Count must be from 0 to ${meal?.maxCount ?? 10}.` }
     }
 
     // Make sure today's log exists from the member's defaults before editing it
@@ -89,7 +89,7 @@ export class MealService {
     count: number,
   ): Promise<MealActionResult> {
     if (!Number.isInteger(count) || count < 0 || count > MAX_GUEST_COUNT) {
-      return { ok: false, message: `❌ Guest count must be 0–${MAX_GUEST_COUNT}. Usage: \`/meal guest 2\`` }
+      return { ok: false, message: `❌ Guest count must be from 0 to ${MAX_GUEST_COUNT}. Usage: \`/meal guest 2\`` }
     }
 
     await ensureDailyLogs(messId)
@@ -127,7 +127,7 @@ export class MealService {
     }
 
     const lines = [
-      `📅 *Today's Meals — ${date}*`,
+      `📅 *Today's Meals · ${date}*`,
       fmtSlot('🍳', 'Breakfast', log.breakfastCount),
       fmtSlot('🍱', 'Lunch', log.lunchCount),
       fmtSlot('🌙', 'Dinner', log.dinnerCount),

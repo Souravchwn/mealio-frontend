@@ -128,9 +128,9 @@ export async function POST(req: NextRequest) {
   let broadcastMsg: string
   if (action === 'off') {
     const reasonLine = reason ? `\n📝 *Reason:* ${reason}` : ''
-    broadcastMsg = `🚫 *No Meals — ${date}*\n\nAll meals have been turned *OFF* for ${date}.${reasonLine}\n\n_Turn individual meals back on with \`/meal on\` if needed._`
+    broadcastMsg = `🚫 *No Meals · ${date}*\n\nAll meals have been turned *OFF* for ${date}.${reasonLine}\n\n_Turn individual meals back on with \`/meal on\` if needed._`
   } else {
-    broadcastMsg = `✅ *Meals Restored — ${date}*\n\nMeals have been restored to your personal defaults for ${date}.\n\nAdjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\``
+    broadcastMsg = `✅ *Meals Restored · ${date}*\n\nMeals have been restored to your personal defaults for ${date}.\n\nAdjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\``
   }
 
   const notified = await broadcastTelegram(messId, broadcastMsg)

@@ -17,7 +17,7 @@ export default async function LocaleLayout({
             <body>
                 <ThemeProvider
                     attribute="data-theme"
-                    defaultTheme="light"
+                    defaultTheme="dark"
                     enableSystem={false}
                     disableTransitionOnChange
                 >

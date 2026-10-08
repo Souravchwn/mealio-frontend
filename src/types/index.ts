@@ -204,6 +204,16 @@ export interface BazaarItem {
     description?: string;
 }
 
+/** A saved photo of the paper memo. The picture itself is fetched separately. */
+export interface BazaarMemoInfo {
+    id: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+}
+
+export type BazaarEntryMode = "ITEMIZED" | "MEMO_TOTAL";
+
 export interface BazaarSessionResponse {
     id: string;
     messId: string;
@@ -211,6 +221,9 @@ export interface BazaarSessionResponse {
     yearMonth: string;
     shoppers: Array<{ id: string; name: string }>;
     note: string | null;
+    /** ITEMIZED = typed line items; MEMO_TOTAL = photo of the memo plus one total */
+    entryMode: BazaarEntryMode;
+    memos: BazaarMemoInfo[];
     createdByName: string | null;
     total: number;
     isVoided: boolean;
@@ -246,6 +259,9 @@ export interface MonthMatrixResponse {
     startDate: string;
     endDate: string;
     isClosed: boolean;
+    /** Nearest existing periods before and after this one (null at either end) */
+    prevYearMonth: string | null;
+    nextYearMonth: string | null;
     mealRate: number;
     totalExpense: number;
     /** Billable meals across the mess (the meal-rate denominator) */
@@ -254,6 +270,8 @@ export interface MonthMatrixResponse {
     guestMealPolicy: GuestMealPolicy;
     /** Whether closing this month carries balances into the next one */
     carryForwardBalance: boolean;
+    /** JS weekday numbers (0 = Sunday) the mess counts as weekend */
+    weekendDays: number[];
     members: MemberMatrixRow[];
 }
 
@@ -305,6 +323,9 @@ export interface MessSettingsResponse {
     carryForwardBalance: boolean;
     /** JS weekday numbers (0 = Sunday … 6 = Saturday) counted as WEEKEND */
     weekendDays: number[];
+    /** New members wait for an admin before they can sign in */
+    requireJoinApproval: boolean;
+    plan: string;
 }
 
 /* API Requests */
@@ -315,11 +336,43 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
+    /** create = start a new mess and become its admin; join = use an invite code */
+    mode: "create" | "join";
     name: string;
     email: string;
     phone?: string;
     password: string;
-    messInviteCode: string;
+    messInviteCode?: string;
+    messName?: string;
+    locale?: string;
+}
+
+/** Register answers with a session, or with `pending` when the admin must approve the join first */
+export type RegisterResponse =
+    | (AuthResponse & { pending?: undefined; inviteCode?: string })
+    | { pending: true; messName: string };
+
+export interface SupportMessage {
+    id: string;
+    authorType: "USER" | "STAFF" | "SYSTEM";
+    authorName: string;
+    body: string;
+    createdAt: string;
+}
+
+export interface SupportTicket {
+    id: string;
+    name: string;
+    email: string;
+    category: string;
+    subject: string;
+    status: "OPEN" | "WAITING_ON_USER" | "RESOLVED" | "CLOSED";
+    priority: "LOW" | "NORMAL" | "HIGH";
+    messId: string | null;
+    memberId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    messages?: SupportMessage[];
 }
 
 export interface ExpenseRequest {
@@ -334,8 +387,15 @@ export interface ExpenseRequest {
 export interface BazaarSessionRequest {
     date: string;
     shoppers: Array<{ id: string; name: string }>;
-    items: BazaarItem[];
     note?: string;
+    /** Defaults to ITEMIZED */
+    mode?: BazaarEntryMode;
+    /** ITEMIZED: the line items */
+    items?: BazaarItem[];
+    /** MEMO_TOTAL: the total printed on the memo */
+    total?: number;
+    /** Base64 photos (no data: prefix). Required for MEMO_TOTAL, optional proof for ITEMIZED. */
+    memos?: Array<{ data: string }>;
 }
 
 export interface ContributionRequest {

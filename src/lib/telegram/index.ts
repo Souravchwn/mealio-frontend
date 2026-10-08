@@ -85,7 +85,7 @@ export async function handleWebhookUpdate(update: TelegramUpdate): Promise<void>
   const idempotency = getIdempotencyGuard()
   const isNew = await idempotency.markProcessed(update.update_id)
   if (!isNew) {
-    console.log(`[Telegram] Duplicate update ${update.update_id} — skipped`)
+    console.log(`[Telegram] Duplicate update ${update.update_id} skipped`)
     return
   }
 

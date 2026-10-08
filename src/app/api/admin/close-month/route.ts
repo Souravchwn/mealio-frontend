@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       total_expense: result.totalExpense,
       total_meals: result.totalMeals,
       next_period: result.nextPeriod,
+      skipped_periods: result.skippedPeriods,
     })
   } catch (err) {
     if (err instanceof MonthAlreadyClosedError) {

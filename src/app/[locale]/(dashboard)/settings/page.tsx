@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
-import { Sun, CloudSun, Moon, Save, AlertTriangle, Copy, Check, Link, Calendar, Users, Send, Unlink } from "lucide-react";
+import { TimePicker } from "@/components/ui/TimePicker/TimePicker";
+import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { GuestMealPolicy } from "@/types";
+import { AccountSection, DeleteMessCard } from "./AccountSection";
 import styles from "./settings.module.css";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner"] as const;
@@ -55,6 +57,10 @@ export default function SettingsPage() {
     const [savingName, setSavingName] = useState(false);
     const [inviteCode, setInviteCode] = useState("");
     const [copied, setCopied] = useState(false);
+    const [savedName, setSavedName] = useState("");
+    const [requireApproval, setRequireApproval] = useState(true);
+    const [savingApproval, setSavingApproval] = useState(false);
+    const [rotating, setRotating] = useState(false);
 
     // ── Per-slot cutoff times ────────────────────────────────────────────────────
     const [cutoffInputs, setCutoffInputs] = useState<Record<string, string>>({
@@ -63,6 +69,8 @@ export default function SettingsPage() {
         DINNER: "21:00",
     });
     const [savingCutoffs, setSavingCutoffs] = useState(false);
+    // Is each meal served by the mess at all? A meal switched off counts as 0 for everyone.
+    const [mealServed, setMealServed] = useState<Record<string, boolean>>({ BREAKFAST: true, LUNCH: true, DINNER: true });
 
     // ── Month start day ──────────────────────────────────────────────────────────
     const [monthStartDay, setMonthStartDay] = useState(1);
@@ -119,6 +127,7 @@ export default function SettingsPage() {
             const current = data.messes.find((m) => m.isCurrent);
             if (current) {
                 setName(current.name);
+                setSavedName(current.name);
                 setInviteCode(current.inviteCode ?? "");
             }
         }).catch(() => {});
@@ -129,6 +138,7 @@ export default function SettingsPage() {
             setGuestPolicy(data.guestMealPolicy);
             setBazaarCredit(data.bazaarCountsAsDeposit);
             setCarryForward(data.carryForwardBalance);
+            setRequireApproval(data.requireJoinApproval ?? true);
             if (data.weekendDays) setWeekendDays(data.weekendDays);
             setTgTimezone(data.timezone);
         }).catch(() => {});
@@ -136,10 +146,13 @@ export default function SettingsPage() {
         // Per-slot cutoff configs
         api.mealConfigs.list(token).then((data) => {
             const inputs: Record<string, string> = { ...cutoffInputs };
+            const served: Record<string, boolean> = { BREAKFAST: true, LUNCH: true, DINNER: true };
             for (const cfg of data.mealConfigs) {
                 inputs[cfg.mealType] = cfg.cutoffTime;
+                served[cfg.mealType] = cfg.enabled;
             }
             setCutoffInputs(inputs);
+            setMealServed(served);
         }).catch(() => {});
 
         // Telegram group (Admin only)
@@ -173,7 +186,7 @@ export default function SettingsPage() {
             toast.success(t("mealPreferences.saved"));
         } catch {
             setPrefs((prev) => ({ ...prev, [key]: !newVal }));
-            toast.error("Failed to update preference");
+            toast.error(t("errors.preference"));
         } finally {
             setUpdatingPref(null);
         }
@@ -187,9 +200,22 @@ export default function SettingsPage() {
             await api.admin.updateSettings({ name: name.trim() }, token);
             toast.success(t("messSaved"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to save");
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
         } finally {
             setSavingName(false);
+        }
+    }
+
+    // ── Switch a meal on or off for the whole mess (applies from now on, never to past days) ──
+    async function toggleServed(mealType: string, next: boolean) {
+        if (!token) return;
+        setMealServed((p) => ({ ...p, [mealType]: next }));
+        try {
+            await api.mealConfigs.update({ mealType, enabled: next }, token);
+            toast.success(next ? t("served.on") : t("served.off"));
+        } catch (err) {
+            setMealServed((p) => ({ ...p, [mealType]: !next }));
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
         }
     }
 
@@ -205,7 +231,7 @@ export default function SettingsPage() {
             );
             toast.success(t("cutoffsSaved"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to save cutoff times");
+            toast.error(err instanceof Error ? err.message : t("errors.cutoffs"));
         } finally {
             setSavingCutoffs(false);
         }
@@ -219,7 +245,7 @@ export default function SettingsPage() {
             await api.admin.updateSettings({ monthStartDay }, token);
             toast.success(t("monthStart.saved"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to save");
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
         } finally {
             setSavingStartDay(false);
         }
@@ -295,6 +321,35 @@ export default function SettingsPage() {
     }
 
     // ── Copy invite ────────────────────────────────────────────────────────────
+    async function toggleApproval(next: boolean) {
+        if (!token) return;
+        setSavingApproval(true);
+        setRequireApproval(next);
+        try {
+            await api.admin.updateSettings({ requireJoinApproval: next }, token);
+            toast.success(next ? t("inviteCard.approvalOn") : t("inviteCard.approvalOff"));
+        } catch (err) {
+            setRequireApproval(!next);
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
+        } finally {
+            setSavingApproval(false);
+        }
+    }
+
+    async function rotateInvite() {
+        if (!token || !window.confirm(t("inviteCard.rotateConfirm"))) return;
+        setRotating(true);
+        try {
+            const res = await api.mess.rotateInvite(token);
+            setInviteCode(res.inviteCode);
+            toast.success(t("inviteCard.rotated"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
+        } finally {
+            setRotating(false);
+        }
+    }
+
     async function handleCopyInvite() {
         await navigator.clipboard.writeText(inviteCode);
         setCopied(true);
@@ -314,13 +369,13 @@ export default function SettingsPage() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || "Failed to link group");
+                throw new Error(err.detail || t("errors.linkGroup"));
             }
             const data = await res.json();
             setLinkedGroup(data.group);
             toast.success(t("telegramGroup.linked"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to link group");
+            toast.error(err instanceof Error ? err.message : t("errors.linkGroup"));
         } finally {
             setLinkingTg(false);
         }
@@ -462,6 +517,7 @@ export default function SettingsPage() {
                             )}
                         </div>
                     </Card>
+                    <AccountSection />
                 </>
             )}
 
@@ -474,7 +530,7 @@ export default function SettingsPage() {
                             <Users size={18} />
                             {t("billing.title")}
                         </h3>
-                        <p className={styles.helpText} style={{ marginBottom: "var(--space-4)" }}>
+                        <p className={styles.helpText}>
                             {t("billing.guestHelp")}
                         </p>
 
@@ -536,7 +592,7 @@ export default function SettingsPage() {
                     {/* Per-slot cutoff times */}
                     <Card>
                         <h3 className={styles.sectionTitle}>{t("cutoffTimes")}</h3>
-                        <p className={styles.helpText} style={{ marginBottom: "var(--space-5)" }}>
+                        <p className={styles.helpText}>
                             {t("cutoffTimesHelp")}
                         </p>
 
@@ -546,14 +602,18 @@ export default function SettingsPage() {
                                     <label className={styles.cutoffLabel}>
                                         {CUTOFF_LABELS[slot] ?? slot}
                                     </label>
-                                    <input
-                                        type="time"
-                                        className={styles.input}
-                                        style={{ width: "auto" }}
+                                    <label className={styles.servedSwitch}>
+                                        <input
+                                            type="checkbox"
+                                            checked={mealServed[slot] ?? true}
+                                            onChange={(e) => void toggleServed(slot, e.target.checked)}
+                                        />
+                                        <span>{t("served.label")}</span>
+                                    </label>
+                                    <TimePicker
                                         value={cutoffInputs[slot] ?? ""}
-                                        onChange={(e) =>
-                                            setCutoffInputs((prev) => ({ ...prev, [slot]: e.target.value }))
-                                        }
+                                        onChange={(v) => setCutoffInputs((prev) => ({ ...prev, [slot]: v }))}
+                                        aria-label={CUTOFF_LABELS[slot] ?? slot}
                                     />
                                 </div>
                             ))}
@@ -570,7 +630,7 @@ export default function SettingsPage() {
                     {/* Weekend days */}
                     <Card>
                         <h3 className={styles.sectionTitle}>{t("weekend.title")}</h3>
-                        <p className={styles.helpText} style={{ marginBottom: "var(--space-4)" }}>
+                        <p className={styles.helpText}>
                             {t("weekend.help")}
                         </p>
                         <div className={styles.dayChips} role="group" aria-label={t("weekend.title")}>
@@ -603,15 +663,15 @@ export default function SettingsPage() {
                             <Calendar size={18} />
                             {t("monthStart.title")}
                         </h3>
-                        <p className={styles.helpText} style={{ marginBottom: "var(--space-4)" }}>
+                        <p className={styles.helpText}>
                             {t("monthStart.help")}
                         </p>
                         <div className={styles.field}>
                             <div className={styles.inputRow}>
                                 <input
                                     type="number"
-                                    className={styles.input}
-                                    style={{ width: "100px" }}
+                                    inputMode="numeric"
+                                    className={`${styles.input} ${styles.inputNarrow}`}
                                     min={1}
                                     max={28}
                                     value={monthStartDay}
@@ -633,7 +693,7 @@ export default function SettingsPage() {
                     {/* Mess name */}
                     <Card>
                         <h3 className={styles.sectionTitle}>{t("messName")}</h3>
-                        <div className={styles.field} style={{ marginTop: "var(--space-4)" }}>
+                        <div className={styles.field}>
                             <div className={styles.inputRow}>
                                 <input
                                     type="text"
@@ -664,6 +724,21 @@ export default function SettingsPage() {
                                     {copied ? t("inviteCard.copied") : t("inviteCard.copy")}
                                 </Button>
                             </div>
+                            <button type="button" className={styles.textAction} onClick={() => void rotateInvite()} disabled={rotating}>
+                                <RefreshCw size={16} /> {t("inviteCard.rotate")}
+                            </button>
+                            <label className={styles.switchRow}>
+                                <input
+                                    type="checkbox"
+                                    checked={requireApproval}
+                                    disabled={savingApproval}
+                                    onChange={(e) => void toggleApproval(e.target.checked)}
+                                />
+                                <span>
+                                    <span className={styles.optionTitle}>{t("inviteCard.approvalTitle")}</span>
+                                    <span className={styles.optionDesc}>{t("inviteCard.approvalDesc")}</span>
+                                </span>
+                            </label>
                         </Card>
                     )}
 
@@ -727,18 +802,7 @@ export default function SettingsPage() {
                     )}
 
                     {/* Danger zone (Admin only) */}
-                    {isAdmin && (
-                        <Card className={styles.dangerCard}>
-                            <div className={styles.dangerHeader}>
-                                <AlertTriangle size={20} />
-                                <h3>{t("dangerZone")}</h3>
-                            </div>
-                            <p className={styles.dangerDesc}>{t("dangerDesc")}</p>
-                            <Button variant="danger" size="small" disabled>
-                                {t("deleteMess")} ({t("contactSupport")})
-                            </Button>
-                        </Card>
-                    )}
+                    {isAdmin && savedName && <DeleteMessCard messName={savedName} />}
                 </>
             )}
         </div>

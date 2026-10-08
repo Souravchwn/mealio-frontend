@@ -8,6 +8,7 @@
  * always agree.
  */
 
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CURRENCY_SYMBOL, DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, type GuestMealPolicy } from './constants'
 import { resolvePeriod, calculateNextPeriod, type Period, type PeriodRange } from './period'
@@ -159,6 +160,53 @@ function emptyMember(memberId: string): MemberPeriodSummary {
 }
 
 /**
+ * Every figure of a period, frozen when it is closed. Stored on MessMonth.snapshot.
+ * Member names are NOT stored (they are looked up when shown), so deleting an account
+ * still removes the person's name from the archive.
+ */
+export interface PeriodSnapshot {
+  version: 1
+  takenAt: string
+  guestMealPolicy: GuestMealPolicy
+  bazaarCountsAsDeposit: boolean
+  carryForwardBalance: boolean
+  totalExpense: number
+  totalMeals: number
+  totalGuestMeals: number
+  mealRate: number
+  members: MemberPeriodSummary[]
+}
+
+export function buildSnapshot(summary: PeriodSummary, carryForwardBalance: boolean): PeriodSnapshot {
+  return {
+    version: 1,
+    takenAt: new Date().toISOString(),
+    guestMealPolicy: summary.guestMealPolicy,
+    bazaarCountsAsDeposit: summary.bazaarCountsAsDeposit,
+    carryForwardBalance,
+    totalExpense: summary.totalExpense,
+    totalMeals: summary.totalMeals,
+    totalGuestMeals: summary.totalGuestMeals,
+    mealRate: summary.mealRate,
+    members: Array.from(summary.members.values()),
+  }
+}
+
+function summaryFromSnapshot(snap: PeriodSnapshot): PeriodSummary {
+  const members = new Map(snap.members.map((m) => [m.memberId, m]))
+  return {
+    guestMealPolicy: snap.guestMealPolicy,
+    bazaarCountsAsDeposit: snap.bazaarCountsAsDeposit,
+    totalExpense: snap.totalExpense,
+    totalMeals: snap.totalMeals,
+    totalGuestMeals: snap.totalGuestMeals,
+    mealRate: snap.mealRate,
+    members,
+    forMember: (id: string) => members.get(id) ?? emptyMember(id),
+  }
+}
+
+/**
  * Calculate every financial number for a period using the mess settings
  * (guest policy, bazaar credit rule) served from Redis.
  * Backfills any missing daily logs first (replaces the old cron job).
@@ -167,6 +215,13 @@ export async function calculatePeriodSummary(
   messId: string,
   period: Pick<Period, 'id' | 'isClosed'> & PeriodRange,
 ): Promise<PeriodSummary> {
+  // A closed period is history. Read it from its frozen snapshot, never recalculate it:
+  // today's settings (guest policy, bazaar credit, ...) must not rewrite a settled month.
+  if (period.isClosed) {
+    const row = await prisma.messMonth.findUnique({ where: { id: period.id }, select: { snapshot: true } })
+    if (row?.snapshot) return summaryFromSnapshot(row.snapshot as unknown as PeriodSnapshot)
+  }
+
   await ensureDailyLogs(messId)
   const settings = await requireMessSettings(messId)
   const policy = settings.guestMealPolicy
@@ -253,7 +308,7 @@ export async function calculatePeriodSummary(
     row.balance = row.contributed - row.mealCost
   }
 
-  return {
+  const result: PeriodSummary = {
     guestMealPolicy: policy,
     bazaarCountsAsDeposit: settings.bazaarCountsAsDeposit,
     totalExpense,
@@ -263,6 +318,17 @@ export async function calculatePeriodSummary(
     members: byMember,
     forMember: (id: string) => byMember.get(id) ?? emptyMember(id),
   }
+
+  // A period closed before snapshots existed: freeze it now, the first time it is read.
+  if (period.isClosed) {
+    await prisma.messMonth
+      .updateMany({
+        where: { id: period.id, snapshot: { equals: Prisma.DbNull } },
+        data: { snapshot: buildSnapshot(result, settings.carryForwardBalance) as unknown as Prisma.InputJsonValue },
+      })
+      .catch((err) => console.error('[calculatePeriodSummary] could not snapshot closed period', err))
+  }
+  return result
 }
 
 // ─── Month stats ──────────────────────────────────────────────────────────────
@@ -308,7 +374,7 @@ export async function closeMonth(
   yearMonth: string,
   adminId: string,
   nextManagerId?: string | null,
-): Promise<{ mealRate: number; totalExpense: number; totalMeals: number; nextPeriod: { yearMonth: string; startDate: string; endDate: string } }> {
+): Promise<{ mealRate: number; totalExpense: number; totalMeals: number; nextPeriod: { yearMonth: string; startDate: string; endDate: string }; skippedPeriods: number }> {
   const period = await resolvePeriod(messId, yearMonth)
   if (period.isClosed) throw new MonthAlreadyClosedError()
 
@@ -317,13 +383,27 @@ export async function closeMonth(
   if (todayIn(settings.timezone) < endDate) throw new PeriodNotFinishedError(endDate)
   const summary = await calculatePeriodSummary(messId, period)
   const { totalExpense, totalMeals, mealRate } = summary
-  const nextPeriodDates = calculateNextPeriod(period.end, settings.monthStartDay)
+  let nextPeriodDates = calculateNextPeriod(period.end, settings.monthStartDay)
+  // A mess that stopped using the app for a while must not get months of empty periods,
+  // each one back-filled with default meals. Start the new period at the one containing today.
+  const today = new Date(`${todayIn(settings.timezone)}T00:00:00.000Z`)
+  let skippedPeriods = 0
+  while (nextPeriodDates.endDate < today && skippedPeriods < 240) {
+    nextPeriodDates = calculateNextPeriod(nextPeriodDates.endDate, settings.monthStartDay)
+    skippedPeriods++
+  }
 
   const nextPeriodResult = await prisma.$transaction(async (tx) => {
     // The isClosed guard makes two simultaneous close requests safe
     const closed = await tx.messMonth.updateMany({
       where: { id: period.id, isClosed: false },
-      data: { isClosed: true, closedAt: new Date(), mealRate, totalExpense },
+      data: {
+        isClosed: true,
+        closedAt: new Date(),
+        mealRate,
+        totalExpense,
+        snapshot: buildSnapshot(summary, settings.carryForwardBalance) as unknown as Prisma.InputJsonValue,
+      },
     })
     if (closed.count !== 1) throw new MonthAlreadyClosedError()
 
@@ -390,6 +470,7 @@ export async function closeMonth(
           guest_meal_policy: summary.guestMealPolicy,
           carry_forward_balance: settings.carryForwardBalance,
           next_period: nextPeriodDates.yearMonth,
+          skipped_periods: skippedPeriods,
           next_manager_id: nextManagerId || null,
         },
       },
@@ -407,5 +488,6 @@ export async function closeMonth(
       startDate: nextPeriodResult.startDate.toISOString().slice(0, 10),
       endDate: nextPeriodResult.endDate.toISOString().slice(0, 10),
     },
+    skippedPeriods,
   }
 }

@@ -14,12 +14,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Fail closed: without a configured secret anyone could post fake updates
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET
   if (!webhookSecret) {
-    console.error('[Webhook] TELEGRAM_WEBHOOK_SECRET is not set — rejecting all updates')
+    console.error('[Webhook] TELEGRAM_WEBHOOK_SECRET is not set, rejecting all updates')
     return NextResponse.json({ ok: false }, { status: 503 })
   }
   const incoming = req.headers.get('x-telegram-bot-api-secret-token')
   if (incoming !== webhookSecret) {
-    console.warn('[Webhook] Invalid secret token — rejected')
+    console.warn('[Webhook] Invalid secret token, rejected')
     return NextResponse.json({ ok: true })
   }
 

@@ -2,6 +2,8 @@
 
 ## What This Module Does
 
+> Sign-up modes, join approval, login status codes and password recovery are documented in `16-saas-platform.md`.
+
 Handles user login, registration, JWT signing/verification, and storing auth state in `localStorage` via React Context. No session cookies — pure JWT.
 
 ---
@@ -11,7 +13,8 @@ Handles user login, registration, JWT signing/verification, and storing auth sta
 | File | Type | Purpose |
 |------|------|---------|
 | `src/app/[locale]/(auth)/login/page.tsx` | Page (client) | Email + password login form |
-| `src/app/[locale]/(auth)/register/page.tsx` | Page (client) | Name, email, phone, password, invite code form |
+| `src/app/[locale]/(auth)/register/page.tsx` | Page (client) | Two tabs: "Start a new mess" (mode create) or "Join with a code" (mode join), plus the waiting-for-approval screen |
+| `src/app/[locale]/(auth)/forgot-password`, `reset-password`, `verify-email` | Pages (client) | Recovery and email verification, see `16-saas-platform.md` |
 | `src/app/[locale]/(auth)/auth.module.css` | CSS | Shared auth page styles (split-panel layout) |
 | `src/app/api/auth/login/route.ts` | API route | POST — verifies bcrypt, signs JWT, returns token + user |
 | `src/app/api/auth/register/route.ts` | API route | POST — creates Member row, signs JWT |

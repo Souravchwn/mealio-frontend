@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   const slotUpper = (slot as string)?.toUpperCase()
   if (!MEAL_TYPES.includes(slotUpper as typeof MEAL_TYPES[number])) {
-    return NextResponse.json({ detail: 'Invalid slot — must be BREAKFAST, LUNCH, or DINNER' }, { status: 400 })
+    return NextResponse.json({ detail: 'Invalid slot. Use BREAKFAST, LUNCH or DINNER.' }, { status: 400 })
   }
   if (typeof note !== 'string') {
     return NextResponse.json({ detail: 'note must be a string' }, { status: 400 })

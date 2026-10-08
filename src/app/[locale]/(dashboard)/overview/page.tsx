@@ -1,32 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import {
     UtensilsCrossed,
     TrendingUp,
-    Wallet,
     Users,
     Receipt,
     Grid3X3,
     ChefHat,
-    ArrowRight,
+    ArrowUpRight,
     Sun,
     CloudSun,
     Moon,
+    Sparkles,
+    Wallet,
+    Clock,
 } from "lucide-react";
-import { cn, formatCurrency, getTimeOfDay, getCategoryColor, getCurrentYearMonth } from "@/lib/utils";
+import { cn, formatCurrency, getTimeOfDay, getCategoryColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePeriod, formatPeriodDay } from "@/contexts/PeriodContext";
 import styles from "./overview.module.css";
 
-interface TodayMeals {
-    breakfast: boolean;
-    lunch: boolean;
-    dinner: boolean;
-}
+type Slot = "breakfast" | "lunch" | "dinner";
 
 interface RecentExpense {
     id: string;
@@ -41,35 +39,36 @@ interface Stats {
     balance: number;
     monthExpense: number;
     headcount: number;
+    myMeals: number;
 }
 
-const MEAL_SLOTS = [
-    { key: "breakfast" as const, icon: <Sun size={20} />,      labelKey: "breakfast" },
-    { key: "lunch"     as const, icon: <CloudSun size={20} />, labelKey: "lunch" },
-    { key: "dinner"    as const, icon: <Moon size={20} />,     labelKey: "dinner" },
+const MEAL_SLOTS: { key: Slot; Icon: typeof Sun }[] = [
+    { key: "breakfast", Icon: Sun },
+    { key: "lunch", Icon: CloudSun },
+    { key: "dinner", Icon: Moon },
 ];
 
 export default function OverviewPage() {
-    const t  = useTranslations("overview");
+    const t = useTranslations("overview");
     const tm = useTranslations("meals");
     const locale = useLocale();
     const timeOfDay = getTimeOfDay();
     const { user, token } = useAuth();
+    const { period } = usePeriod();
+    const tp = useTranslations("period");
 
-    const [stats, setStats] = useState<Stats>({ mealRate: 0, balance: 0, monthExpense: 0, headcount: 0 });
-    const [todayMeals, setTodayMeals] = useState<TodayMeals>({ breakfast: false, lunch: false, dinner: false });
+    const [stats, setStats] = useState<Stats>({ mealRate: 0, balance: 0, monthExpense: 0, headcount: 0, myMeals: 0 });
+    const [todayMeals, setTodayMeals] = useState<Record<Slot, boolean>>({ breakfast: false, lunch: false, dinner: false });
+    const [nextCutoff, setNextCutoff] = useState<{ time: string; passed: boolean } | null>(null);
     const [recentExpenses, setRecentExpenses] = useState<RecentExpense[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!user || !token) return;
-        const yearMonth = getCurrentYearMonth();
 
         Promise.allSettled([
-            // members/me returns mealRate + totalExpense (mess-wide) + balance — one call covers three stats
-            api.members.me(token, yearMonth),
-            // limit 5 — recent list only; totals come from members/me above
-            api.expenses.getExpenses({ messId: user.messId, yearMonth, limit: 5 }, token),
+            api.members.me(token),
+            api.expenses.getExpenses({ messId: user.messId, limit: 5 }, token),
             api.cook.getHeadcount(user.messId, token),
             api.meals.getToday(user.id, token),
         ]).then(([meRes, expensesRes, headcountRes, mealsRes]) => {
@@ -77,208 +76,182 @@ export default function OverviewPage() {
                 const me = meRes.value;
                 setStats((s) => ({
                     ...s,
-                    mealRate:     Number(me.mealRate),
+                    mealRate: Number(me.mealRate),
                     monthExpense: Number(me.totalExpense),
-                    balance:      Number(me.balance),
+                    balance: Number(me.balance),
+                    myMeals: Number(me.myMealCount),
                 }));
             }
             if (expensesRes.status === "fulfilled") {
                 setRecentExpenses(
                     expensesRes.value.expenses.map((e) => ({
-                        id:          e.id,
+                        id: e.id,
                         description: e.description || "",
-                        amount:      Number(e.amount),
-                        category:    e.category,
-                        date:        e.date,
-                    }))
+                        amount: Number(e.amount),
+                        category: e.category,
+                        date: e.date,
+                    })),
                 );
             }
-            if (headcountRes.status === "fulfilled")
+            if (headcountRes.status === "fulfilled") {
                 setStats((s) => ({ ...s, headcount: headcountRes.value.totalHeadcount }));
+            }
             if (mealsRes.status === "fulfilled") {
                 const m = mealsRes.value;
                 setTodayMeals({ breakfast: m.breakfast, lunch: m.lunch, dinner: m.dinner });
+                setNextCutoff({ time: m.cutOffTime, passed: m.cutOffPassed });
             }
             setLoading(false);
         });
     }, [user, token]);
 
-    const firstName = user?.name?.split(" ")[0] ?? "Friend";
-    const greeting  = t("greeting", { timeOfDay: t(timeOfDay), name: firstName });
+    const firstName = user?.name?.split(" ")[0] ?? "";
+    const greeting = t("greeting", { timeOfDay: t(timeOfDay), name: firstName });
+    const todayLabel = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }).format(new Date());
+    const fmtDate = (d: string) =>
+        new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
 
-    // Format date as "Monday, 14 Apr 2026"
-    const todayLabel = new Date().toLocaleDateString("en-GB", {
-        weekday: "long", day: "numeric", month: "short", year: "numeric",
-    });
-
-    const statItems = [
-        {
-            key: "mealRate",
-            label: t("mealRate"),
-            value: formatCurrency(stats.mealRate),
-            icon: <TrendingUp size={18} />,
-            iconClass: styles.statIconPrimary,
-            cardClass: styles.statCardPrimary,
-        },
-        {
-            key: "balance",
-            label: t("yourBalance"),
-            value: formatCurrency(stats.balance),
-            icon: <Wallet size={18} />,
-            iconClass: stats.balance >= 0 ? styles.statIconSuccess : styles.statIconDanger,
-            cardClass: stats.balance >= 0 ? styles.statCardSuccess : styles.statCardDanger,
-            valueClass: stats.balance >= 0 ? styles.balancePositive : styles.balanceNegative,
-        },
-        {
-            key: "monthExpense",
-            label: t("monthExpense"),
-            value: formatCurrency(stats.monthExpense),
-            icon: <Receipt size={18} />,
-            iconClass: styles.statIconAccent,
-            cardClass: styles.statCardAccent,
-        },
-        {
-            key: "headcount",
-            label: t("headcountToday"),
-            value: String(stats.headcount),
-            icon: <Users size={18} />,
-            iconClass: styles.statIconInfo,
-            cardClass: styles.statCardInfo,
-        },
-    ];
+    const ahead = stats.balance >= 0;
+    const mealsOn = MEAL_SLOTS.filter((s) => todayMeals[s.key]).length;
+    const canAddExpense = user?.role === "ADMIN" || user?.role === "MANAGER";
+    const canSeeMatrix = user?.role === "ADMIN" || user?.role === "MANAGER";
 
     const quickActions = [
-        { key: "toggleMeals",   label: t("toggleMeals"),   icon: <UtensilsCrossed size={18} />, href: `/${locale}/meals` },
-        { key: "addExpense",    label: t("addExpense"),    icon: <Receipt size={18} />,         href: `/${locale}/expenses` },
-        { key: "viewMatrix",    label: t("viewMatrix"),    icon: <Grid3X3 size={18} />,         href: `/${locale}/matrix` },
-        { key: "viewHeadcount", label: t("viewHeadcount"), icon: <ChefHat size={18} />,         href: `/${locale}/headcount` },
-    ];
-
-    // Filter quick actions by role
-    const canSeeExpenses = user?.role === "ADMIN" || user?.role === "MANAGER";
-    const canSeeMatrix   = user?.role === "ADMIN";
-    const filteredActions = quickActions.filter((a) => {
-        if (a.key === "addExpense" && !canSeeExpenses) return false;
-        if (a.key === "viewMatrix" && !canSeeMatrix) return false;
-        return true;
-    });
+        { key: "toggleMeals", label: t("toggleMeals"), Icon: UtensilsCrossed, href: `/${locale}/meals`, tone: styles.toneViolet, show: true },
+        { key: "addExpense", label: t("addExpense"), Icon: Receipt, href: `/${locale}/expenses`, tone: styles.toneLime, show: canAddExpense },
+        { key: "viewHeadcount", label: t("viewHeadcount"), Icon: ChefHat, href: `/${locale}/headcount`, tone: styles.tonePink, show: true },
+        { key: "viewMatrix", label: t("viewMatrix"), Icon: Grid3X3, href: `/${locale}/matrix`, tone: styles.toneBlue, show: canSeeMatrix },
+    ].filter((a) => a.show);
 
     return (
         <div className={styles.page}>
             {/* Greeting */}
-            <div className={styles.greetingRow}>
-                <div className={styles.greetingText}>
-                    <h2 className={styles.greeting}>{greeting}</h2>
-                    <p className={styles.greetingMeta}>{todayLabel} · {user?.messName}</p>
-                </div>
-            </div>
+            <header className={styles.greetingRow}>
+                <p className={styles.greetingMeta}>{todayLabel}</p>
+                {period && (
+                    <p className={styles.periodLine}>
+                        {tp("label", { range: `${formatPeriodDay(period.startDate, locale)} – ${formatPeriodDay(period.endDate, locale)}` })}
+                    </p>
+                )}
+                <h2 className={styles.greeting}>{greeting}</h2>
+            </header>
 
-            {/* Stats Grid */}
-            <div className={styles.statsGrid}>
-                {statItems.map((stat) => (
-                    <div key={stat.key} className={cn(styles.statCard, stat.cardClass)}>
-                        <div className={styles.statTop}>
-                            <span className={styles.statLabel}>{stat.label}</span>
-                            <span className={cn(styles.statIcon, stat.iconClass)}>{stat.icon}</span>
-                        </div>
-                        {loading ? (
-                            <div className={styles.statValueSkeleton} />
-                        ) : (
-                            <div className={cn(styles.statValue, stat.valueClass)}>{stat.value}</div>
-                        )}
+            {/* ── Bento ─────────────────────────────────────────────────── */}
+            <section className={styles.bento}>
+                {/* Balance hero */}
+                <Link href={`/${locale}/my-summary`} className={cn(styles.hero, ahead ? styles.heroAhead : styles.heroOwe)}>
+                    <div className={styles.heroTop}>
+                        <span className={styles.heroLabel}>
+                            <Wallet size={16} /> {t("yourBalance")}
+                        </span>
+                        <ArrowUpRight size={20} className={styles.heroArrow} />
                     </div>
-                ))}
-            </div>
+                    {loading ? (
+                        <span className={cn(styles.skeleton, styles.skeletonHero)} />
+                    ) : (
+                        <span className={cn(styles.heroValue, "num")}>{formatCurrency(stats.balance)}</span>
+                    )}
+                    <div className={styles.heroFooter}>
+                        <span className={cn(styles.heroChip, ahead ? styles.heroChipAhead : styles.heroChipOwe)}>
+                            {ahead ? t("youAreAhead") : t("youOwe")}
+                        </span>
+                        <span className={styles.heroMeta}>
+                            {t("myMealsCount", { n: stats.myMeals })}
+                        </span>
+                    </div>
+                    <Sparkles className={styles.heroSparkle} size={88} aria-hidden />
+                </Link>
 
-            {/* Two-column */}
-            <div className={styles.twoColumn}>
-                {/* Left: meals + quick actions */}
-                <div className={styles.leftCol}>
-                    {/* Today's Meals */}
-                    <div className={styles.sectionCard}>
-                        <div className={styles.sectionHeader}>
-                            <h3 className={styles.sectionTitle}>{t("todayMeals")}</h3>
-                            <Link href={`/${locale}/meals`} className={styles.viewAllLink}>
-                                Manage <ArrowRight size={13} />
-                            </Link>
-                        </div>
-                        <div className={styles.mealsPreview}>
-                            {MEAL_SLOTS.map((slot) => (
-                                <div
-                                    key={slot.key}
-                                    className={cn(
-                                        styles.mealSlot,
-                                        todayMeals[slot.key] && styles.mealSlotActive
-                                    )}
+                {/* Today's meals */}
+                <Link href={`/${locale}/meals`} className={styles.mealsCard}>
+                    <div className={styles.cardHead}>
+                        <h3 className={styles.cardTitle}>{t("todayMeals")}</h3>
+                        <span className={styles.mealsCount}>
+                            <span className="num">{mealsOn}</span>/3
+                        </span>
+                    </div>
+                    <div className={styles.mealTiles}>
+                        {MEAL_SLOTS.map(({ key, Icon }) => (
+                            <span key={key} className={cn(styles.mealTile, todayMeals[key] && styles.mealTileOn)}>
+                                <Icon size={22} />
+                                <span className={styles.mealTileLabel}>{tm(key)}</span>
+                                <span className={styles.mealTileStatus}>{todayMeals[key] ? tm("on") : tm("off")}</span>
+                            </span>
+                        ))}
+                    </div>
+                    {nextCutoff && (
+                        <span className={cn(styles.cutoffNote, nextCutoff.passed && styles.cutoffNoteDone)}>
+                            <Clock size={14} />
+                            {nextCutoff.passed ? tm("cutoffPassed") : tm("cutoffAt", { time: nextCutoff.time })}
+                        </span>
+                    )}
+                </Link>
+
+                {/* Small stats */}
+                <div className={cn(styles.stat, styles.statViolet)}>
+                    <span className={styles.statIcon}><TrendingUp size={18} /></span>
+                    <span className={styles.statLabel}>{t("mealRate")}</span>
+                    {loading ? <span className={styles.skeleton} /> : <span className={cn(styles.statValue, "num")}>{formatCurrency(stats.mealRate)}</span>}
+                </div>
+                <div className={cn(styles.stat, styles.statLime)}>
+                    <span className={styles.statIcon}><Receipt size={18} /></span>
+                    <span className={styles.statLabel}>{t("monthExpense")}</span>
+                    {loading ? <span className={styles.skeleton} /> : <span className={cn(styles.statValue, "num")}>{formatCurrency(stats.monthExpense)}</span>}
+                </div>
+                <Link href={`/${locale}/headcount`} className={cn(styles.stat, styles.statPink, styles.statWide)}>
+                    <span className={styles.statIcon}><Users size={18} /></span>
+                    <span className={styles.statLabel}>{t("headcountToday")}</span>
+                    {loading ? <span className={styles.skeleton} /> : <span className={cn(styles.statValue, "num")}>{stats.headcount}</span>}
+                </Link>
+            </section>
+
+            {/* Quick actions */}
+            <section>
+                <h3 className={styles.sectionTitle}>{t("quickActions")}</h3>
+                <div className={styles.actions}>
+                    {quickActions.map(({ key, label, Icon, href, tone }) => (
+                        <Link key={key} href={href} className={cn(styles.action, tone)}>
+                            <span className={styles.actionIcon}><Icon size={20} /></span>
+                            <span className={styles.actionLabel}>{label}</span>
+                        </Link>
+                    ))}
+                </div>
+            </section>
+
+            {/* Recent bazaar */}
+            <section className={styles.listCard}>
+                <div className={styles.cardHead}>
+                    <h3 className={styles.cardTitle}>{t("recentExpenses")}</h3>
+                    <Link href={`/${locale}/expenses`} className={styles.viewAll}>
+                        {t("viewAll")} <ArrowUpRight size={14} />
+                    </Link>
+                </div>
+                {loading ? (
+                    <div className={styles.listSkeleton}>
+                        {[0, 1, 2].map((i) => <span key={i} className={styles.skeletonRow} />)}
+                    </div>
+                ) : recentExpenses.length === 0 ? (
+                    <p className={styles.empty}>{t("noExpenses")}</p>
+                ) : (
+                    <ul className={styles.expenseList}>
+                        {recentExpenses.map((e) => (
+                            <li key={e.id} className={styles.expenseItem}>
+                                <span
+                                    className={styles.expenseBadge}
+                                    style={{ "--cat": getCategoryColor(e.category as never) } as React.CSSProperties}
                                 >
-                                    <span className={styles.mealSlotIcon}>{slot.icon}</span>
-                                    <span className={styles.mealSlotLabel}>{tm(slot.labelKey)}</span>
-                                    <span className={cn(
-                                        styles.mealSlotStatus,
-                                        todayMeals[slot.key] ? styles.mealStatusOn : styles.mealStatusOff
-                                    )}>
-                                        {todayMeals[slot.key] ? tm("on") : tm("off")}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className={styles.sectionCard}>
-                        <div className={styles.sectionHeader}>
-                            <h3 className={styles.sectionTitle}>{t("quickActions")}</h3>
-                        </div>
-                        <div className={styles.quickActions}>
-                            {filteredActions.map((action) => (
-                                <Link key={action.key} href={action.href}>
-                                    <div className={styles.quickAction}>
-                                        <div className={styles.quickActionIcon}>{action.icon}</div>
-                                        <span className={styles.quickActionLabel}>{action.label}</span>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right: Recent Expenses */}
-                <div className={styles.sectionCard}>
-                    <div className={styles.sectionHeader}>
-                        <h3 className={styles.sectionTitle}>{t("recentExpenses")}</h3>
-                        {canSeeExpenses && (
-                            <Link href={`/${locale}/expenses`} className={styles.viewAllLink}>
-                                View all <ArrowRight size={13} />
-                            </Link>
-                        )}
-                    </div>
-                    <div className={styles.expenseList}>
-                        {loading ? (
-                            <p className={styles.emptyState}>Loading…</p>
-                        ) : recentExpenses.length === 0 ? (
-                            <p className={styles.emptyState}>No expenses this month.</p>
-                        ) : (
-                            recentExpenses.map((expense) => (
-                                <div key={expense.id} className={styles.expenseItem}>
-                                    <span
-                                        className={styles.expenseDot}
-                                        style={{ backgroundColor: getCategoryColor(expense.category as never) }}
-                                    />
-                                    <div className={styles.expenseInfo}>
-                                        <div className={styles.expenseDesc}>
-                                            {expense.description || expense.category}
-                                        </div>
-                                        <div className={styles.expenseDate}>{expense.date}</div>
-                                    </div>
-                                    <div className={styles.expenseAmount}>
-                                        {formatCurrency(expense.amount)}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </div>
+                                    {(e.description || e.category).charAt(0).toUpperCase()}
+                                </span>
+                                <span className={styles.expenseInfo}>
+                                    <span className={styles.expenseDesc}>{e.description || e.category}</span>
+                                    <span className={styles.expenseDate}>{fmtDate(e.date)}</span>
+                                </span>
+                                <span className={cn(styles.expenseAmount, "num")}>{formatCurrency(e.amount)}</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
         </div>
     );
 }

@@ -1,0 +1,127 @@
+/* Trigger + panel share the DatePicker look */
+.trigger {
+    composes: trigger from "../DatePicker/DatePicker.module.css";
+    width: auto;
+    min-width: 150px;
+}
+
+.triggerOpen {
+    composes: triggerOpen from "../DatePicker/DatePicker.module.css";
+}
+
+.triggerIcon {
+    composes: triggerIcon from "../DatePicker/DatePicker.module.css";
+}
+
+.triggerText {
+    composes: triggerText from "../DatePicker/DatePicker.module.css";
+}
+
+.placeholder {
+    composes: placeholder from "../DatePicker/DatePicker.module.css";
+}
+
+.triggerChevron {
+    composes: triggerChevron from "../DatePicker/DatePicker.module.css";
+}
+
+.triggerChevronOpen {
+    composes: triggerChevronOpen from "../DatePicker/DatePicker.module.css";
+}
+
+.panel {
+    composes: panel from "../DatePicker/DatePicker.module.css";
+    width: min(248px, calc(100vw - 16px));
+}
+
+.panelTop {
+    composes: panelTop from "../DatePicker/DatePicker.module.css";
+}
+
+/* ── Big preview ────────────────────────────────────────────────────────── */
+.preview {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) 0;
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-primary-rgb), 0.08);
+    color: var(--color-primary);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracking-tight);
+    text-align: center;
+}
+
+/* ── Scroll columns ─────────────────────────────────────────────────────── */
+.columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 0.9fr;
+    gap: var(--space-2);
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 196px;
+    overflow-y: auto;
+    padding: 2px;
+    scroll-snap-type: y proximity;
+    scrollbar-width: thin;
+}
+
+.columnShort {
+    max-height: none;
+    justify-content: flex-start;
+}
+
+.option {
+    flex-shrink: 0;
+    height: 34px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    scroll-snap-align: center;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.option:hover {
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.option:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.optionSelected,
+.optionSelected:hover {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.35);
+}
+
+.done {
+    width: 100%;
+    margin-top: var(--space-3);
+    padding: var(--space-2);
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.done:hover,
+.done:focus-visible {
+    outline: none;
+    background: var(--color-primary-hover);
+}

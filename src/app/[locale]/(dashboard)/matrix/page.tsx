@@ -1,56 +1,40 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
     Download, Lock, ChevronLeft, ChevronRight,
-    Pencil, Maximize2, Minimize2, Filter, X, Calendar, CalendarDays, Users
+    Pencil, Maximize2, Minimize2, Filter, X, Calendar, CalendarDays, Users,
+    Sun, CloudSun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
+import { Select } from "@/components/ui/Select/Select";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePeriod } from "@/contexts/PeriodContext";
 import type { MonthMatrixResponse, MemberMatrixRow, DayEntry } from "@/types";
 import { Role } from "@/types";
 import { toast } from "sonner";
 import styles from "./matrix.module.css";
 
 /* ─── Date helpers ─── */
-function prevMonth(ym: string): string {
-    const [y, m] = ym.split("-").map(Number);
-    const d = new Date(y, m - 2, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function nextMonth(ym: string): string {
-    const [y, m] = ym.split("-").map(Number);
-    const d = new Date(y, m, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function daysInMonth(ym: string): number {
-    const [y, m] = ym.split("-").map(Number);
-    return new Date(y, m, 0).getDate();
-}
-
-const DAY_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
 /** Build day info from a date string like "2026-05-10" */
-function getDayInfoFromDate(dateStr: string): { day: number; dayOfWeek: number; isWeekend: boolean } {
+function getDayInfoFromDate(dateStr: string, weekendDays: number[]): { day: number; dayOfWeek: number; isWeekend: boolean } {
     const d = new Date(dateStr + "T00:00:00.000Z");
     const dow = d.getUTCDay();
-    return { day: d.getUTCDate(), dayOfWeek: dow, isWeekend: dow === 0 || dow === 6 };
+    return { day: d.getUTCDate(), dayOfWeek: dow, isWeekend: weekendDays.includes(dow) };
 }
 
 /** Generate all days between startDate and endDate (inclusive) */
-function getPeriodDays(startDate: string, endDate: string): { date: string; day: number; dayOfWeek: number; isWeekend: boolean }[] {
+function getPeriodDays(startDate: string, endDate: string, weekendDays: number[]): { date: string; day: number; dayOfWeek: number; isWeekend: boolean }[] {
     const days: { date: string; day: number; dayOfWeek: number; isWeekend: boolean }[] = [];
     const start = new Date(startDate + "T00:00:00.000Z");
     const end = new Date(endDate + "T00:00:00.000Z");
     const current = new Date(start);
     while (current <= end) {
         const dateStr = current.toISOString().slice(0, 10);
-        const { day, dayOfWeek, isWeekend } = getDayInfoFromDate(dateStr);
+        const { day, dayOfWeek, isWeekend } = getDayInfoFromDate(dateStr, weekendDays);
         days.push({ date: dateStr, day, dayOfWeek, isWeekend });
         current.setUTCDate(current.getUTCDate() + 1);
     }
@@ -65,7 +49,7 @@ function getWeekChunksFromDays(days: { date: string; day: number; dayOfWeek: num
 
 /* ─── CSV Export ─── */
 function exportCsv(matrix: MonthMatrixResponse) {
-    const allDays = getPeriodDays(matrix.startDate, matrix.endDate);
+    const allDays = getPeriodDays(matrix.startDate, matrix.endDate, matrix.weekendDays);
     const header = [
         "Member",
         ...allDays.map(d => d.date.slice(5)), // MM-DD format
@@ -101,6 +85,8 @@ interface CellPopoverProps {
 
 function CellPopover({ day, memberName, date, onToggle, onClose }: CellPopoverProps) {
     const ref = useRef<HTMLDivElement>(null);
+    const t = useTranslations("matrix");
+    const tm = useTranslations("meals");
 
     useEffect(() => {
         function handleClick(e: MouseEvent) {
@@ -111,31 +97,31 @@ function CellPopover({ day, memberName, date, onToggle, onClose }: CellPopoverPr
     }, [onClose]);
 
     const slots = [
-        { key: "breakfast" as const, label: "Breakfast", emoji: "🍳" },
-        { key: "lunch" as const, label: "Lunch", emoji: "🍱" },
-        { key: "dinner" as const, label: "Dinner", emoji: "🌙" },
+        { key: "breakfast" as const, Icon: Sun },
+        { key: "lunch" as const, Icon: CloudSun },
+        { key: "dinner" as const, Icon: Moon },
     ];
 
     return (
-        <div ref={ref} className={styles.popover}>
+        <div ref={ref} className={styles.popover} role="dialog" aria-label={t("ui.editDay", { name: memberName })}>
             <div className={styles.popoverHeader}>
                 <span className={styles.popoverName}>{memberName}</span>
                 <span className={styles.popoverDate}>{date}</span>
             </div>
             <div className={styles.popoverSlots}>
-                {slots.map(({ key, label, emoji }) => {
+                {slots.map(({ key, Icon }) => {
                     const active = day ? day[key] : true;
                     return (
                         <button
                             key={key}
                             className={cn(styles.slotBtn, active && styles.slotBtnOn)}
                             onClick={() => onToggle(key, !active)}
-                            title={key}
+                            aria-pressed={active}
                         >
-                            <span className={styles.slotEmoji}>{emoji}</span>
-                            <span className={styles.slotLabel}>{label}</span>
+                            <span className={styles.slotEmoji}><Icon size={18} /></span>
+                            <span className={styles.slotLabel}>{tm(key)}</span>
                             <span className={cn(styles.slotStatus, active && styles.slotStatusOn)}>
-                                {active ? "ON" : "OFF"}
+                                {active ? tm("on") : tm("off")}
                             </span>
                         </button>
                     );
@@ -148,10 +134,13 @@ function CellPopover({ day, memberName, date, onToggle, onClose }: CellPopoverPr
 /* ─── Main Component ─── */
 export default function MatrixPage() {
     const t = useTranslations("matrix");
+    const tc = useTranslations("common");
+    const locale = useLocale();
     const { user, token } = useAuth();
+    const { reload: reloadPeriod } = usePeriod();
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+    // "" = the current open period. Otherwise a period label taken from the server's prev/next links.
+    const [selectedMonth, setSelectedMonth] = useState("");
     const [matrix, setMatrix] = useState<MonthMatrixResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [closing, setClosing] = useState(false);
@@ -170,6 +159,8 @@ export default function MatrixPage() {
     const [showGuests, setShowGuests] = useState(true);
 
     const isAdmin = user?.role === Role.ADMIN;
+    // Managers can view the matrix (read-only); only admins edit and close
+    const canView = isAdmin || user?.role === Role.MANAGER;
 
     // Close month dialog
     const [showCloseDialog, setShowCloseDialog] = useState(false);
@@ -192,10 +183,10 @@ export default function MatrixPage() {
         if (!user || !token) return;
         setLoading(true);
         try {
-            const data = await api.admin.getMatrix(user.messId, ym, token);
+            const data = await api.admin.getMatrix(user.messId, ym || undefined, token);
             setMatrix(data);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to load matrix");
+            toast.error(err instanceof Error ? err.message : t("ui.loadFailed"));
         } finally {
             setLoading(false);
         }
@@ -224,16 +215,17 @@ export default function MatrixPage() {
                 {
                     messId: user.messId,
                     adminId: user.id,
-                    yearMonth: selectedMonth,
+                    yearMonth: matrix.yearMonth,
                     nextManagerId: nextManagerId || undefined,
                 },
                 token
             );
-            toast.success(`Period closed successfully`);
+            toast.success(t("ui.closedOk"));
             setShowCloseDialog(false);
+            reloadPeriod();
             void fetchMatrix(selectedMonth);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to close month");
+            toast.error(err instanceof Error ? err.message : t("ui.closeFailed"));
         } finally {
             setClosing(false);
         }
@@ -294,7 +286,7 @@ export default function MatrixPage() {
             // Refresh server-calculated meal rate and balances
             void fetchMatrix(selectedMonth);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to update meal");
+            toast.error(err instanceof Error ? err.message : t("ui.updateFailed"));
             void fetchMatrix(selectedMonth);
         }
     }
@@ -334,7 +326,7 @@ export default function MatrixPage() {
     /* ─── Day columns (period-aware) ─── */
     const periodDays = useMemo(() => {
         if (!matrix) return [];
-        return getPeriodDays(matrix.startDate, matrix.endDate);
+        return getPeriodDays(matrix.startDate, matrix.endDate, matrix.weekendDays);
     }, [matrix]);
 
     const weekChunks = useMemo(() => getWeekChunksFromDays(periodDays), [periodDays]);
@@ -345,13 +337,20 @@ export default function MatrixPage() {
 
     // Period label for display
     const periodLabel = useMemo(() => {
-        if (!matrix) return selectedMonth;
+        if (!matrix) return "";
         const startD = new Date(matrix.startDate + "T00:00:00.000Z");
         const endD = new Date(matrix.endDate + "T00:00:00.000Z");
-        const startStr = startD.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-        const endStr = endD.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+        const startStr = startD.toLocaleDateString(locale, { month: "short", day: "numeric", timeZone: "UTC" });
+        const endStr = endD.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
         return `${startStr} → ${endStr}`;
-    }, [matrix, selectedMonth]);
+    }, [matrix, locale]);
+
+    // Localised narrow weekday names (2023-01-01 was a Sunday)
+    const dayShort = useMemo(
+        () => Array.from({ length: 7 }, (_, d) =>
+            new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" }).format(new Date(Date.UTC(2023, 0, 1 + d)))),
+        [locale],
+    );
 
     /* ─── Row Renderer ─── */
     function renderMemberRow(member: MemberMatrixRow) {
@@ -365,7 +364,7 @@ export default function MatrixPage() {
                         <div className={styles.memberInfo}>
                             <span className={styles.memberName}>{member.memberName}</span>
                             {member.isGuest && (
-                                <span className={styles.guestBadge}>Guest</span>
+                                <span className={styles.guestBadge}>{t("ui.guest")}</span>
                             )}
                         </div>
                     </div>
@@ -400,7 +399,7 @@ export default function MatrixPage() {
                                 title={
                                     day2
                                         ? `B:${day2.breakfast ? "✓" : "✗"} L:${day2.lunch ? "✓" : "✗"} D:${day2.dinner ? "✓" : "✗"}${day2.guestCount > 0 ? ` +${day2.guestCount}G` : ""}`
-                                        : "Default ON"
+                                        : t("ui.noRecord")
                                 }
                                 onClick={() => {
                                     if (!editMode) return;
@@ -438,20 +437,20 @@ export default function MatrixPage() {
                     )}
                 >
                     <strong>{formatCurrency(Math.abs(Number(member.balance)))}</strong>
-                    {Number(member.balance) < 0 && <span className={styles.owes}>owes</span>}
+                    {Number(member.balance) < 0 && <span className={styles.owes}>{t("ui.owes")}</span>}
                 </td>
             </tr>
         );
     }
 
     /* ─── Access guard ─── */
-    if (!isAdmin) {
+    if (!canView) {
         return (
             <div className={styles.page}>
                 <div className={styles.header}>
                     <div>
                         <h2 className={styles.title}>{t("title")}</h2>
-                        <p className={styles.subtitle}>Admin access required to view the matrix.</p>
+                        <p className={styles.subtitle}>{t("ui.noAccess")}</p>
                     </div>
                 </div>
             </div>
@@ -464,11 +463,11 @@ export default function MatrixPage() {
             {loading ? (
                 <div className={styles.emptyState}>
                     <div className={styles.spinner} />
-                    <span>Loading matrix…</span>
+                    <span>{tc("loading")}</span>
                 </div>
             ) : !matrix || filteredMembers.length === 0 ? (
                 <div className={styles.emptyState}>
-                    No data for {selectedMonth}.
+                    {t("ui.noData")}
                 </div>
             ) : (
                 <table className={styles.table}>
@@ -487,7 +486,7 @@ export default function MatrixPage() {
                                 >
                                     <div className={styles.dayHeaderInner}>
                                         <span className={styles.dayNum}>{day}</span>
-                                        <span className={styles.dayName}>{DAY_SHORT[dayOfWeek]}</span>
+                                        <span className={styles.dayName}>{dayShort[dayOfWeek]}</span>
                                     </div>
                                 </th>
                             ))}
@@ -523,7 +522,7 @@ export default function MatrixPage() {
                             <p className={styles.subtitle}>
                                 {matrix?.messName ?? t("subtitle")}
                                 {matrix?.isClosed && (
-                                    <span className={styles.closedBadge}>Closed</span>
+                                    <span className={styles.closedBadge}>{t("ui.closed")}</span>
                                 )}
                             </p>
                         </>
@@ -537,7 +536,7 @@ export default function MatrixPage() {
                             onClick={() => { setEditMode(!editMode); setActiveCell(null); }}
                         >
                             <Pencil size={15} />
-                            {editMode ? "Done" : "Edit"}
+                            {editMode ? t("ui.done") : t("ui.edit")}
                         </Button>
                     )}
                     <Button
@@ -553,7 +552,8 @@ export default function MatrixPage() {
                         variant="secondary"
                         size="small"
                         onClick={() => setIsFullscreen(!isFullscreen)}
-                        title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                        title={isFullscreen ? t("ui.exitFullscreen") : t("ui.fullscreen")}
+                        aria-label={isFullscreen ? t("ui.exitFullscreen") : t("ui.fullscreen")}
                     >
                         {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                     </Button>
@@ -571,7 +571,7 @@ export default function MatrixPage() {
                         <button
                             className={styles.closeBtn}
                             onClick={() => setIsFullscreen(false)}
-                            aria-label="Close fullscreen"
+                            aria-label={t("ui.exitFullscreen")}
                         >
                             <X size={20} />
                         </button>
@@ -582,7 +582,7 @@ export default function MatrixPage() {
             {editMode && (
                 <div className={styles.editBanner}>
                     <Pencil size={13} />
-                    Edit mode — click any cell to toggle breakfast / lunch / dinner
+                    {t("ui.editBanner")}
                 </div>
             )}
 
@@ -595,14 +595,14 @@ export default function MatrixPage() {
                         onClick={() => { setViewMode("monthly"); setWeekIndex(0); }}
                     >
                         <CalendarDays size={14} />
-                        Monthly
+                        {t("ui.monthly")}
                     </button>
                     <button
                         className={cn(styles.viewToggleBtn, viewMode === "weekly" && styles.viewToggleBtnActive)}
                         onClick={() => setViewMode("weekly")}
                     >
                         <Calendar size={14} />
-                        Weekly
+                        {t("ui.weekly")}
                     </button>
                 </div>
 
@@ -610,8 +610,9 @@ export default function MatrixPage() {
                 <div className={styles.monthSelector}>
                     <button
                         className={styles.navBtn}
-                        onClick={() => setSelectedMonth(prevMonth(selectedMonth))}
-                        aria-label="Previous month"
+                        onClick={() => matrix?.prevYearMonth && setSelectedMonth(matrix.prevYearMonth)}
+                        disabled={!matrix?.prevYearMonth}
+                        aria-label={t("ui.prevPeriod")}
                     >
                         <ChevronLeft size={18} />
                     </button>
@@ -620,8 +621,9 @@ export default function MatrixPage() {
                 </span>
                     <button
                         className={styles.navBtn}
-                        onClick={() => setSelectedMonth(nextMonth(selectedMonth))}
-                        aria-label="Next month"
+                        onClick={() => matrix?.nextYearMonth && setSelectedMonth(matrix.nextYearMonth)}
+                        disabled={!matrix?.nextYearMonth}
+                        aria-label={t("ui.nextPeriod")}
                     >
                         <ChevronRight size={18} />
                     </button>
@@ -634,18 +636,18 @@ export default function MatrixPage() {
                             className={styles.navBtn}
                             onClick={() => setWeekIndex(Math.max(0, weekIndex - 1))}
                             disabled={weekIndex === 0}
-                            aria-label="Previous week"
+                            aria-label={t("ui.prevWeek")}
                         >
                             <ChevronLeft size={16} />
                         </button>
                         <span className={styles.weekLabel}>
-                            Week {weekIndex + 1} / {weekChunks.length}
+                            {t("ui.weekOf", { n: weekIndex + 1, total: weekChunks.length })}
                         </span>
                         <button
                             className={styles.navBtn}
                             onClick={() => setWeekIndex(Math.min(weekChunks.length - 1, weekIndex + 1))}
                             disabled={weekIndex >= weekChunks.length - 1}
-                            aria-label="Next week"
+                            aria-label={t("ui.nextWeek")}
                         >
                             <ChevronRight size={16} />
                         </button>
@@ -658,7 +660,7 @@ export default function MatrixPage() {
                     onClick={() => setFilterOpen(!filterOpen)}
                 >
                     <Filter size={15} />
-                    Filters
+                    {t("ui.filters")}
                     {activeFilterCount > 0 && (
                         <span className={styles.filterBadge}>{activeFilterCount}</span>
                     )}
@@ -669,10 +671,10 @@ export default function MatrixPage() {
             {filterOpen && (
                 <div className={styles.filterPanel}>
                     <div className={styles.filterGroup}>
-                        <label className={styles.filterLabel}>Search Members</label>
+                        <label className={styles.filterLabel}>{t("ui.searchMembers")}</label>
                         <input
                             type="text"
-                            placeholder="Type name…"
+                            placeholder={t("ui.typeName")}
                             value={memberSearch}
                             onChange={(e) => setMemberSearch(e.target.value)}
                             className={styles.filterInput}
@@ -687,13 +689,13 @@ export default function MatrixPage() {
                                 checked={showGuests}
                                 onChange={(e) => setShowGuests(e.target.checked)}
                             />
-                            Show Guests
+                            {t("ui.showGuests")}
                         </label>
                     </div>
 
                     {matrix && matrix.members.length > 0 && (
                         <div className={styles.filterGroup}>
-                            <label className={styles.filterLabel}>Pin Members</label>
+                            <label className={styles.filterLabel}>{t("ui.pinMembers")}</label>
                             <div className={styles.memberCheckboxes}>
                                 {matrix.members.map((m) => (
                                     <label key={m.memberId} className={styles.checkbox}>
@@ -722,7 +724,7 @@ export default function MatrixPage() {
                             setShowGuests(true);
                         }}
                     >
-                        <X size={13} /> Clear All
+                        <X size={13} /> {t("ui.clearAll")}
                     </button>
                 </div>
             )}
@@ -766,37 +768,35 @@ export default function MatrixPage() {
                     <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
                         <h3 className={styles.dialogTitle}>
                             <Lock size={18} />
-                            Close Period
+                            {t("ui.closeTitle")}
                         </h3>
                         <p className={styles.dialogDesc}>
-                            Close the current billing period ({periodLabel})? This will:
+                            {t("ui.closeIntro", { period: periodLabel })}
                         </p>
                         <ul className={styles.dialogList}>
-                            <li>Freeze all meal logs</li>
-                            <li>Calculate final balances</li>
-                            <li>Create the next billing period</li>
+                            <li>{t("ui.closeStep1")}</li>
+                            <li>{t("ui.closeStep2")}</li>
+                            <li>{t("ui.closeStep3")}</li>
                             {matrix?.carryForwardBalance !== false
-                                ? <li>Carry forward balances</li>
-                                : <li>Start the next period at zero (balances settled in cash)</li>}
+                                ? <li>{t("ui.closeStep4Carry")}</li>
+                                : <li>{t("ui.closeStep4Zero")}</li>}
                         </ul>
 
                         <div className={styles.dialogField}>
                             <label className={styles.dialogLabel}>
                                 <Users size={14} />
-                                Next Period Manager (optional)
+                                {t("ui.nextManager")}
                             </label>
-                            <select
+                            <Select
                                 className={styles.dialogSelect}
                                 value={nextManagerId}
-                                onChange={(e) => setNextManagerId(e.target.value)}
-                            >
-                                <option value="">— Keep current managers —</option>
-                                {managers.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                        {m.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={setNextManagerId}
+                                aria-label={t("ui.nextManager")}
+                                options={[
+                                    { value: "", label: t("ui.keepManagers") },
+                                    ...managers.map((m) => ({ value: m.id, label: m.name })),
+                                ]}
+                            />
                         </div>
 
                         <div className={styles.dialogActions}>
@@ -805,7 +805,7 @@ export default function MatrixPage() {
                                 size="small"
                                 onClick={() => setShowCloseDialog(false)}
                             >
-                                Cancel
+                                {tc("cancel")}
                             </Button>
                             <Button
                                 size="small"
@@ -813,7 +813,7 @@ export default function MatrixPage() {
                                 disabled={closing}
                             >
                                 <Lock size={14} />
-                                {closing ? "Closing…" : "Close & Start Next Period"}
+                                {closing ? t("ui.closing") : t("ui.closeConfirm")}
                             </Button>
                         </div>
                     </div>

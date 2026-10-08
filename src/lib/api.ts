@@ -22,11 +22,28 @@ import type {
     MealConfig,
     BazaarSessionResponse,
     BazaarSessionRequest,
+    BazaarMemoInfo,
     ContributionResponse,
     ContributionRequest,
     GuestMealPolicy,
     MessSettingsResponse,
+    RegisterResponse,
+    SupportTicket,
 } from "@/types";
+import type {
+    Paged,
+    PlatformAdmin,
+    PlatformStats,
+    PlatformMessRow,
+    PlatformMessDetail,
+    MessAction,
+    PlatformUserRow,
+    PlatformUserDetail,
+    UserAction,
+    SecurityEventRow,
+    PlatformAuditRow,
+} from "@/types/platform";
+import type { ArchivePeriodRow, ArchiveDetail } from "@/types/archive";
 
 // Empty base URL = relative paths (Next.js API routes)
 const API_BASE_URL = "";
@@ -68,6 +85,14 @@ function deepCamel(obj: unknown): unknown {
 }
 
 // ── Core fetcher ──────────────────────────────────────────────────────────────
+
+/** Thrown for every non-2xx response. `code` is a machine-readable reason, e.g. PENDING_APPROVAL. */
+export class ApiError extends Error {
+    constructor(message: string, public readonly status: number, public readonly code?: string) {
+        super(message);
+        this.name = "ApiError";
+    }
+}
 
 type FetchOptions = Omit<RequestInit, "body"> & {
     params?: Record<string, string | number | boolean | undefined>;
@@ -114,13 +139,26 @@ async function fetcher<T>(
 
     if (!response.ok) {
         let errorMessage = `Error ${response.status}`;
+        let code: string | undefined;
         try {
             const err = await response.json();
             errorMessage = err?.detail || err?.message || errorMessage;
+            code = err?.code;
         } catch {
             /* ignore */
         }
-        throw new Error(errorMessage);
+        // The server no longer accepts this token (password changed, mess suspended,
+        // account removed). Tell the app so it can sign out instead of showing broken pages.
+        if (
+            response.status === 401 &&
+            token &&
+            typeof window !== "undefined" &&
+            !endpoint.startsWith("/api/platform") &&
+            !endpoint.startsWith("/api/auth/")
+        ) {
+            window.dispatchEvent(new CustomEvent("mealio:session-rejected"));
+        }
+        throw new ApiError(errorMessage, response.status, code);
     }
 
     const text = await response.text();
@@ -138,10 +176,118 @@ export const api = {
                 body: data,
             }),
         register: (data: RegisterRequest) =>
-            fetcher<AuthResponse>("/api/auth/register", {
+            fetcher<RegisterResponse>("/api/auth/register", {
                 method: "POST",
                 body: data,
             }),
+        /** Whether the server can send email (reset links, verification) */
+        options: () => fetcher<{ emailEnabled: boolean }>("/api/auth/options"),
+        forgot: (email: string, locale?: string) =>
+            fetcher<{ ok: boolean; emailEnabled: boolean }>("/api/auth/forgot", {
+                method: "POST",
+                body: { email, locale },
+            }),
+        /** Either a link token, or the email plus an 8-character code from an admin */
+        reset: (data: { password: string; token?: string; email?: string; code?: string }) =>
+            fetcher<{ ok: boolean }>("/api/auth/reset", { method: "POST", body: data }),
+        verifyEmail: (token: string) =>
+            fetcher<{ ok: boolean }>("/api/auth/verify-email", { method: "POST", body: { token } }),
+        resendVerification: (token: string, locale?: string) =>
+            fetcher<{ ok: boolean; alreadyVerified?: boolean }>("/api/auth/verify-email/resend", {
+                method: "POST",
+                body: { locale },
+                token,
+            }),
+    },
+
+    /** Closed months. Open to every member of the mess, read-only. */
+    archive: {
+        list: (token: string) => fetcher<{ periods: ArchivePeriodRow[] }>("/api/archive", { method: "GET", token }),
+        get: (yearMonth: string, token: string) =>
+            fetcher<ArchiveDetail>(`/api/archive/${yearMonth}`, { method: "GET", token }),
+    },
+
+    /** The signed-in person's own account */
+    me: {
+        /** Downloads every piece of personal data as a JSON file */
+        exportData: async (token: string) => {
+            const res = await fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } });
+            if (!res.ok) throw new ApiError("Could not prepare your data", res.status);
+            return res.blob();
+        },
+        deleteAccount: (password: string, token: string) =>
+            fetcher<{ ok: boolean }>("/api/me", { method: "DELETE", body: { password }, token }),
+        changePassword: (data: { currentPassword: string; newPassword: string }, token: string) =>
+            fetcher<{ ok: boolean; accessToken: string }>("/api/me/password", { method: "POST", body: data, token }),
+    },
+
+    support: {
+        /** Works signed in or not. Anonymous senders get an accessKey to follow the ticket. */
+        create: (
+            data: { category: string; subject: string; message: string; name?: string; email?: string },
+            token?: string | null
+        ) =>
+            fetcher<{ id: string; accessKey: string | null }>("/api/support/tickets", {
+                method: "POST",
+                body: data,
+                token: token ?? undefined,
+            }),
+        mine: (token: string) =>
+            fetcher<{ tickets: SupportTicket[] }>("/api/support/tickets", { method: "GET", token }),
+        get: (id: string, opts: { token?: string | null; key?: string | null }) =>
+            fetcher<SupportTicket>(`/api/support/tickets/${id}`, {
+                method: "GET",
+                token: opts.token ?? undefined,
+                params: opts.key ? { key: opts.key } : undefined,
+            }),
+        reply: (id: string, body: string, opts: { token?: string | null; key?: string | null }) =>
+            fetcher<{ ok: boolean }>(`/api/support/tickets/${id}`, {
+                method: "POST",
+                body: { body },
+                token: opts.token ?? undefined,
+                params: opts.key ? { key: opts.key } : undefined,
+            }),
+    },
+
+    /** Super admin console. Uses the platform token, never a mess token. */
+    platform: {
+        login: (email: string, password: string) =>
+            fetcher<{ accessToken: string; admin: PlatformAdmin }>("/api/platform/auth/login", {
+                method: "POST",
+                body: { email, password },
+            }),
+        me: (token: string) => fetcher<{ admin: PlatformAdmin }>("/api/platform/me", { token }),
+        stats: (token: string) => fetcher<PlatformStats>("/api/platform/stats", { token }),
+        messes: (params: { q?: string; status?: string; page?: number }, token: string) =>
+            fetcher<Paged & { messes: PlatformMessRow[] }>("/api/platform/messes", { params, token }),
+        mess: (id: string, token: string) => fetcher<PlatformMessDetail>(`/api/platform/messes/${id}`, { token }),
+        messAction: (id: string, data: MessAction, token: string) =>
+            fetcher<{ ok: boolean; inviteCode?: string }>(`/api/platform/messes/${id}`, { method: "PATCH", body: data, token }),
+        users: (params: { q?: string; status?: string; page?: number }, token: string) =>
+            fetcher<Paged & { users: PlatformUserRow[] }>("/api/platform/users", { params, token }),
+        user: (id: string, token: string) => fetcher<PlatformUserDetail>(`/api/platform/users/${id}`, { token }),
+        userAction: (id: string, data: UserAction, token: string) =>
+            fetcher<{ ok: boolean; code?: string; email?: string; minutes?: number }>(`/api/platform/users/${id}`, {
+                method: "PATCH",
+                body: data,
+                token,
+            }),
+        tickets: (params: { q?: string; status?: string; page?: number }, token: string) =>
+            fetcher<Paged & { tickets: SupportTicket[] }>("/api/platform/tickets", { params, token }),
+        ticket: (id: string, token: string) =>
+            fetcher<SupportTicket & { mess: { id: string; name: string } | null }>(`/api/platform/tickets/${id}`, { token }),
+        replyTicket: (id: string, data: { body: string; status?: string }, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/platform/tickets/${id}`, { method: "POST", body: data, token }),
+        updateTicket: (id: string, data: { status?: string; priority?: string }, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/platform/tickets/${id}`, { method: "PATCH", body: data, token }),
+        securityEvents: (params: { type?: string; severity?: string; q?: string; page?: number }, token: string) =>
+            fetcher<Paged & {
+                events: SecurityEventRow[];
+                hotIps: Array<{ ip: string; count: number }>;
+                hotEmails: Array<{ email: string; count: number }>;
+            }>("/api/platform/security-events", { params, token }),
+        audit: (params: { source: "platform" | "mess"; messId?: string; page?: number }, token: string) =>
+            fetcher<Paged & { entries: PlatformAuditRow[] }>("/api/platform/audit", { params, token }),
     },
 
     cook: {
@@ -209,6 +355,15 @@ export const api = {
                 fetcher<{ ok: boolean }>(`/api/expenses/sessions/${id}`, { method: "PUT", body: data, token }),
             void: (id: string, reason: string, token: string) =>
                 fetcher<{ ok: boolean }>(`/api/expenses/sessions/${id}`, { method: "DELETE", body: { reason }, token }),
+            /** Add photos to a trip that already exists */
+            addMemos: (id: string, memos: Array<{ data: string }>, token: string) =>
+                fetcher<{ memos: BazaarMemoInfo[] }>(`/api/expenses/sessions/${id}/memos`, { method: "POST", body: { memos }, token }),
+            /** The photo itself. Needs the token, so it cannot be a plain <img src>. */
+            memoBlob: async (id: string, memoId: string, token: string) => {
+                const res = await fetch(`/api/expenses/sessions/${id}/memos/${memoId}`, { headers: { Authorization: `Bearer ${token}` } });
+                if (!res.ok) throw new ApiError("Could not load the photo", res.status);
+                return res.blob();
+            },
         },
     },
 
@@ -335,7 +490,7 @@ export const api = {
     },
 
     members: {
-        list: (messId: string, token: string) =>
+        list: (messId: string, token: string, opts?: { includeInactive?: boolean }) =>
             fetcher<{
                 messName: string;
                 members: Array<{
@@ -343,6 +498,7 @@ export const api = {
                     name: string;
                     phone: string | null;
                     role: string;
+                    isActive: boolean;
                     mealCount: number;
                     guestMeals: number;
                     contributed: number;
@@ -354,9 +510,21 @@ export const api = {
                 }>;
             }>("/api/members", {
                 method: "GET",
-                params: { messId },
+                params: opts?.includeInactive ? { messId, includeInactive: "1" } : { messId },
                 token,
             }),
+        pending: (token: string) =>
+            fetcher<{
+                pending: Array<{ id: string; name: string; email: string; phone: string | null; requestedAt: string }>;
+            }>("/api/members/pending", { method: "GET", token }),
+        decideJoin: (memberId: string, decision: "approve" | "reject", token: string) =>
+            fetcher<{ ok: boolean }>(`/api/members/${memberId}/join`, { method: "POST", body: { decision }, token }),
+        /** One-time code the member types on the reset page together with their email */
+        resetCode: (memberId: string, token: string) =>
+            fetcher<{ code: string; email: string; expiresAt: string; minutes: number }>(
+                `/api/members/${memberId}/reset-code`,
+                { method: "POST", token }
+            ),
         me: (token: string, yearMonth?: string) =>
             fetcher<{
                 memberId: string;
@@ -402,6 +570,22 @@ export const api = {
             }),
         switchMess: (messId: string, token: string) =>
             fetcher<MessSwitchResponse>(`/api/mess/${messId}/switch`, { method: "GET", token }),
+        /** The current open billing period and whether it has ended without being closed */
+        period: (token: string) =>
+            fetcher<{
+                yearMonth: string;
+                startDate: string;
+                endDate: string;
+                isClosed: boolean;
+                today: string;
+                daysLeft: number;
+                overdue: boolean;
+            }>("/api/mess/period", { method: "GET", token }),
+        /** New code; the old one stops working at once */
+        rotateInvite: (token: string) =>
+            fetcher<{ inviteCode: string }>("/api/mess/invite-code", { method: "POST", token }),
+        deleteMess: (data: { confirmName: string; password: string }, token: string) =>
+            fetcher<{ ok: boolean }>("/api/mess/delete", { method: "POST", body: data, token }),
     },
 
     admin: {
@@ -486,6 +670,7 @@ export const api = {
                 bazaarCountsAsDeposit?: boolean;
                 carryForwardBalance?: boolean;
                 weekendDays?: number[];
+                requireJoinApproval?: boolean;
             },
             token: string
         ) =>

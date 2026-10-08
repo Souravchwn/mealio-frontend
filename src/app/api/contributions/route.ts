@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { resolvePeriod } from '@/lib/period'
+import { resolvePeriod, checkDateInOpenPeriod } from '@/lib/period'
 import { endOfPeriodExclusive } from '@/lib/financial'
 import { createAuditTx } from '@/lib/audit'
 
@@ -130,13 +130,19 @@ export async function POST(req: NextRequest) {
   if (!member_id || typeof member_id !== 'string') {
     return NextResponse.json({ detail: 'Member is required' }, { status: 400 })
   }
-  if (!date || typeof date !== 'string') {
-    return NextResponse.json({ detail: 'Date is required' }, { status: 400 })
+  if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00.000Z`))) {
+    return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
   }
 
   const num = Number(amount)
-  if (!amount || isNaN(num) || num <= 0) {
+  if (!amount || isNaN(num) || num <= 0 || num > 10_000_000) {
     return NextResponse.json({ detail: 'Amount must be a positive number' }, { status: 400 })
+  }
+
+  // The period a deposit counts in is decided by its date, so the date has to be inside the open period
+  const dateCheck = await checkDateInOpenPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))
+  if (!dateCheck.ok) {
+    return NextResponse.json({ detail: dateCheck.detail, code: 'DATE_OUTSIDE_PERIOD' }, { status: 400 })
   }
 
   // ── Business rule checks ──────────────────────────────────────────────────
@@ -162,6 +168,8 @@ export async function POST(req: NextRequest) {
           amount:    num,
           note:      typeof note === 'string' && note.trim() ? note.trim() : null,
           createdBy: payload.sub,
+          // Midday UTC keeps the chosen calendar day whatever time zone it is read in
+          createdAt: new Date(`${date}T12:00:00.000Z`),
         },
         include: {
           member:  { select: { name: true } },

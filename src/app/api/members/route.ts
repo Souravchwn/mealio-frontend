@@ -19,14 +19,16 @@ export async function GET(req: NextRequest) {
   const messId = payload.messId
   const { searchParams } = new URL(req.url)
   const yearMonth = searchParams.get('year_month') || null
+  // Admins can also list inactive members (to reactivate them)
+  const includeInactive = payload.role === 'ADMIN' && searchParams.get('include_inactive') === '1'
 
   try {
     const period = await resolvePeriod(messId, yearMonth)
     const [settings, members, summary] = await Promise.all([
       getMessSettings(messId),
       prisma.member.findMany({
-        where: { messId, isActive: true },
-        select: { id: true, name: true, phone: true, role: true, telegramLinked: true, isGuest: true, guestFrom: true, guestUntil: true },
+        where: includeInactive ? { messId, joinStatus: 'APPROVED', deletedAt: null } : { messId, isActive: true },
+        select: { id: true, name: true, phone: true, role: true, isActive: true, telegramLinked: true, isGuest: true, guestFrom: true, guestUntil: true },
         orderBy: { joinedAt: 'asc' },
       }),
       calculatePeriodSummary(messId, period),
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
           guest_meals: s.guestMeals,
           contributed: s.contributed,
           balance: s.balance,
+          is_active: member.isActive,
           telegram_linked: member.telegramLinked,
           is_guest: member.isGuest,
           guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,

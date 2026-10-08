@@ -26,12 +26,12 @@
             "signIn": "Sign In"
         },
         "hero": {
-            "badge": "Mess management, reimagined",
-            "title": "Your Mess,",
-            "titleHighlight": "Simplified.",
-            "subtitle": "Stop chasing meal counts in endless group chats. Mealio automates meal tracking, expense splitting, and monthly settlements for shared living — so you can focus on what matters.",
-            "cta": "Get Started Free",
-            "ctaSecondary": "Explore Features"
+            "badge": "Made for mess life in Bangladesh",
+            "title": "Your mess,",
+            "titleHighlight": "on autopilot.",
+            "subtitle": "Meals count themselves every day. Bazaar and deposits turn into a live meal rate. Everyone sees their balance, and nobody does the math in a group chat again.",
+            "cta": "Start for free",
+            "ctaSecondary": "See how it works"
         },
         "stats": {
             "messes": "Active Messes",
@@ -39,38 +39,42 @@
             "saved": "Hours Saved Monthly"
         },
         "features": {
-            "title": "Everything Your Mess Needs",
-            "subtitle": "From daily meal toggles to monthly settlements — all in one place.",
+            "title": "Everything your mess needs",
+            "subtitle": "From daily meal toggles to monthly settlements, all in one place.",
             "mealToggle": {
-                "title": "One-Tap Meal Toggle",
-                "description": "Toggle breakfast, lunch, or dinner with a single tap. Works via Telegram bot or the web app. Cut-off enforcement ensures the cook always has accurate headcounts."
+                "title": "Meals count themselves",
+                "description": "Your defaults are counted every day without anyone logging in. Skip a meal or add a guest with one tap, before the cutoff."
             },
             "expense": {
                 "title": "Smart Expense Tracking",
-                "description": "Log every bazaar trip by category — protein, vegetables, spices, and more. Live meal rate updates automatically so everyone knows exactly what they owe."
+                "description": "Log every bazaar trip by category, like protein, vegetables and spices. The meal rate updates live, so everyone knows exactly what they owe."
             },
             "headcount": {
-                "title": "Real-Time Cook Dashboard",
-                "description": "The cook sees exactly how many people are eating today, including guests. No more guessing, no more food waste. Updated in real-time."
+                "title": "Live cook view",
+                "description": "The cook sees how many people are eating each meal, guests included. Less guessing, less waste."
             },
             "matrix": {
-                "title": "The Excel Killer",
-                "description": "A full month matrix showing every member's meal attendance. Auto-calculated totals, balances, and one-click month-close. Say goodbye to Excel sheets."
+                "title": "Month matrix",
+                "description": "Every member and every day on one screen, with totals, balances and month closing built in."
             },
             "finance": {
-                "title": "ACID Financial Integrity",
-                "description": "Every taka is traceable. Atomic transactions ensure no ghost values, no lost data. Bank-grade reliability for your mess finances."
+                "title": "Every taka is traceable",
+                "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
             },
             "ai": {
                 "title": "AI Insights (Coming Soon)",
                 "description": "Nutrition analysis, commodity price tracking, and predictive shopping. Your mess data becomes a goldmine for health and economic insights."
+            },
+            "telegram": {
+                "title": "Telegram bot",
+                "description": "Turn meals on or off, check the rate and your balance right from Telegram."
             }
         },
         "roles": {
             "title": "Built for Everyone in Your Mess",
             "member": {
                 "title": "Members",
-                "description": "Toggle meals, add guests, check your balance — all from your phone."
+                "description": "Toggle meals, add guests and check your balance, all from your phone."
             },
             "manager": {
                 "title": "Meal Manager",
@@ -78,28 +82,73 @@
             },
             "admin": {
                 "title": "Admin",
-                "description": "Full control — month matrix, settlements, member management, and audit trail."
+                "description": "Full control over the month matrix, settlements, members and the audit trail."
             },
             "cook": {
                 "title": "Cook",
-                "description": "One big number — today's headcount. No clutter, just clarity."
+                "description": "One big number: today's headcount. No clutter, just clarity."
             }
         },
         "cta": {
-            "title": "Ready to Digitize Your Mess?",
-            "subtitle": "Join hundreds of messes already using Mealio to save time, money, and arguments.",
-            "button": "Create Your Mess"
+            "title": "Ready to fix your mess?",
+            "subtitle": "Set it up in a few minutes. Free while we grow.",
+            "button": "Create your mess"
         },
         "footer": {
             "features": "Features",
             "roles": "Who It's For",
             "getStarted": "Get Started",
-            "copyright": "© 2026 Mealio. All rights reserved."
-        }
+            "copyright": "© 2026 Mealio. All rights reserved.",
+            "nav": "Footer",
+            "support": "Support",
+            "privacy": "Privacy",
+            "terms": "Terms"
+        },
+        "facts": {
+            "taps": {
+                "value": "0",
+                "label": "taps needed on a normal day"
+            },
+            "auto": {
+                "value": "Live",
+                "label": "meal rate after every bazaar"
+            },
+            "lang": {
+                "value": "EN · বাং",
+                "label": "English and Bangla"
+            }
+        },
+        "mock": {
+            "date": "Wed, 7 Oct",
+            "greeting": "Hey Sohel",
+            "balance": "Your balance",
+            "ahead": "You are ahead",
+            "breakfast": "Breakfast",
+            "lunch": "Lunch",
+            "dinner": "Dinner",
+            "float1": "Lunch is ON",
+            "float2": "14 eating tonight"
+        },
+        "steps": {
+            "title": "How it works",
+            "one": {
+                "title": "Create your mess",
+                "description": "Set meal times and share the invite link with your mess mates."
+            },
+            "two": {
+                "title": "Set your defaults once",
+                "description": "Choose which meals you usually eat on weekdays and weekends. Mealio counts them every day."
+            },
+            "three": {
+                "title": "Log the bazaar",
+                "description": "The manager adds each shopping trip. The meal rate and everyone's balance update on their own."
+            }
+        },
+        "openApp": "Open Mealio"
     },
     "auth": {
         "login": {
-            "title": "Welcome Back",
+            "title": "Welcome back 👋",
             "subtitle": "Sign in to manage your mess",
             "email": "Email Address",
             "password": "Password",
@@ -108,11 +157,43 @@
             "noAccount": "Don't have an account?",
             "register": "Create one",
             "success": "Logged in successfully!",
-            "error": "Login failed. Please check your credentials."
+            "error": "Login failed. Please check your credentials.",
+            "notice": {
+                "PENDING_APPROVAL": {
+                    "title": "Waiting for approval",
+                    "body": "Your mess admin has not approved your request yet. You can sign in as soon as they do."
+                },
+                "JOIN_REJECTED": {
+                    "title": "Request declined",
+                    "body": "The mess admin declined your join request. Ask them for a fresh invite if this was a mistake."
+                },
+                "ACCOUNT_INACTIVE": {
+                    "title": "Account paused",
+                    "body": "Your mess admin has paused this account. Ask them to turn it back on."
+                },
+                "NO_MESS": {
+                    "title": "No mess yet",
+                    "body": "This account is not part of any mess right now."
+                },
+                "MESS_DELETED": {
+                    "title": "Mess deleted",
+                    "body": "The mess this account belonged to was deleted by its admin."
+                },
+                "MESS_SUSPENDED": {
+                    "title": "Mess on hold",
+                    "body": "This mess is on hold by Mealio. Contact support and we will sort it out."
+                }
+            },
+            "contactSupport": "Contact support",
+            "troubleSigningIn": "Trouble signing in?",
+            "sessionExpired": {
+                "title": "You were signed out",
+                "body": "Your session ended, for example after a password change. Sign in again to continue."
+            }
         },
         "register": {
-            "title": "Join Mealio",
-            "subtitle": "Create your account and get started",
+            "title": "Join your mess",
+            "subtitle": "Use the invite code your mess admin shared",
             "name": "Full Name",
             "email": "Email Address",
             "phone": "Phone Number",
@@ -125,7 +206,67 @@
             "login": "Sign in",
             "success": "Account created successfully!",
             "error": "Registration failed. Please try again.",
-            "passwordMismatch": "Passwords do not match"
+            "passwordMismatch": "Passwords do not match",
+            "titleCreate": "Start your mess",
+            "subtitleCreate": "Set it up in a minute. Free while we are in early access.",
+            "modeLabel": "How do you want to start?",
+            "modeCreate": "Start a new mess",
+            "modeJoin": "Join with a code",
+            "messName": "Mess name",
+            "messNamePlaceholder": "e.g. Green Villa Mess",
+            "messNameHelp": "You will be the admin. You can invite everyone next.",
+            "submitCreate": "Create my mess",
+            "createdMess": "Your mess is ready. Invite your mess mates next.",
+            "pendingTitle": "Request sent",
+            "pendingSubtitle": "{mess} needs to approve you first",
+            "pendingBody": "Your mess admin will see your request on the Members page. Once they approve it, sign in with the email and password you just chose.",
+            "legal": "By continuing you agree to the <terms>Terms</terms> and <privacy>Privacy Policy</privacy>."
+        },
+        "shell": {
+            "tagline": "Meals, bazaar and money, sorted for your mess.",
+            "stickerLunch": "Lunch is ON",
+            "stickerLunchSub": "Locks at 10:00 AM",
+            "stickerRate": "Meal rate this month",
+            "stickerCount": "14 eating today",
+            "stickerCountSub": "Cook sees it live",
+            "showPassword": "Show password",
+            "hidePassword": "Hide password"
+        },
+        "forgot": {
+            "title": "Forgot your password?",
+            "subtitle": "No stress. Enter your email and we will help you get back in.",
+            "email": "Email address",
+            "submit": "Send reset link",
+            "backToLogin": "Back to sign in",
+            "sentTitle": "Check your inbox",
+            "sentSubtitle": "The link works for 30 minutes",
+            "sentBody": "If {email} has a Mealio account, a reset link is on its way. Check spam too.",
+            "codeTitle": "Ask your mess admin",
+            "codeSubtitle": "Email is not set up on this server yet",
+            "codeBody": "Your mess admin can make a one-time reset code for you from the Members page. If you are the admin, contact support.",
+            "haveCode": "I have a reset code"
+        },
+        "reset": {
+            "title": "Set a new password",
+            "subtitleLink": "Choose something you have not used before",
+            "subtitleCode": "Enter your email and the code you were given",
+            "email": "Email address",
+            "code": "Reset code",
+            "codeHelp": "8 characters, from your mess admin or Mealio support. It works once.",
+            "newPassword": "New password",
+            "submit": "Save new password",
+            "success": "Password changed. Sign in with the new one.",
+            "backToLogin": "Back to sign in",
+            "signedOutNote": "You will be signed out on every other device."
+        },
+        "verify": {
+            "workingTitle": "Checking your link",
+            "doneTitle": "Email confirmed",
+            "doneSubtitle": "Thanks. Your account is all set.",
+            "failedTitle": "Link did not work",
+            "failedSubtitle": "It may have expired or been used already",
+            "failedBody": "Sign in and ask for a new link from Settings.",
+            "continue": "Continue to Mealio"
         }
     },
     "nav": {
@@ -141,7 +282,19 @@
         "audit": "Audit Trail",
         "settings": "Settings",
         "logout": "Logout",
-        "profile": "Profile"
+        "profile": "Profile",
+        "home": "Home",
+        "bazaar": "Bazaar",
+        "me": "Me",
+        "more": "More",
+        "mealsShort": "Meals",
+        "menu": "Main menu",
+        "admin": "Admin",
+        "close": "Close",
+        "language": "Language",
+        "theme": "Theme",
+        "support": "Help & support",
+        "archive": "Archive"
     },
     "overview": {
         "greeting": "Good {timeOfDay}, {name}!",
@@ -160,10 +313,15 @@
         "toggleMeals": "Toggle Meals",
         "addExpense": "Add Expense",
         "viewMatrix": "View Matrix",
-        "viewHeadcount": "View Headcount"
+        "viewHeadcount": "View Headcount",
+        "youAreAhead": "You are ahead",
+        "youOwe": "You owe the mess",
+        "myMealsCount": "{n} meals this month",
+        "viewAll": "View all",
+        "noExpenses": "No bazaar yet this month"
     },
     "meals": {
-        "title": "Today's Meals",
+        "title": "Today",
         "subtitle": "Toggle your meals for today",
         "breakfast": "Breakfast",
         "lunch": "Lunch",
@@ -190,7 +348,14 @@
             "frozen": "Frozen"
         },
         "guestHostPays": "Guests eat the meals you eat today and are added to your meal count.",
-        "guestShared": "Guests eat the meals you eat today. Their cost is shared by the whole mess."
+        "guestShared": "Guests eat the meals you eat today. Their cost is shared by the whole mess.",
+        "cutoffAt": "Cut-off {time}",
+        "locksAt": "Locks at {time}",
+        "locked": "Locked for today",
+        "guestMealsToday": "{n} guest meals today",
+        "loadFailed": "Could not load today's meals",
+        "toggleFailed": "Could not change the meal",
+        "guestFailed": "Could not update guests"
     },
     "expenses": {
         "title": "Bazaar Expenses",
@@ -226,6 +391,63 @@
             "OIL": "Oil",
             "UTILITY": "Utility",
             "OTHER": "Other"
+        },
+        "ui": {
+            "notePlaceholder": "e.g. Weekly market trip",
+            "items": "Items",
+            "removeItem": "Remove item",
+            "sessionTotal": "Session total",
+            "searchPlaceholder": "Search by date or shopper…",
+            "voided": "Voided",
+            "voidSession": "Void session",
+            "voidDeposit": "Void deposit",
+            "voidReason": "Void reason: {reason}",
+            "addedBy": "Added by {name}",
+            "total": "Total: {amount}",
+            "prev": "← Prev",
+            "next": "Next →",
+            "selectMember": "Select a member",
+            "depositNotePlaceholder": "e.g. Monthly advance",
+            "memberDeposits": "Member deposits · {total}",
+            "depositCount": "{n, plural, one {# deposit} other {# deposits}}",
+            "by": "by {name}",
+            "mealsN": "{n} meals",
+            "covered": "{pct}% covered",
+            "openCalculator": "Open calculator",
+            "calculate": "Calculate",
+            "voidSessionTitle": "Void this bazaar session?",
+            "voidDepositTitle": "Void this deposit?",
+            "voidWarning": "It stays in the history but is left out of every calculation. This can't be undone.",
+            "voidReasonPlaceholder": "Reason (required), e.g. duplicate entry",
+            "voiding": "Voiding…",
+            "voidEntry": "Void entry",
+            "addOneItem": "Add at least one item"
+        },
+        "memo": {
+            "modeLabel": "How do you want to record this trip?",
+            "modeItems": "Item by item",
+            "modeMemo": "Memo photo + total",
+            "title": "Photo of the memo",
+            "optionalTitle": "Photo of the memo (optional proof)",
+            "total": "Total on the memo",
+            "totalHint": "Type the final total printed on the memo. The photo stays with this trip so anyone can check it.",
+            "photoRequired": "Add a photo of the memo first",
+            "totalRequired": "Enter the total shown on the memo",
+            "memoTotal": "Memo total",
+            "attached": "{n} memo photo(s) attached",
+            "add": "Add photo",
+            "addAnother": "Add photo",
+            "added": "Photo added",
+            "remove": "Remove photo",
+            "hint": "Take a photo or choose one. Up to {max} photos. They are shrunk automatically.",
+            "tooMany": "You can add up to {max} photos",
+            "tooLarge": "That photo is too big even after shrinking. Try another one.",
+            "unreadable": "Could not read that image. Use a JPEG, PNG or WebP photo.",
+            "photoAlt": "Memo photo {n}",
+            "open": "Open memo photo {n}",
+            "close": "Close",
+            "failed": "Could not load",
+            "title2": "Memo photos"
         }
     },
     "headcount": {
@@ -252,7 +474,13 @@
         "notHaving": "Not having",
         "mealOn": "Having",
         "mealOff": "Not having",
-        "noMeals": "No one is having this meal"
+        "noMeals": "No one is having this meal",
+        "close": "Close",
+        "saving": "Saving…",
+        "noteFailed": "Could not save the note",
+        "viewDetail": "See who is having {meal}",
+        "refresh": "Refresh",
+        "stale": "Stale"
     },
     "matrix": {
         "title": "Month Matrix",
@@ -271,6 +499,48 @@
             "totalMeals": "Total Meals",
             "mealRate": "Meal Rate",
             "members": "Members"
+        },
+        "ui": {
+            "editDay": "Edit meals for {name}",
+            "loadFailed": "Could not load the matrix",
+            "closedOk": "Period closed",
+            "closeFailed": "Could not close the period",
+            "updateFailed": "Could not update the meal",
+            "guest": "Guest",
+            "noRecord": "No record",
+            "owes": "owes",
+            "noAccess": "Only admins and managers can see the matrix.",
+            "noData": "No data for this period yet.",
+            "closed": "Closed",
+            "done": "Done",
+            "edit": "Edit",
+            "fullscreen": "Fullscreen",
+            "exitFullscreen": "Exit fullscreen",
+            "editBanner": "Edit mode is on. Tap any day to change breakfast, lunch or dinner.",
+            "monthly": "Month",
+            "weekly": "Week",
+            "prevPeriod": "Previous period",
+            "nextPeriod": "Next period",
+            "prevWeek": "Previous week",
+            "nextWeek": "Next week",
+            "weekOf": "Week {n} of {total}",
+            "filters": "Filters",
+            "searchMembers": "Search members",
+            "typeName": "Type a name…",
+            "showGuests": "Show guest residents",
+            "pinMembers": "Only show",
+            "clearAll": "Clear all",
+            "closeTitle": "Close this period",
+            "closeIntro": "Close the billing period {period}? This will:",
+            "closeStep1": "Freeze every meal record",
+            "closeStep2": "Work out final balances",
+            "closeStep3": "Open the next billing period",
+            "closeStep4Carry": "Carry each balance into the next period",
+            "closeStep4Zero": "Start the next period at zero (balances are settled in cash)",
+            "nextManager": "Manager for the next period (optional)",
+            "keepManagers": "Keep the current managers",
+            "closing": "Closing…",
+            "closeConfirm": "Close and start next period"
         }
     },
     "members": {
@@ -288,7 +558,38 @@
             "MANAGER": "Manager",
             "MEMBER": "Member",
             "GUEST": "Guest"
-        }
+        },
+        "loadFailed": "Could not load members",
+        "roleChanged": "{name} is now {role}",
+        "updateFailed": "Could not update the member",
+        "reactivated": "{name} is back in the mess",
+        "deactivated": "{name} was removed from the mess",
+        "shareText": "Join {mess} on Mealio.",
+        "linkCopied": "Invite link copied",
+        "telegramLinked": "Telegram linked",
+        "expired": "Stay ended",
+        "guestStay": "Guest stay",
+        "inactive": "Inactive",
+        "stayDates": "Staying {from} to {until}",
+        "deactivate": "Remove",
+        "reactivate": "Bring back",
+        "saving": "Saving…",
+        "saveRole": "Save role",
+        "activeCount": "{n, plural, one {# active member} other {# active members}}",
+        "invite": "Invite",
+        "searchPlaceholder": "Search by name or phone",
+        "empty": "No members yet. Invite your mess mates!",
+        "inactiveTitle": "Removed members",
+        "requestsTitle": "Join requests",
+        "approve": "Approve {name}",
+        "reject": "Decline {name}",
+        "approved": "{name} is in. Their meals count from today.",
+        "rejected": "Declined {name}",
+        "resetCode": "Make a password reset code",
+        "resetCodeTitle": "One-time reset code",
+        "resetCodeHelp": "Works for {minutes} minutes. They enter it with their email on the reset password page. Only share it with them directly.",
+        "copy": "Copy",
+        "copied": "Copied"
     },
     "audit": {
         "title": "Audit Trail",
@@ -300,27 +601,77 @@
         "time": "Time",
         "oldValue": "Old Value",
         "newValue": "New Value",
-        "noEntries": "No audit entries yet"
+        "noEntries": "No audit entries yet",
+        "loadFailed": "Could not load the audit trail",
+        "recordCount": "{n, plural, one {# record} other {# records}}",
+        "refresh": "Refresh",
+        "filterLabel": "Filter by action",
+        "empty": "Nothing recorded yet.",
+        "system": "System",
+        "noDetails": "No extra details.",
+        "pagination": "Pages",
+        "prev": "Prev",
+        "next": "Next",
+        "pageOf": "Page {page} of {pages}",
+        "filters": {
+            "all": "All",
+            "meals": "Meal changes",
+            "overrides": "Admin edits",
+            "noCook": "No-cook days",
+            "bazaar": "Bazaar",
+            "deposits": "Deposits",
+            "members": "Members",
+            "settings": "Settings",
+            "closeMonth": "Month close"
+        },
+        "actions": {
+            "TOGGLE_MEAL": "Changed a meal",
+            "ADMIN_MEAL_OVERRIDE": "Edited a meal",
+            "ADMIN_EXPENSE_EDIT": "Edited an expense",
+            "ADMIN_EXPENSE_DELETE": "Deleted an expense",
+            "ADMIN_MEMBER_UPDATE": "Updated a member",
+            "ADMIN_SETTINGS_UPDATE": "Changed settings",
+            "CLOSE_MONTH": "Closed the month",
+            "ADD_BAZAAR_SESSION": "Added bazaar",
+            "EDIT_BAZAAR_SESSION": "Edited bazaar",
+            "VOID_BAZAAR_SESSION": "Voided bazaar",
+            "ADD_CONTRIBUTION": "Recorded a deposit",
+            "VOID_CONTRIBUTION": "Voided a deposit",
+            "NO_COOK": "No-cook day",
+            "MEAL_PREFERENCE_UPDATE": "Changed defaults",
+            "AUTO_DEACTIVATE_GUEST": "Guest stay ended"
+        }
     },
     "mySummary": {
-        "title": "My Monthly Summary",
+        "title": "My Summary",
         "subtitle": "Personal breakdown for {month}",
         "mealRate": "Meal Rate",
         "totalMeals": "Meals (Last 7 Days)",
         "contributed": "Contributed",
-        "mealCost": "Meal Cost",
+        "mealCost": "Meal cost",
         "balance": "Balance",
         "mealBreakdown": "Meal Breakdown",
         "breakfast": "Breakfast",
         "lunch": "Lunch",
         "dinner": "Dinner",
-        "guestMeals": "Guest Meals",
+        "guestMeals": "Guest meals",
         "times": "times",
         "last7Days": "Last 7 Days",
         "financialSummary": "Financial Summary",
         "telegramStatus": "Telegram",
         "telegramLinked": "Linked",
-        "telegramNotLinked": "Not linked — use /link in the bot"
+        "telegramNotLinked": "Not linked. Use /link in the bot.",
+        "myMeals": "My meals",
+        "aheadHint": "The mess owes you this. Nice!",
+        "oweHint": "Top up with the manager to clear it",
+        "howCalculated": "How your balance works",
+        "deposited": "Deposited",
+        "carriedForward": "From last month",
+        "bazaarCredit": "Bazaar you paid for",
+        "mealsTimesRate": "{meals} meals × {rate}",
+        "includesGuests": "includes your guests",
+        "mealsThatDay": "{n} meals",
+        "loadFailed": "Could not load your summary"
     },
     "guest": {
         "badge": "Guest",
@@ -342,14 +693,24 @@
         "saving": "Saving…",
         "messSaved": "Mess name updated!",
         "cutoffTimes": "Meal Cut-off Times",
-        "cutoffTimesHelp": "Set the deadline for each meal — members cannot toggle after these times",
+        "cutoffTimesHelp": "Set the deadline for each meal. Members can't change a meal after its deadline.",
         "breakfastCutoff": "Breakfast",
         "lunchCutoff": "Lunch",
         "dinnerCutoff": "Dinner",
         "saveCutoffs": "Save Cutoff Times",
         "cutoffsSaved": "Cutoff times updated!",
         "dangerZone": "Danger Zone",
-        "deleteMess": "Delete Mess",
+        "deleteMess": {
+            "title": "Delete this mess",
+            "description": "Everyone in the mess is signed out and loses access. Download anything you need first. Contact support within 30 days if you change your mind.",
+            "button": "Delete mess",
+            "typeName": "Type <b>{name}</b> to confirm",
+            "password": "Your password",
+            "confirm": "Delete mess",
+            "cancel": "Cancel",
+            "done": "The mess was deleted",
+            "failed": "Could not delete the mess"
+        },
         "contactSupport": "contact support",
         "tabs": {
             "general": "General",
@@ -358,8 +719,8 @@
         "mealPreferences": {
             "title": "My Default Meal Preferences",
             "subtitle": "Choose which meals are ON by default. You can always override for a specific day on the Meals page.",
-            "weekday": "Weekdays (Mon–Fri)",
-            "weekend": "Weekend (Sat–Sun)",
+            "weekday": "Weekdays",
+            "weekend": "Weekend days",
             "breakfast": "Breakfast",
             "lunch": "Lunch",
             "dinner": "Dinner",
@@ -371,7 +732,14 @@
             "title": "Member Invite Code",
             "description": "Share this code with new members to join your mess",
             "copy": "Copy",
-            "copied": "Copied!"
+            "copied": "Copied!",
+            "rotate": "Make a new code",
+            "rotateConfirm": "Make a new invite code? The old code and links stop working right away.",
+            "rotated": "New invite code ready",
+            "approvalTitle": "Approve new members",
+            "approvalDesc": "People who use the code wait on the Members page until you approve them. Recommended.",
+            "approvalOn": "New members now need your approval",
+            "approvalOff": "Anyone with the code can join right away"
         },
         "telegramGroup": {
             "title": "Telegram Group",
@@ -438,6 +806,40 @@
             "help": "Members set separate default meals for weekdays and weekends. Choose which days count as the weekend (for Bangladesh this is usually Friday and Saturday). Changes apply from today; past days are not changed.",
             "saved": "Weekend days saved",
             "saveFailed": "Failed to save weekend days"
+        },
+        "errors": {
+            "preference": "Could not update the preference",
+            "cutoffs": "Could not save the cutoff times",
+            "save": "Could not save. Please try again.",
+            "linkGroup": "Could not link the group"
+        },
+        "account": {
+            "passwordTitle": "Password",
+            "currentPassword": "Current password",
+            "newPassword": "New password",
+            "passwordHelp": "At least 8 characters. Other devices get signed out.",
+            "changePassword": "Change password",
+            "passwordChanged": "Password changed",
+            "privacyTitle": "Privacy and data",
+            "privacyHelp": "Your data belongs to you.",
+            "export": "Download my data",
+            "exportHelp": "Everything we hold about you, as a JSON file",
+            "support": "Help and support",
+            "supportHelp": "Questions, problems or feedback",
+            "privacyPolicy": "Privacy Policy",
+            "deleteTitle": "Delete my account",
+            "deleteHelp": "Removes your name, email and phone. Your past meals and deposits stay in the mess books as \"Deleted member\" so totals stay right. This cannot be undone.",
+            "deleteButton": "Delete my account",
+            "confirmWithPassword": "Enter your password to confirm",
+            "deleteForever": "Delete forever",
+            "deleted": "Your account was deleted",
+            "cancel": "Cancel",
+            "failed": "Something went wrong. Please try again."
+        },
+        "served": {
+            "label": "Served",
+            "on": "Meal switched on from now",
+            "off": "Meal switched off from now. Past days are not changed."
         }
     },
     "createMess": {
@@ -451,8 +853,11 @@
         "creating": "Creating...",
         "create": "Create Mess",
         "inviteReady": "Mess created!",
-        "inviteLabel": "Invite code — share with your members:",
-        "goToDashboard": "Go to Dashboard"
+        "inviteLabel": "Invite code. Share it with your members:",
+        "goToDashboard": "Go to Dashboard",
+        "createFailed": "Could not create the mess",
+        "copied": "Copied!",
+        "copy": "Copy"
     },
     "messSwitcher": {
         "label": "Switch Mess",
@@ -473,5 +878,238 @@
         "perMeal": "/ meal",
         "noData": "No expense data yet",
         "noDeposits": "No deposits this month"
+    },
+    "picker": {
+        "chooseDate": "Choose a date",
+        "chooseTime": "Choose a time",
+        "chooseMonth": "Choose month",
+        "backToDays": "Back to days",
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month",
+        "prevYear": "Previous year",
+        "nextYear": "Next year",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "hour": "Hour",
+        "minute": "Minute",
+        "done": "Done",
+        "search": "Search",
+        "noResults": "No matches"
+    },
+    "public": {
+        "openApp": "Open app",
+        "signIn": "Sign in",
+        "support": "Support",
+        "privacy": "Privacy",
+        "terms": "Terms"
+    },
+    "support": {
+        "eyebrow": "Support",
+        "title": "How can we help?",
+        "lead": "Tell us what is going on. A real person reads every message and replies by email.",
+        "leadSignedIn": "Hi {name}. Tell us what is going on and we will reply here and by email.",
+        "error": "Could not send. Please try again.",
+        "copyFailed": "Could not copy. Select the link and copy it.",
+        "sentTitle": "Got it, thanks",
+        "sentBody": "We will reply soon. You can follow the conversation below.",
+        "sentBodyGuest": "We will reply by email. Save this private link to follow the conversation. Anyone with the link can read it.",
+        "copyLink": "Copy link",
+        "openTicket": "Open ticket",
+        "another": "Send another",
+        "category": "What is it about?",
+        "categories": {
+            "ACCOUNT": "My account",
+            "BILLING": "Money and meals",
+            "BUG": "Something broke",
+            "ABUSE": "Report abuse",
+            "OTHER": "Something else"
+        },
+        "name": "Your name",
+        "email": "Email for our reply",
+        "subject": "Subject",
+        "subjectPlaceholder": "Short summary",
+        "message": "Message",
+        "messagePlaceholder": "What happened, and what did you expect?",
+        "privacyHint": "Never send your password. We will never ask for it.",
+        "send": "Send message",
+        "yourTickets": "Your tickets",
+        "noTickets": "No tickets yet.",
+        "status": {
+            "OPEN": "Open",
+            "WAITING_ON_USER": "Replied",
+            "RESOLVED": "Resolved",
+            "CLOSED": "Closed"
+        },
+        "backToSupport": "Support",
+        "notFound": "We could not find that ticket. Check the link, or sign in with the account that opened it.",
+        "opened": "Opened {date}",
+        "supportTeam": "Mealio Support",
+        "you": "You",
+        "closedNote": "This ticket is closed. Open a new one if you need more help.",
+        "reply": "Reply",
+        "replyPlaceholder": "Add more details or answer our question",
+        "sendReply": "Send"
+    },
+    "legal": {
+        "privacy": {
+            "eyebrow": "Privacy",
+            "title": "Privacy Policy",
+            "lead": "What Mealio keeps about you, why, and how to take it back.",
+            "updated": "Last updated October 2026",
+            "sections": [
+                {
+                    "heading": "What we collect",
+                    "bullets": [
+                        "Account details: your name, email address, optional phone number and a hashed password. We never store the password itself.",
+                        "Mess records: meals, guests, bazaar costs, deposits and settings that you or your mess admin enter.",
+                        "Telegram: your Telegram user ID, only if you link the bot.",
+                        "Security records: sign-in attempts, the IP address they came from and similar events, so we can spot attacks on accounts.",
+                        "Support messages you send us."
+                    ]
+                },
+                {
+                    "heading": "How we use it",
+                    "paragraphs": [
+                        "We use your data to run the service: counting meals, working out the meal rate and balances, showing your mess what it needs to see, and helping you when you ask for support.",
+                        "We do not sell your data and we do not show ads."
+                    ]
+                },
+                {
+                    "heading": "Who can see it",
+                    "paragraphs": [
+                        "People in your mess see your name, meals, deposits and balance. Admins and managers also see your phone number and can manage your membership.",
+                        "A small number of Mealio staff can access accounts to fix problems, handle support and stop abuse. Every staff action is logged."
+                    ]
+                },
+                {
+                    "heading": "Services we rely on",
+                    "paragraphs": [
+                        "Your data is stored with our hosting and database providers. If email is turned on, we send emails such as password reset links through an email delivery provider. These providers only process data on our behalf."
+                    ]
+                },
+                {
+                    "heading": "Your choices",
+                    "bullets": [
+                        "Download everything we hold about you from Settings, Privacy and data.",
+                        "Delete your account from the same place. Your name and contact details are removed. Meal and money records stay in your mess's books under \"Deleted member\" so everyone else's totals stay correct.",
+                        "Ask us anything through the support page."
+                    ]
+                },
+                {
+                    "heading": "Changes",
+                    "paragraphs": [
+                        "If we change this policy in a way that matters, we will tell you in the app before it takes effect."
+                    ]
+                }
+            ]
+        },
+        "terms": {
+            "eyebrow": "Terms",
+            "title": "Terms of Use",
+            "lead": "The short version: be fair, keep your records honest, and we will keep the lights on.",
+            "updated": "Last updated October 2026",
+            "sections": [
+                {
+                    "heading": "The service",
+                    "paragraphs": [
+                        "Mealio helps a shared mess keep track of meals, bazaar costs, deposits and balances. It is a record-keeping tool. Mealio never holds or moves money for you."
+                    ]
+                },
+                {
+                    "heading": "Your account",
+                    "bullets": [
+                        "Give a real name and an email address you can read.",
+                        "Keep your password to yourself. You are responsible for what happens in your account.",
+                        "One person, one account. Do not sign up on behalf of someone else without asking them."
+                    ]
+                },
+                {
+                    "heading": "Mess admins",
+                    "paragraphs": [
+                        "Whoever creates a mess is its admin. Admins decide who joins, set the billing rules and can correct records. The numbers Mealio shows are only as accurate as the records the mess enters, so check them before settling money."
+                    ]
+                },
+                {
+                    "heading": "Fair use",
+                    "bullets": [
+                        "No spam, fake messes or attempts to break into other people's accounts or messes.",
+                        "No automated scraping or load that harms the service for others.",
+                        "We may suspend a mess or account that breaks these rules. Contact support if you think we got it wrong."
+                    ]
+                },
+                {
+                    "heading": "Price",
+                    "paragraphs": [
+                        "Mealio is free during early access, within fair limits on mess size. If we introduce paid plans later, we will announce them in advance and existing messes will not lose their records."
+                    ]
+                },
+                {
+                    "heading": "No warranty",
+                    "paragraphs": [
+                        "We work hard to keep Mealio running and your data safe, but the service is provided as it is. We are not liable for disagreements between mess members or for losses that come from records being wrong or unavailable."
+                    ]
+                },
+                {
+                    "heading": "Leaving",
+                    "paragraphs": [
+                        "You can export your data and delete your account at any time from Settings. Admins can delete their mess from Settings too."
+                    ]
+                }
+            ]
+        }
+    },
+    "period": {
+        "label": "Billing period {range}",
+        "overdueTitle": "The period {range} has ended",
+        "overdueAdmin": "Close it to start the next one. Until then, bazaar trips and deposits dated after it cannot be saved.",
+        "overdueMember": "Your admin needs to close it to start the next one. Until then, new bazaar trips and deposits cannot be saved.",
+        "closeNow": "Close period",
+        "endingTitle": "This period ({range}) is ending",
+        "endsToday": "You can close it today.",
+        "endsIn": "{n, plural, one {You can close it in # day.} other {You can close it in # days.}}"
+    },
+    "archive": {
+        "title": "Archive",
+        "subtitle": "Every closed month of your mess, open to all members.",
+        "frozenNote": "Closed months are frozen. Nobody can change them, not even the admin.",
+        "closedOn": "Closed on {date}",
+        "closed": "Closed",
+        "empty": "No closed months yet. A month appears here when the admin closes it.",
+        "loadFailed": "Could not load the archive. Please try again.",
+        "mealRate": "Meal rate",
+        "totalExpense": "Total expense",
+        "totalMeals": "Total meals",
+        "totalDeposits": "Total deposited",
+        "rateHow": "{expense} spread over {meals} meals",
+        "guestMealsNote": "includes {n} guest meals",
+        "rules": "Rules that month: {guests}. {bazaar}.",
+        "guestsHost": "guest meals were charged to the host",
+        "guestsShared": "guest meals were shared by everyone",
+        "bazaarCredited": "Bazaar spending was credited to whoever paid",
+        "bazaarNotCredited": "Bazaar was paid from the common deposits",
+        "tabs": {
+            "members": "Members",
+            "bazaar": "Bazaar ({n})",
+            "deposits": "Deposits ({n})",
+            "days": "Day by day"
+        },
+        "member": "Member",
+        "meals": "Meals",
+        "cost": "Meal cost",
+        "deposited": "Deposited",
+        "balance": "Balance",
+        "total": "Total",
+        "you": "You",
+        "withGuests": "{n} for guests",
+        "carriedIn": "{amount} carried in",
+        "getsBack": "gets back",
+        "owes": "owes",
+        "noBazaar": "No bazaar trips were recorded.",
+        "noDeposits": "No deposits were recorded.",
+        "noShoppers": "Shoppers not recorded",
+        "wentBy": "Went: {names}",
+        "recordedBy": "recorded by {name}",
+        "voided": "Cancelled before closing: {reason}",
+        "daysNote": "Meals each member had on each day. A small +n is the number of guest meals that day."
     }
 }

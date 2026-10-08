@@ -1,274 +1,226 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { useAuth } from "@/contexts/AuthContext";
 import {
     Utensils,
-    ToggleRight,
+    UtensilsCrossed,
     Receipt,
     ChefHat,
     Grid3X3,
-    Shield,
-    Sparkles,
+    ShieldCheck,
+    Send,
     ArrowRight,
+    Sun,
+    CloudSun,
+    Moon,
+    Check,
+    Users,
+    ShoppingCart,
+    Crown,
+    Wallet,
+    Sparkles,
 } from "lucide-react";
-import { useLocale } from "next-intl";
-import { Button } from "@/components/ui/Button/Button";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
-import styles from "./landing.module.css";
+import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
 import { cn } from "@/lib/utils";
-
-const FOOD_PARTICLES = [
-    { emoji: "🍜", className: styles.particle1 },
-    { emoji: "🥘", className: styles.particle2 },
-    { emoji: "🍚", className: styles.particle3 },
-    { emoji: "🧑‍🍳", className: styles.particle4 },
-    { emoji: "🥗", className: styles.particle5 },
-    { emoji: "🫕", className: styles.particle6 },
-    { emoji: "🥩", className: styles.particle7 },
-    { emoji: "🧅", className: styles.particle8 },
-];
+import styles from "./landing.module.css";
 
 export default function LandingPage() {
     const t = useTranslations("landing");
     const tc = useTranslations("common");
     const locale = useLocale();
-    const [scrolled, setScrolled] = useState(false);
-    const featuresRef = useRef<HTMLElement>(null);
-
-    useEffect(() => {
-        function handleScroll() {
-            setScrolled(window.scrollY > 50);
-        }
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    // Scroll-triggered reveal animations
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add("is-visible");
-                        observer.unobserve(entry.target);
-                    }
-                });
-            },
-            { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
-        );
-        document
-            .querySelectorAll("[data-landing-animate]")
-            .forEach((el) => observer.observe(el));
-        return () => observer.disconnect();
-    }, []);
-
-    function scrollToFeatures() {
-        featuresRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    const { isAuthenticated } = useAuth();
+    // Signed-in people go straight back into the app from every button on this page
+    const appHref = `/${locale}/overview`;
+    const ctaHref = isAuthenticated ? appHref : `/${locale}/register`;
+    const signInHref = isAuthenticated ? appHref : `/${locale}/login`;
+    const signInLabel = isAuthenticated ? t("openApp") : t("nav.signIn");
 
     const features = [
-        { key: "mealToggle", icon: <ToggleRight size={24} />, iconClass: styles.featureIconPrimary },
-        { key: "expense",    icon: <Receipt size={24} />,     iconClass: styles.featureIconAccent },
-        { key: "headcount",  icon: <ChefHat size={24} />,     iconClass: styles.featureIconSuccess },
-        { key: "matrix",     icon: <Grid3X3 size={24} />,     iconClass: styles.featureIconInfo },
-        { key: "finance",    icon: <Shield size={24} />,      iconClass: styles.featureIconDanger },
-        { key: "ai",         icon: <Sparkles size={24} />,    iconClass: styles.featureIconPurple, comingSoon: true },
+        { key: "mealToggle", Icon: UtensilsCrossed, tone: styles.toneViolet, wide: true },
+        { key: "expense", Icon: Receipt, tone: styles.toneLime },
+        { key: "headcount", Icon: ChefHat, tone: styles.tonePink },
+        { key: "matrix", Icon: Grid3X3, tone: styles.toneBlue },
+        { key: "telegram", Icon: Send, tone: styles.toneSky },
+        { key: "finance", Icon: ShieldCheck, tone: styles.toneGreen, wide: true },
     ];
 
     const roles = [
-        { key: "member",  emoji: "👤" },
-        { key: "manager", emoji: "🛒" },
-        { key: "admin",   emoji: "👑" },
-        { key: "cook",    emoji: "👨‍🍳" },
+        { key: "member", Icon: Users },
+        { key: "manager", Icon: ShoppingCart },
+        { key: "admin", Icon: Crown },
+        { key: "cook", Icon: ChefHat },
     ];
 
+    const steps = ["one", "two", "three"] as const;
+
     return (
-        <>
-            {/* Navbar */}
-            <nav className={cn(styles.navbar, scrolled && styles.navbarScrolled)}>
+        <div className={styles.landing}>
+            {/* Nav */}
+            <nav className={styles.navbar}>
                 <div className={styles.navInner}>
-                    <div className={styles.logo}>
+                    <Link href={isAuthenticated ? appHref : `/${locale}`} className={styles.logo}>
                         <span className={styles.logoIcon}>
-                            <Utensils size={20} />
+                            <Utensils size={18} />
                         </span>
                         {tc("appName")}
-                    </div>
+                    </Link>
                     <div className={styles.navActions}>
-                        <ThemeToggle />
-                        <Link href={`/${locale}/login`} className={styles.navSignIn}>
-                            <Button variant="ghost" size="small">
-                                {t("nav.signIn")}
-                            </Button>
-                        </Link>
-                        <Link href={`/${locale}/register`}>
-                            <Button size="small">{t("hero.cta")}</Button>
+                        <span className={styles.navPrefs}>
+                            <LocaleSwitcher />
+                            <ThemeToggle />
+                        </span>
+                        <Link href={signInHref} className={styles.navSignIn}>
+                            {signInLabel}
                         </Link>
                     </div>
                 </div>
             </nav>
 
             {/* Hero */}
-            <section className={styles.hero}>
-                <div className={styles.heroBg} aria-hidden="true">
-                    <div className={styles.heroDotGrid} />
-                    {FOOD_PARTICLES.map((p, i) => (
-                        <span key={i} className={cn(styles.particle, p.className)}>
-                            {p.emoji}
-                        </span>
-                    ))}
-                </div>
-
-                <div className={styles.heroContent}>
+            <header className={styles.hero}>
+                <div className={styles.heroCopy}>
+                    <span className={styles.badge}>
+                        <Sparkles size={14} /> {t("hero.badge")}
+                    </span>
                     <h1 className={styles.heroTitle}>
-                        {t("hero.title")}
-                        <br />
-                        <span className={styles.heroHighlight}>
-                            {t("hero.titleHighlight")}
-                        </span>
+                        {t("hero.title")} <span className={styles.heroHighlight}>{t("hero.titleHighlight")}</span>
                     </h1>
                     <p className={styles.heroSubtitle}>{t("hero.subtitle")}</p>
                     <div className={styles.heroActions}>
-                        <div className={styles.ctaGlowWrap}>
-                            <Link href={`/${locale}/register`}>
-                                <Button size="large">
-                                    {t("hero.cta")}
-                                    <ArrowRight size={20} />
-                                </Button>
-                            </Link>
-                        </div>
-                        <Button variant="secondary" size="large" onClick={scrollToFeatures}>
+                        <Link href={ctaHref} className={cn(styles.btn, styles.btnPrimary)}>
+                            {isAuthenticated ? t("openApp") : t("hero.cta")} <ArrowRight size={18} />
+                        </Link>
+                        <a href="#features" className={cn(styles.btn, styles.btnGhost)}>
                             {t("hero.ctaSecondary")}
-                        </Button>
+                        </a>
                     </div>
-
-                    <div className={styles.statsBar}>
-                        <div className={styles.statItem}>
-                            <div className={styles.statNumber}>50+</div>
-                            <div className={styles.statLabel}>{t("stats.messes")}</div>
-                        </div>
-                        <div className={styles.statDivider} />
-                        <div className={styles.statItem}>
-                            <div className={styles.statNumber}>12K+</div>
-                            <div className={styles.statLabel}>{t("stats.meals")}</div>
-                        </div>
-                        <div className={styles.statDivider} />
-                        <div className={styles.statItem}>
-                            <div className={styles.statNumber}>200+</div>
-                            <div className={styles.statLabel}>{t("stats.saved")}</div>
-                        </div>
-                    </div>
+                    <ul className={styles.facts}>
+                        {(["taps", "auto", "lang"] as const).map((k) => (
+                            <li key={k} className={styles.fact}>
+                                <span className={styles.factValue}>{t(`facts.${k}.value`)}</span>
+                                <span className={styles.factLabel}>{t(`facts.${k}.label`)}</span>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
 
-                {/* Scroll indicator — fades out once user scrolls */}
-                <div
-                    className={cn(styles.scrollHint, scrolled && styles.scrollHintHidden)}
-                    aria-hidden="true"
-                >
-                    <div className={styles.scrollLine}>
-                        <div className={styles.scrollDot} />
+                {/* Phone preview, drawn in CSS */}
+                <div className={styles.phoneWrap} aria-hidden>
+                    <div className={styles.phone}>
+                        <div className={styles.phoneNotch} />
+                        <div className={styles.phoneScreen}>
+                            <div className={styles.mockGreeting}>
+                                <small>{t("mock.date")}</small>
+                                <b>{t("mock.greeting")}</b>
+                            </div>
+                            <div className={styles.mockBalance}>
+                                <small><Wallet size={12} /> {t("mock.balance")}</small>
+                                <b>৳ 1,240</b>
+                                <span className={styles.mockChip}>{t("mock.ahead")}</span>
+                            </div>
+                            {[
+                                { Icon: Sun, label: t("mock.breakfast"), on: true, c: styles.mockB },
+                                { Icon: CloudSun, label: t("mock.lunch"), on: true, c: styles.mockL },
+                                { Icon: Moon, label: t("mock.dinner"), on: false, c: styles.mockD },
+                            ].map(({ Icon, label, on, c }) => (
+                                <div key={label} className={cn(styles.mockMeal, c, on && styles.mockMealOn)}>
+                                    <span className={styles.mockMealIcon}><Icon size={16} /></span>
+                                    <span className={styles.mockMealLabel}>{label}</span>
+                                    <span className={styles.mockSwitch}><span /></span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={cn(styles.floatCard, styles.floatA)}>
+                        <span className={styles.floatIcon}><Check size={14} strokeWidth={3} /></span>
+                        {t("mock.float1")}
+                    </div>
+                    <div className={cn(styles.floatCard, styles.floatB)}>
+                        <ChefHat size={16} /> {t("mock.float2")}
                     </div>
                 </div>
+            </header>
+
+            {/* How it works */}
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>{t("steps.title")}</h2>
+                <ol className={styles.steps}>
+                    {steps.map((k, i) => (
+                        <li key={k} className={styles.step}>
+                            <span className={styles.stepNum}>{i + 1}</span>
+                            <h3 className={styles.stepTitle}>{t(`steps.${k}.title`)}</h3>
+                            <p className={styles.stepDesc}>{t(`steps.${k}.description`)}</p>
+                        </li>
+                    ))}
+                </ol>
             </section>
 
-            {/* Features */}
-            <section className={styles.section} id="features" ref={featuresRef}>
-                <div className={styles.sectionHeader} data-landing-animate>
-                    <h2 className={styles.sectionTitle}>{t("features.title")}</h2>
-                    <p className={styles.sectionSubtitle}>{t("features.subtitle")}</p>
-                </div>
-
-                <div className={styles.featuresGrid}>
-                    {features.map((feature, index) => (
-                        <div
-                            key={feature.key}
-                            className={styles.featureCard}
-                            data-landing-animate
-                            style={{ transitionDelay: `${index * 0.08}s` }}
-                        >
-                            <div className={cn(styles.featureIconWrap, feature.iconClass)}>
-                                {feature.icon}
-                            </div>
-                            <h3 className={styles.featureTitle}>
-                                {t(`features.${feature.key}.title`)}
-                                {feature.comingSoon && (
-                                    <span className={styles.comingSoon}>Soon</span>
-                                )}
-                            </h3>
-                            <p className={styles.featureDesc}>
-                                {t(`features.${feature.key}.description`)}
-                            </p>
-                        </div>
+            {/* Features bento */}
+            <section className={styles.section} id="features">
+                <h2 className={styles.sectionTitle}>{t("features.title")}</h2>
+                <p className={styles.sectionSubtitle}>{t("features.subtitle")}</p>
+                <div className={styles.bento}>
+                    {features.map(({ key, Icon, tone, wide }) => (
+                        <article key={key} className={cn(styles.feature, tone, wide && styles.featureWide)}>
+                            <span className={styles.featureIcon}><Icon size={22} /></span>
+                            <h3 className={styles.featureTitle}>{t(`features.${key}.title`)}</h3>
+                            <p className={styles.featureDesc}>{t(`features.${key}.description`)}</p>
+                        </article>
                     ))}
                 </div>
             </section>
 
             {/* Roles */}
-            <section className={styles.rolesBg} id="roles">
-                <div className={styles.sectionHeader} data-landing-animate>
-                    <h2 className={styles.sectionTitle}>{t("roles.title")}</h2>
-                </div>
-                <div className={styles.rolesGrid}>
-                    {roles.map((role, index) => (
-                        <div
-                            key={role.key}
-                            className={styles.roleCard}
-                            data-landing-animate
-                            style={{ transitionDelay: `${index * 0.1}s` }}
-                        >
-                            <span className={styles.roleEmoji}>{role.emoji}</span>
-                            <h3 className={styles.roleTitle}>
-                                {t(`roles.${role.key}.title`)}
-                            </h3>
-                            <p className={styles.roleDesc}>
-                                {t(`roles.${role.key}.description`)}
-                            </p>
-                        </div>
+            <section className={styles.section} id="roles">
+                <h2 className={styles.sectionTitle}>{t("roles.title")}</h2>
+                <div className={styles.roles}>
+                    {roles.map(({ key, Icon }) => (
+                        <article key={key} className={styles.role}>
+                            <span className={styles.roleIcon}><Icon size={20} /></span>
+                            <h3 className={styles.roleTitle}>{t(`roles.${key}.title`)}</h3>
+                            <p className={styles.roleDesc}>{t(`roles.${key}.description`)}</p>
+                        </article>
                     ))}
                 </div>
             </section>
 
             {/* CTA */}
-            <section className={styles.ctaSection}>
-                <div className={styles.ctaOrb1} aria-hidden="true" />
-                <div className={styles.ctaOrb2} aria-hidden="true" />
-                <div className={styles.ctaContent} data-landing-animate>
-                    <div className={styles.ctaIcon} aria-hidden="true">🍽️</div>
-                    <h2 className={styles.ctaTitle}>{t("cta.title")}</h2>
-                    <p className={styles.ctaSubtitle}>{t("cta.subtitle")}</p>
-                    <Link href={`/${locale}/register`}>
-                        <Button size="large">
-                            {t("cta.button")}
-                            <ArrowRight size={20} />
-                        </Button>
-                    </Link>
-                </div>
+            <section className={styles.cta}>
+                <h2 className={styles.ctaTitle}>{t("cta.title")}</h2>
+                <p className={styles.ctaSubtitle}>{t("cta.subtitle")}</p>
+                <Link href={ctaHref} className={cn(styles.btn, styles.btnLime)}>
+                    {isAuthenticated ? t("openApp") : t("cta.button")} <ArrowRight size={18} />
+                </Link>
             </section>
 
-            {/* Footer */}
             <footer className={styles.footer}>
                 <div className={styles.footerInner}>
-                    <div className={styles.footerBrand}>
-                        <div className={styles.footerLogo}>
-                            <span className={styles.footerLogoIcon}>
-                                <Utensils size={16} />
-                            </span>
-                            {tc("appName")}
-                        </div>
-                        <p className={styles.footerTagline}>{tc("tagline")}</p>
-                    </div>
-
-                    <nav className={styles.footerLinks} aria-label="Footer navigation">
-                        <a href="#features" className={styles.footerLink}>{t("footer.features")}</a>
-                        <a href="#roles"    className={styles.footerLink}>{t("footer.roles")}</a>
-                        <Link href={`/${locale}/login`}    className={styles.footerLink}>{t("nav.signIn")}</Link>
-                        <Link href={`/${locale}/register`} className={styles.footerLink}>{t("footer.getStarted")}</Link>
+                    <span className={styles.logo}>
+                        <span className={styles.logoIcon}><Utensils size={16} /></span>
+                        {tc("appName")}
+                    </span>
+                    <nav className={styles.footerLinks} aria-label={t("footer.nav")}>
+                        <a href="#features">{t("footer.features")}</a>
+                        <a href="#roles">{t("footer.roles")}</a>
+                        <Link href={signInHref}>{signInLabel}</Link>
+                        <Link href={ctaHref}>{isAuthenticated ? t("openApp") : t("footer.getStarted")}</Link>
+                        <Link href={`/${locale}/support`}>{t("footer.support")}</Link>
+                        <Link href={`/${locale}/privacy`}>{t("footer.privacy")}</Link>
+                        <Link href={`/${locale}/terms`}>{t("footer.terms")}</Link>
                     </nav>
-
                     <p className={styles.footerCopy}>{t("footer.copyright")}</p>
                 </div>
             </footer>
-        </>
+
+            {/* Sticky CTA on phones */}
+            <div className={styles.stickyCta}>
+                <Link href={ctaHref} className={cn(styles.btn, styles.btnPrimary, styles.btnBlock)}>
+                    {isAuthenticated ? t("openApp") : t("hero.cta")} <ArrowRight size={18} />
+                </Link>
+            </div>
+        </div>
     );
 }

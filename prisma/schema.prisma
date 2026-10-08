@@ -25,6 +25,18 @@ model Mess {
   /// Weekend days for meal preferences, comma-separated JS weekday numbers (0=Sun … 6=Sat)
   weekendDays            String   @default("0,6") @map("weekend_days")
   isActive               Boolean  @default(true) @map("is_active")
+  /// New joiners need an admin's approval before they can use the mess
+  requireJoinApproval    Boolean  @default(true) @map("require_join_approval")
+  /// Member who created the mess
+  ownerId                String?  @map("owner_id") @db.Uuid
+  /// Subscription plan key (see src/lib/plans.ts). Everyone is FREE for now.
+  plan                   String   @default("FREE")
+  planExpiresAt          DateTime? @map("plan_expires_at") @db.Timestamptz(6)
+  /// Set by the platform team; members of a suspended mess cannot sign in
+  suspendedAt            DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspendedReason        String?   @map("suspended_reason")
+  /// Soft delete — the admin deleted the mess; the platform team can restore it
+  deletedAt              DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   members         Member[]
@@ -60,6 +72,14 @@ model Member {
   guestUntil     DateTime? @map("guest_until") @db.Date
   invitedBy      String?   @map("invited_by") @db.Uuid
   joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  /// APPROVED | PENDING (waiting for the mess admin) | REJECTED
+  joinStatus     String    @default("APPROVED") @map("join_status")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  /// Tokens issued before this moment are rejected (password change / reset)
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(6)
+  /// Account deleted by the user — personal data is anonymised, records kept for the mess's accounts
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   mess              Mess?           @relation(fields: [messId], references: [id], onDelete: Cascade)
   inviter           Member?         @relation("InvitedBy", fields: [invitedBy], references: [id])
@@ -92,6 +112,9 @@ model MessMonth {
   closedAt     DateTime? @map("closed_at") @db.Timestamptz(6)
   mealRate     Decimal?  @map("meal_rate") @db.Decimal(10, 4)
   totalExpense Decimal   @default(0) @map("total_expense") @db.Decimal(10, 2)
+  /// Every figure of the period, frozen the moment it is closed (see PeriodSnapshot in financial.ts).
+  /// Closed periods are always read from here, so changing a setting later cannot rewrite history.
+  snapshot     Json?
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   mess          Mess          @relation(fields: [messId], references: [id], onDelete: Cascade)
@@ -192,13 +215,34 @@ model BazaarSession {
   voidReason  String?   @map("void_reason")
   voidedAt    DateTime? @map("voided_at") @db.Timestamptz(6)
   voidedBy    String?   @map("voided_by") @db.Uuid
+  /// ITEMIZED = line items typed in; MEMO_TOTAL = photo of the paper memo plus one total
+  entryMode   String    @default("ITEMIZED") @map("entry_mode")
 
-  mess     Mess      @relation(fields: [messId], references: [id], onDelete: Cascade)
-  creator  Member?   @relation("SessionCreator", fields: [createdBy], references: [id])
+  mess     Mess          @relation(fields: [messId], references: [id], onDelete: Cascade)
+  creator  Member?       @relation("SessionCreator", fields: [createdBy], references: [id])
   expenses Expense[]
+  memos    BazaarMemo[]
 
   @@index([messId, yearMonth], map: "idx_bazaar_sessions_mess_month")
   @@map("bazaar_sessions")
+}
+
+/// Photo of the paper memo (receipt) for a bazaar session. Kept as evidence, never edited or deleted.
+/// Phase 2: an OCR job reads these and suggests the line items.
+model BazaarMemo {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sessionId  String   @map("session_id") @db.Uuid
+  messId     String   @map("mess_id") @db.Uuid
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  data       Bytes
+  uploadedBy String?  @map("uploaded_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session BazaarSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "idx_bazaar_memos_session")
+  @@map("bazaar_memos")
 }
 
 model LedgerEntry {
@@ -335,4 +379,112 @@ model UserMealPreference {
   @@unique([memberId, messId, mealType, dayType])
   @@index([memberId, messId], map: "idx_meal_prefs_member_mess")
   @@map("user_meal_preferences")
+}
+
+/// One-time codes/tokens for password reset and email verification.
+/// Only a SHA-256 hash is stored.
+model AuthToken {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  memberId  String    @map("member_id") @db.Uuid
+  /// RESET | VERIFY_EMAIL
+  purpose   String
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  /// who issued it: SELF | MESS_ADMIN:<memberId> | PLATFORM:<adminId>
+  issuedBy  String    @default("SELF") @map("issued_by")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([memberId, purpose], map: "idx_auth_tokens_member")
+  @@map("auth_tokens")
+}
+
+/// Platform operators (super admins). Separate from mess members on purpose.
+model PlatformAdmin {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email        String    @unique
+  name         String
+  passwordHash String    @map("password_hash")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("platform_admins")
+}
+
+/// Everything platform admins do is recorded here.
+model PlatformAuditLog {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  adminId    String?  @map("admin_id") @db.Uuid
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  detail     Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt], map: "idx_platform_audit_created")
+  @@map("platform_audit_log")
+}
+
+/// Security-relevant events across all messes (monitoring).
+model SecurityEvent {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  /// e.g. LOGIN_FAILED, LOGIN_OK, REGISTER, MESS_CREATED, JOIN_REQUESTED, RATE_LIMITED, PASSWORD_RESET
+  type      String
+  /// INFO | WARN | HIGH
+  severity  String   @default("INFO")
+  memberId  String?  @map("member_id") @db.Uuid
+  messId    String?  @map("mess_id") @db.Uuid
+  email     String?
+  ip        String?
+  detail    Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt], map: "idx_security_events_created")
+  @@index([type, createdAt], map: "idx_security_events_type")
+  @@index([ip, createdAt], map: "idx_security_events_ip")
+  @@map("security_events")
+}
+
+/// Contact-support tickets from users (signed in or not).
+model SupportTicket {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  memberId  String?  @map("member_id") @db.Uuid
+  messId    String?  @map("mess_id") @db.Uuid
+  name      String
+  email     String
+  /// ACCOUNT | BILLING | BUG | ABUSE | OTHER
+  category  String   @default("OTHER")
+  subject   String
+  /// OPEN | WAITING_ON_USER | RESOLVED | CLOSED
+  status    String   @default("OPEN")
+  /// LOW | NORMAL | HIGH
+  priority  String   @default("NORMAL")
+  /// Lets a signed-out user read replies via a private link
+  accessKeyHash String? @map("access_key_hash")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  messages SupportMessage[]
+
+  @@index([status, updatedAt], map: "idx_support_tickets_status")
+  @@index([memberId], map: "idx_support_tickets_member")
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  ticketId   String   @map("ticket_id") @db.Uuid
+  /// USER | STAFF
+  authorType String   @map("author_type")
+  authorId   String?  @map("author_id") @db.Uuid
+  authorName String   @map("author_name")
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt], map: "idx_support_messages_ticket")
+  @@map("support_messages")
 }

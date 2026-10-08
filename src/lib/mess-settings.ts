@@ -45,11 +45,14 @@ export interface MessSettings {
   carryForwardBalance: boolean
   /** JS weekday numbers treated as WEEKEND for meal preferences */
   weekendDays: number[]
+  /** New joiners wait for admin approval */
+  requireJoinApproval: boolean
+  plan: string
   meals: Record<MealTypeUpper, MealSlotSettings>
 }
 
 /** Bump the version suffix whenever the MessSettings shape changes. */
-const key = (messId: string) => `mealio:mess:${messId}:settings:v3`
+const key = (messId: string) => `mealio:mess:${messId}:settings:v4`
 /** Long TTL — the cache is refreshed on every write; the TTL only self-heals stray drift. */
 const TTL_SECONDS = 24 * 60 * 60
 
@@ -79,6 +82,8 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
       bazaarCountsAsDeposit: true,
       carryForwardBalance: true,
       weekendDays: true,
+      requireJoinApproval: true,
+      plan: true,
       telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 },
       mealConfigs: { select: { mealType: true, enabled: true, cutoffTime: true, maxCount: true } },
     },
@@ -118,6 +123,8 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
     bazaarCountsAsDeposit: mess.bazaarCountsAsDeposit,
     carryForwardBalance: mess.carryForwardBalance,
     weekendDays: parseWeekendDays(mess.weekendDays),
+    requireJoinApproval: mess.requireJoinApproval,
+    plan: mess.plan,
     meals,
   }
 }

@@ -27,10 +27,17 @@ export async function GET(req: NextRequest) {
     // Summary first: it backfills missing logs, so the log query below sees them
     const summary = await calculatePeriodSummary(messId, period)
 
+    // Neighbouring periods, so the page can step back and forward through real periods
+    const [prev, next] = await Promise.all([
+      prisma.messMonth.findFirst({ where: { messId, startDate: { lt: period.startDate } }, orderBy: { startDate: 'desc' }, select: { yearMonth: true } }),
+      prisma.messMonth.findFirst({ where: { messId, startDate: { gt: period.startDate } }, orderBy: { startDate: 'asc' }, select: { yearMonth: true } }),
+    ])
+
     const [settings, members, logs] = await Promise.all([
       getMessSettings(messId),
       prisma.member.findMany({
-        where: { messId, isActive: true },
+        // A closed month keeps everyone who was in it, even members who left later
+        where: period.isClosed ? { messId, id: { in: Array.from(summary.members.keys()) } } : { messId, isActive: true },
         select: { id: true, name: true, role: true, isGuest: true, guestFrom: true, guestUntil: true },
         orderBy: { joinedAt: 'asc' },
       }),
@@ -92,12 +99,15 @@ export async function GET(req: NextRequest) {
       start_date: period.startDate.toISOString().slice(0, 10),
       end_date: period.endDate.toISOString().slice(0, 10),
       is_closed: period.isClosed,
+      prev_year_month: prev?.yearMonth ?? null,
+      next_year_month: next?.yearMonth ?? null,
       meal_rate: summary.mealRate,
       total_expense: summary.totalExpense,
       total_meals: summary.totalMeals,
       total_guest_meals: summary.totalGuestMeals,
       guest_meal_policy: summary.guestMealPolicy,
       carry_forward_balance: settings?.carryForwardBalance ?? true,
+      weekend_days: settings?.weekendDays ?? [5, 6],
       members: memberRows,
     })
   } catch (err) {

@@ -285,7 +285,7 @@ const spec = {
         responses: {
           200: { description: 'Created expense', content: { 'application/json': { schema: { $ref: '#/components/schemas/Expense' } } } },
           401: { description: 'Unauthorized' },
-          403: { description: 'Forbidden — MEMBER role cannot add expenses' },
+          403: { description: 'Forbidden. The MEMBER role cannot add expenses.' },
         },
       },
     },
@@ -380,7 +380,7 @@ const spec = {
     '/admin/matrix': {
       get: {
         tags: ['Admin'],
-        summary: 'Full monthly matrix — all members × all days (ADMIN only)',
+        summary: 'Full monthly matrix of all members and days (ADMIN or MANAGER)',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'mess_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -404,7 +404,7 @@ const spec = {
             },
           },
           401: { description: 'Unauthorized' },
-          403: { description: 'Forbidden — ADMIN only' },
+          403: { description: 'Forbidden. ADMIN only.' },
         },
       },
     },
@@ -432,7 +432,7 @@ const spec = {
         responses: {
           200: { description: 'Month closed', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' } } } } } },
           401: { description: 'Unauthorized' },
-          403: { description: 'Forbidden — ADMIN only' },
+          403: { description: 'Forbidden. ADMIN only.' },
         },
       },
     },
@@ -441,7 +441,7 @@ const spec = {
         tags: ['Telegram Bot'],
         summary: 'Telegram Bot webhook endpoint',
         description:
-          'Receives Update payloads from the Telegram Bot API. This endpoint is **public** — Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Mealio member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest N` — set guest count\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
+          'Receives Update payloads from the Telegram Bot API. This endpoint is **public**. Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Mealio member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest N` — set guest count\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
         requestBody: {
           required: true,
           content: {

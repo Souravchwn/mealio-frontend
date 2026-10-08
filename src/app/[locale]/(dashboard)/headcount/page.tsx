@@ -47,7 +47,7 @@ function DetailPanel({ slotKey, slot, date, onClose, t, token }: DetailPanelProp
             await api.cook.saveNote({ slot: meta.slotUpper, note, date }, token);
             toast.success(t("noteSaved"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to save note");
+            toast.error(err instanceof Error ? err.message : t("noteFailed"));
         } finally {
             setSaving(false);
         }
@@ -59,7 +59,8 @@ function DetailPanel({ slotKey, slot, date, onClose, t, token }: DetailPanelProp
             <div className={styles.detailOverlay} onClick={onClose} />
 
             {/* Panel */}
-            <div className={styles.detailPanel}>
+            <div className={styles.detailPanel} role="dialog" aria-modal="true" aria-label={t("detailTitle", { meal: slotLabel })}>
+                <span className={styles.sheetHandle} aria-hidden />
                 {/* Header */}
                 <div className={styles.detailHeader}>
                     <div className={cn(styles.detailIcon, meta.colorClass)}>
@@ -69,7 +70,7 @@ function DetailPanel({ slotKey, slot, date, onClose, t, token }: DetailPanelProp
                         <h3>{t("detailTitle", { meal: slotLabel })}</h3>
                         <p>{date}</p>
                     </div>
-                    <button className={styles.detailClose} onClick={onClose} aria-label="Close">
+                    <button className={styles.detailClose} onClick={onClose} aria-label={t("close")}>
                         <X size={20} />
                     </button>
                 </div>
@@ -90,7 +91,7 @@ function DetailPanel({ slotKey, slot, date, onClose, t, token }: DetailPanelProp
                         disabled={saving}
                     >
                         <Save size={14} />
-                        {saving ? "Saving..." : t("saveNote")}
+                        {saving ? t("saving") : t("saveNote")}
                     </button>
                 </div>
 
@@ -179,14 +180,11 @@ interface SlotCardProps {
 function SlotCard({ slotKey, slot, onDetail, t }: SlotCardProps) {
     const meta = SLOT_META[slotKey];
     return (
-        <div
-            className={cn(styles.slotCard, slot.cutoffPassed && styles.slotCardCooked)}
+        <button
+            type="button"
+            className={cn(styles.slotCard, meta.colorClass, slot.cutoffPassed && styles.slotCardCooked)}
             onClick={onDetail}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && onDetail()}
-            aria-label={`View ${slotKey} detail`}
-            style={{ cursor: "pointer" }}
+            aria-label={t("viewDetail", { meal: t(slotKey) })}
         >
             {/* Header */}
             <div className={styles.slotHeader}>
@@ -242,7 +240,7 @@ function SlotCard({ slotKey, slot, onDetail, t }: SlotCardProps) {
                     </>
                 )}
             </div>
-        </div>
+        </button>
     );
 }
 
@@ -269,9 +267,22 @@ export default function HeadcountPage() {
         }
     }, [user, token]);
 
+    // First load
     useEffect(() => {
-        void fetchHeadcount();
-    }, [fetchHeadcount]);
+        if (!user || !token) return;
+        let cancelled = false;
+        api.cook
+            .getHeadcount(user.messId, token)
+            .then((result) => {
+                if (cancelled) return;
+                setData(result);
+                setLastUpdated(new Date());
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [user, token]);
 
     // Tick every second for timeSinceUpdate
     useEffect(() => {
@@ -307,7 +318,7 @@ export default function HeadcountPage() {
                 <button
                     className={cn(styles.refreshBtn, refreshing && styles.refreshing)}
                     onClick={handleRefresh}
-                    aria-label="Refresh"
+                    aria-label={t("refresh")}
                 >
                     <RefreshCw size={18} />
                 </button>
@@ -334,7 +345,7 @@ export default function HeadcountPage() {
             <div className={cn(styles.lastUpdated, isStale && styles.lastUpdatedStale)}>
                 {t("lastUpdated")}:{" "}
                 {lastUpdated.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                {isStale && <span className={styles.staleBadge}>Stale</span>}
+                {isStale && <span className={styles.staleBadge}>{t("stale")}</span>}
             </div>
 
             {/* Detail panel */}

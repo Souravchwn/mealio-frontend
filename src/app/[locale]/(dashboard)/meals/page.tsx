@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
-import { Sun, CloudSun, Moon, Clock, Minus, Plus } from "lucide-react";
-import { Button } from "@/components/ui/Button/Button";
+import { useLocale, useTranslations } from "next-intl";
+import { Sun, CloudSun, Moon, Clock, Minus, Plus, Lock, Check, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,12 +11,15 @@ import { toast } from "sonner";
 import styles from "./meals.module.css";
 
 type MealSlotKey = "breakfast" | "lunch" | "dinner";
+const SLOTS: MealSlotKey[] = ["breakfast", "lunch", "dinner"];
 
 const SLOT_MAP: Record<MealSlotKey, MealSlot> = {
     breakfast: MealSlot.BREAKFAST,
     lunch: MealSlot.LUNCH,
     dinner: MealSlot.DINNER,
 };
+
+const SLOT_ICON: Record<MealSlotKey, typeof Sun> = { breakfast: Sun, lunch: CloudSun, dinner: Moon };
 
 interface MealPreference {
     mealType: string;
@@ -28,96 +30,65 @@ interface MealPreference {
 
 export default function MealsPage() {
     const t = useTranslations("meals");
+    const locale = useLocale();
     const { user, token } = useAuth();
 
-    // Server-computed "today" in the mess timezone (Asia/Dhaka).
-    // Do NOT compute this client-side — client UTC date can differ from mess-timezone date.
+    // Server-computed "today" in the mess timezone — never compute it client-side
     const [serverDate, setServerDate] = useState<string>("");
-
-    const [meals, setMeals] = useState<Record<MealSlotKey, boolean>>({
-        breakfast: false,
-        lunch: false,
-        dinner: false,
-    });
+    const [meals, setMeals] = useState<Record<MealSlotKey, boolean>>({ breakfast: false, lunch: false, dinner: false });
     const [guestCount, setGuestCount] = useState(0);
     const [guestPolicy, setGuestPolicy] = useState<"HOST" | "SHARED">("HOST");
-    // Per-slot cutoff: each slot locks independently once its cutoff passes
-    const [slotCutoffs, setSlotCutoffs] = useState<Record<MealSlotKey, boolean>>({
-        breakfast: false,
-        lunch: false,
-        dinner: false,
-    });
-    // Header badge: next upcoming cutoff time + whether all slots are passed
+    const [slotLocked, setSlotLocked] = useState<Record<MealSlotKey, boolean>>({ breakfast: false, lunch: false, dinner: false });
+    const [slotTimes, setSlotTimes] = useState<Record<MealSlotKey, string>>({ breakfast: "", lunch: "", dinner: "" });
     const [cutoffPassed, setCutoffPassed] = useState(false);
     const [cutoffTime, setCutoffTime] = useState("");
     const [loading, setLoading] = useState(true);
     const [toggling, setToggling] = useState<MealSlotKey | null>(null);
     const [updatingGuest, setUpdatingGuest] = useState(false);
     const [preferences, setPreferences] = useState<MealPreference[]>([]);
+    const [todayDayType, setTodayDayType] = useState<"WEEKDAY" | "WEEKEND">("WEEKDAY");
 
     const loadToday = useCallback(async () => {
         if (!user || !token) return;
         try {
-            // Load meal log and preferences in parallel
             const [log, prefResult] = await Promise.all([
                 api.meals.getToday(user.id, token),
                 api.mealPreferences.getAll(token),
             ]);
             setServerDate(log.date);
-            setMeals({
-                breakfast: log.breakfastCount > 0,
-                lunch: log.lunchCount > 0,
-                dinner: log.dinnerCount > 0,
-            });
+            setMeals({ breakfast: log.breakfastCount > 0, lunch: log.lunchCount > 0, dinner: log.dinnerCount > 0 });
             setGuestCount(log.guestCount);
             if (log.guestMealPolicy) setGuestPolicy(log.guestMealPolicy);
             if (log.dayType) setTodayDayType(log.dayType);
             setCutoffPassed(log.cutOffPassed);
             setCutoffTime(log.cutOffTime);
-            // Per-slot cutoff — falls back gracefully if server doesn't return it yet
             if (log.slotCutoffs) {
-                setSlotCutoffs({
+                setSlotLocked({
                     breakfast: log.slotCutoffs.breakfast?.cutoffPassed ?? false,
-                    lunch:     log.slotCutoffs.lunch?.cutoffPassed ?? false,
-                    dinner:    log.slotCutoffs.dinner?.cutoffPassed ?? false,
+                    lunch: log.slotCutoffs.lunch?.cutoffPassed ?? false,
+                    dinner: log.slotCutoffs.dinner?.cutoffPassed ?? false,
+                });
+                setSlotTimes({
+                    breakfast: log.slotCutoffs.breakfast?.cutoffTime ?? "",
+                    lunch: log.slotCutoffs.lunch?.cutoffTime ?? "",
+                    dinner: log.slotCutoffs.dinner?.cutoffTime ?? "",
                 });
             }
             setPreferences(prefResult.preferences);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to load today's meals");
+            toast.error(err instanceof Error ? err.message : t("loadFailed"));
         } finally {
             setLoading(false);
         }
-    }, [user, token]);
+    }, [user, token, t]);
 
     useEffect(() => {
         loadToday();
     }, [loadToday]);
 
-    // Today's day type comes from the server (mess timezone + mess weekend setting)
-    const [todayDayType, setTodayDayType] = useState<"WEEKDAY" | "WEEKEND">("WEEKDAY");
-
-    // Get the preference for a slot + today's day type
-    const getPref = useCallback(
-        (slot: MealSlotKey): MealPreference | undefined =>
-            preferences.find(
-                (p) => p.mealType === slot.toUpperCase() && p.dayType === todayDayType
-            ),
-        [preferences, todayDayType]
-    );
-
-    /**
-     * Derive the slot's display status by comparing its current state against
-     * the member's preference for today's day type.
-     *
-     * - "default-off"  → preference says OFF and slot is OFF (system default)
-     * - "override-on"  → preference says OFF but slot is ON (member overrode it)
-     * - "override-off" → preference says ON  but slot is OFF (member manually turned off)
-     * - null           → preference says ON and slot is ON (normal state, no badge)
-     */
     const getSlotStatus = useCallback(
         (slot: MealSlotKey): "default-off" | "override-on" | "override-off" | null => {
-            const pref = getPref(slot);
+            const pref = preferences.find((p) => p.mealType === slot.toUpperCase() && p.dayType === todayDayType);
             if (!pref) return null;
             const isOn = meals[slot];
             if (!pref.enabled && !isOn) return "default-off";
@@ -125,22 +96,19 @@ export default function MealsPage() {
             if (pref.enabled && !isOn) return "override-off";
             return null;
         },
-        [meals, getPref]
+        [meals, preferences, todayDayType],
     );
 
     async function toggleMeal(slot: MealSlotKey) {
-        if (slotCutoffs[slot] || toggling !== null || !user || !token || !serverDate) return;
+        if (slotLocked[slot] || toggling !== null || !user || !token || !serverDate) return;
         const newStatus = !meals[slot];
         setMeals((prev) => ({ ...prev, [slot]: newStatus }));
         setToggling(slot);
         try {
-            await api.meals.toggleMeal(
-                { memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status: newStatus },
-                token
-            );
+            await api.meals.toggleMeal({ memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status: newStatus }, token);
         } catch (err) {
             setMeals((prev) => ({ ...prev, [slot]: !newStatus }));
-            toast.error(err instanceof Error ? err.message : "Failed to toggle meal");
+            toast.error(err instanceof Error ? err.message : t("toggleFailed"));
         } finally {
             setToggling(null);
         }
@@ -148,10 +116,7 @@ export default function MealsPage() {
 
     async function setAllMeals(status: boolean) {
         if (!user || !token || !serverDate) return;
-        // Only act on slots that haven't passed their cutoff yet
-        const openSlots = (["breakfast", "lunch", "dinner"] as MealSlotKey[]).filter(
-            (s) => !slotCutoffs[s]
-        );
+        const openSlots = SLOTS.filter((s) => !slotLocked[s] && meals[s] !== status);
         if (openSlots.length === 0) return;
         setMeals((prev) => {
             const next = { ...prev };
@@ -161,21 +126,17 @@ export default function MealsPage() {
         try {
             await Promise.all(
                 openSlots.map((slot) =>
-                    api.meals.toggleMeal(
-                        { memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status },
-                        token
-                    )
-                )
+                    api.meals.toggleMeal({ memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status }, token),
+                ),
             );
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to update meals");
+            toast.error(err instanceof Error ? err.message : t("toggleFailed"));
             loadToday();
         }
     }
 
     async function changeGuest(delta: number) {
-        // Block guest changes only after dinner cutoff (last meal of day)
-        if (slotCutoffs.dinner || updatingGuest || !user || !token || !serverDate) return;
+        if (cutoffPassed || updatingGuest || !user || !token || !serverDate) return;
         const newCount = Math.max(0, guestCount + delta);
         setGuestCount(newCount);
         setUpdatingGuest(true);
@@ -183,7 +144,7 @@ export default function MealsPage() {
             await api.meals.updateGuest({ memberId: user.id, date: serverDate, guestCount: newCount }, token);
         } catch (err) {
             setGuestCount(guestCount);
-            toast.error(err instanceof Error ? err.message : "Failed to update guest count");
+            toast.error(err instanceof Error ? err.message : t("guestFailed"));
         } finally {
             setUpdatingGuest(false);
         }
@@ -201,156 +162,153 @@ export default function MealsPage() {
         return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
     })();
 
-    const mealSlots: { key: MealSlotKey; icon: React.ReactNode; label: string }[] = [
-        { key: "breakfast", icon: <Sun size={48} strokeWidth={1.5} />, label: t("breakfast") },
-        { key: "lunch", icon: <CloudSun size={48} strokeWidth={1.5} />, label: t("lunch") },
-        { key: "dinner", icon: <Moon size={48} strokeWidth={1.5} />, label: t("dinner") },
-    ];
+    const fmtTime = (hhmm: string) => {
+        if (!hhmm) return "";
+        const [h, m] = hhmm.split(":").map(Number);
+        return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2023, 0, 1, h, m)));
+    };
+    const dateLabel = serverDate
+        ? new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${serverDate}T00:00:00Z`))
+        : "";
+
+    const allLocked = SLOTS.every((s) => slotLocked[s]);
+    const onCount = SLOTS.filter((s) => meals[s]).length;
 
     return (
         <div className={styles.page}>
             {/* Header */}
-            <div className={styles.header}>
-                <div className={styles.headerText}>
-                    <h2>{t("title")}</h2>
-                    <p>{t("subtitle")}</p>
+            <header className={styles.header}>
+                <div>
+                    <p className={styles.date}>{dateLabel || " "}</p>
+                    <h2 className={styles.title}>
+                        {t("title")} <span className={styles.titleCount}>{onCount}/3</span>
+                    </h2>
                 </div>
-
-                <div
-                    className={cn(
-                        styles.cutoffBadge,
-                        cutoffPassed ? styles.cutoffExpired : styles.cutoffActive
-                    )}
-                >
-                    <Clock size={16} />
+                <span className={cn(styles.cutoffPill, cutoffPassed ? styles.cutoffPillDone : styles.cutoffPillLive)}>
+                    {cutoffPassed ? <Lock size={14} /> : <Clock size={14} />}
                     {cutoffPassed
                         ? t("cutoffPassed")
                         : cutoffRemaining
-                        ? t("cutoffIn", { time: cutoffRemaining })
-                        : cutoffTime
-                        ? `Cutoff: ${cutoffTime}`
-                        : "—"}
-                </div>
-            </div>
+                            ? t("cutoffIn", { time: cutoffRemaining })
+                            : cutoffTime
+                                ? t("cutoffAt", { time: fmtTime(cutoffTime) })
+                                : "—"}
+                </span>
+            </header>
 
-            {/* Bulk Actions */}
-            <div className={styles.bulkActions}>
-                <Button
-                    variant="secondary"
-                    size="small"
+            {/* All on / all off */}
+            <div className={styles.segment} role="group" aria-label={t("subtitle")}>
+                <button
+                    type="button"
+                    className={cn(styles.segmentBtn, onCount === 3 && styles.segmentBtnActive)}
                     onClick={() => setAllMeals(true)}
-                    disabled={loading || (slotCutoffs.breakfast && slotCutoffs.lunch && slotCutoffs.dinner)}
+                    disabled={loading || allLocked}
                 >
                     {t("allOn")}
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="small"
+                </button>
+                <button
+                    type="button"
+                    className={cn(styles.segmentBtn, onCount === 0 && styles.segmentBtnActive)}
                     onClick={() => setAllMeals(false)}
-                    disabled={loading || (slotCutoffs.breakfast && slotCutoffs.lunch && slotCutoffs.dinner)}
+                    disabled={loading || allLocked}
                 >
                     {t("allOff")}
-                </Button>
+                </button>
             </div>
 
-            {/* Meal Cards */}
+            {/* Meal cards — each card is one big switch */}
             <div className={styles.mealCards}>
-                {mealSlots.map((slot) => {
-                    const locked = slotCutoffs[slot.key];
-                    const status = getSlotStatus(slot.key);
+                {SLOTS.map((slot) => {
+                    const Icon = SLOT_ICON[slot];
+                    const locked = slotLocked[slot];
+                    const on = meals[slot];
+                    const status = getSlotStatus(slot);
                     return (
-                    <div
-                        key={slot.key}
-                        className={cn(
-                            styles.mealCard,
-                            meals[slot.key] && styles.mealCardActive,
-                            locked && styles.mealCardLocked
-                        )}
-                        onClick={() => !locked && !loading && toggleMeal(slot.key)}
-                    >
-                        <span className={styles.mealIcon}>{slot.icon}</span>
-                        <div className={styles.mealCardContent}>
-                            <h3 className={styles.mealName}>{slot.label}</h3>
-
-                            {/* Preference status chip */}
-                            {status === "default-off" && (
-                                <span className={cn(styles.statusChip, styles.chipDefaultOff)}>
-                                    {t("defaultOff")}
-                                </span>
+                        <button
+                            key={slot}
+                            type="button"
+                            role="switch"
+                            aria-checked={on}
+                            aria-label={t(slot)}
+                            disabled={locked || loading || toggling !== null}
+                            onClick={() => toggleMeal(slot)}
+                            className={cn(
+                                styles.mealCard,
+                                styles[`slot_${slot}`],
+                                on && styles.mealCardOn,
+                                locked && styles.mealCardLocked,
+                                toggling === slot && styles.mealCardBusy,
                             )}
-                            {status === "override-on" && (
-                                <span className={cn(styles.statusChip, styles.chipOverride)}>
-                                    {t("overrideOn")}
+                        >
+                            <span className={styles.mealIcon}>
+                                <Icon size={28} strokeWidth={2} />
+                            </span>
+                            <span className={styles.mealBody}>
+                                <span className={styles.mealName}>{t(slot)}</span>
+                                <span className={styles.mealMeta}>
+                                    {locked ? (
+                                        <>
+                                            <Lock size={12} /> {t("locked")}
+                                        </>
+                                    ) : slotTimes[slot] ? (
+                                        <>
+                                            <Clock size={12} /> {t("locksAt", { time: fmtTime(slotTimes[slot]) })}
+                                        </>
+                                    ) : null}
                                 </span>
-                            )}
-                            {status === "override-off" && (
-                                <span className={cn(styles.statusChip, styles.chipOverride)}>
-                                    {t("overrideOff")}
-                                </span>
-                            )}
-
-                            <div className={styles.toggleWrap}>
-                                <span className={cn(styles.toggleLabel, styles.toggleOff)}>
-                                    {t("off")}
-                                </span>
-                                <button
-                                    className={cn(
-                                        styles.toggle,
-                                        meals[slot.key] && styles.toggleActive,
-                                        (locked || toggling === slot.key) && styles.toggleDisabled
-                                    )}
-                                    onClick={(e) => { e.stopPropagation(); toggleMeal(slot.key); }}
-                                    disabled={locked || toggling !== null || loading}
-                                    role="switch"
-                                    aria-checked={meals[slot.key]}
-                                    aria-label={`Toggle ${slot.label}`}
-                                >
-                                    <span className={styles.toggleKnob} />
-                                </button>
-                                <span className={cn(styles.toggleLabel, styles.toggleOn)}>
-                                    {t("on")}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                                {status && (
+                                    <span className={cn(styles.chip, status === "default-off" ? styles.chipMuted : styles.chipHot)}>
+                                        {status === "default-off" ? t("defaultOff") : status === "override-on" ? t("overrideOn") : t("overrideOff")}
+                                    </span>
+                                )}
+                            </span>
+                            <span className={styles.switch} aria-hidden>
+                                <span className={styles.switchKnob}>{on && <Check size={14} strokeWidth={3} />}</span>
+                            </span>
+                        </button>
                     );
                 })}
             </div>
 
-            {/* Guest Section */}
-            <div className={styles.guestSection}>
-                <div className={styles.guestHeader}>
-                    <h3 className={styles.guestTitle}>{t("guestCount")}</h3>
-                    {guestCount > 0 && (
-                        <span className={styles.guestNote}>
-                            {t("guestPortions", { n: guestCount })}
-                        </span>
-                    )}
+            {/* Guests */}
+            <section className={styles.guestCard}>
+                <div className={styles.guestTop}>
+                    <span className={styles.guestIcon}>
+                        <UserPlus size={22} />
+                    </span>
+                    <div className={styles.guestText}>
+                        <h3 className={styles.guestTitle}>{t("guestCount")}</h3>
+                        <p className={styles.guestNote}>{guestPolicy === "SHARED" ? t("guestShared") : t("guestHostPays")}</p>
+                    </div>
                 </div>
-                <p className={styles.guestNote}>
-                    {guestPolicy === "SHARED" ? t("guestShared") : t("guestHostPays")}
-                </p>
 
-                <div className={styles.guestControls}>
+                <div className={styles.stepper}>
                     <button
-                        className={styles.guestBtn}
+                        type="button"
+                        className={styles.stepBtn}
                         onClick={() => changeGuest(-1)}
                         disabled={guestCount === 0 || cutoffPassed || updatingGuest}
                         aria-label={t("removeGuest")}
                     >
-                        <Minus size={20} />
+                        <Minus size={22} />
                     </button>
-                    <span className={styles.guestCount}>{guestCount}</span>
+                    <span className={styles.stepValue} aria-live="polite">
+                        <span className="num">{guestCount}</span>
+                        {guestCount > 0 && onCount > 0 && (
+                            <span className={styles.stepHint}>{t("guestMealsToday", { n: guestCount * onCount })}</span>
+                        )}
+                    </span>
                     <button
-                        className={styles.guestBtn}
+                        type="button"
+                        className={cn(styles.stepBtn, styles.stepBtnPlus)}
                         onClick={() => changeGuest(1)}
                         disabled={cutoffPassed || updatingGuest}
                         aria-label={t("addGuest")}
                     >
-                        <Plus size={20} />
+                        <Plus size={22} />
                     </button>
                 </div>
-            </div>
+            </section>
         </div>
     );
 }

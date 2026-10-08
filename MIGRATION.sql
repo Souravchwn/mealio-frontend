@@ -302,3 +302,130 @@ ALTER TABLE telegram_otps ALTER COLUMN phone DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_telegram_otps_code ON telegram_otps(otp);
 -- Invalidate any phone-based OTPs issued by the old (insecure) flow
 UPDATE telegram_otps SET used = TRUE WHERE member_id IS NULL AND used = FALSE;
+
+-- ── 20. SaaS foundations: sign-up, approval, recovery, support, platform admin ──
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS require_join_approval BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS owner_id UUID;
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'FREE';
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMPTZ;
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS suspended_reason TEXT;
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+ALTER TABLE members ADD COLUMN IF NOT EXISTS join_status TEXT NOT NULL DEFAULT 'APPROVED';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id UUID NOT NULL,
+  purpose TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  issued_by TEXT NOT NULL DEFAULT 'SELF',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_member ON auth_tokens(member_id, purpose);
+
+CREATE TABLE IF NOT EXISTS platform_admins (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  password_changed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS platform_audit_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  admin_id UUID,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  detail JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_platform_audit_created ON platform_audit_log(created_at);
+
+CREATE TABLE IF NOT EXISTS security_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  type TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'INFO',
+  member_id UUID,
+  mess_id UUID,
+  email TEXT,
+  ip TEXT,
+  detail JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_security_events_created ON security_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(type, created_at);
+CREATE INDEX IF NOT EXISTS idx_security_events_ip ON security_events(ip, created_at);
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id UUID,
+  mess_id UUID,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'OTHER',
+  subject TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'OPEN',
+  priority TEXT NOT NULL DEFAULT 'NORMAL',
+  access_key_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_member ON support_tickets(member_id);
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  ticket_id UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+  author_type TEXT NOT NULL,
+  author_id UUID,
+  author_name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id, created_at);
+
+-- Lock the new tables away from Supabase's public API (the app connects as the owner)
+ALTER TABLE auth_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
+
+
+-- ============================================================
+-- 21. Bazaar memo photos (receipt evidence) + entry mode
+-- ============================================================
+ALTER TABLE bazaar_sessions ADD COLUMN IF NOT EXISTS entry_mode TEXT NOT NULL DEFAULT 'ITEMIZED';
+
+CREATE TABLE IF NOT EXISTS bazaar_memos (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  session_id UUID NOT NULL REFERENCES bazaar_sessions(id) ON DELETE CASCADE,
+  mess_id UUID NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  data BYTEA NOT NULL,
+  uploaded_by UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_bazaar_memos_session ON bazaar_memos(session_id);
+ALTER TABLE bazaar_memos ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 22. Frozen snapshot of every closed period
+-- ============================================================
+-- Closed periods are read from this column, so later setting changes (guest policy,
+-- bazaar credit, ...) can never rewrite a closed month. Periods closed before this
+-- column existed are snapshotted the first time they are read.
+ALTER TABLE mess_months ADD COLUMN IF NOT EXISTS snapshot JSONB;

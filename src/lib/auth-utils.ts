@@ -31,21 +31,35 @@ export async function signToken(payload: TokenPayload): Promise<string> {
  * removals take effect immediately instead of after the 30-day expiry.
  */
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
-  let claims: TokenPayload
+  let claims: TokenPayload & { iat?: number }
   try {
     const { payload } = await jwtVerify<TokenPayload>(token, getSecret())
     if (!payload.sub || !payload.messId) return null
-    claims = payload as TokenPayload
+    // Platform-console tokens carry an audience; they are never member tokens
+    if (payload.aud) return null
+    claims = payload as TokenPayload & { iat?: number }
   } catch {
     return null
   }
 
   try {
-    const member = await prisma.member.findUnique({
-      where: { id: claims.sub },
-      select: { isActive: true, messId: true, role: true },
-    })
-    if (!member?.isActive) return null
+    const [member, mess] = await Promise.all([
+      prisma.member.findUnique({
+        where: { id: claims.sub },
+        select: { isActive: true, messId: true, role: true, joinStatus: true, deletedAt: true, passwordChangedAt: true },
+      }),
+      prisma.mess.findUnique({
+        where: { id: claims.messId },
+        select: { isActive: true, suspendedAt: true, deletedAt: true },
+      }),
+    ])
+    if (!member?.isActive || member.deletedAt || member.joinStatus !== 'APPROVED') return null
+    // Password changed (or reset) after this token was issued → sign in again
+    if (member.passwordChangedAt && claims.iat && claims.iat * 1000 < member.passwordChangedAt.getTime() - 1000) {
+      return null
+    }
+    // Suspended or deleted messes lock everyone out
+    if (!mess || !mess.isActive || mess.suspendedAt || mess.deletedAt) return null
 
     if (member.messId === claims.messId) {
       return { sub: claims.sub, messId: claims.messId, role: member.role }

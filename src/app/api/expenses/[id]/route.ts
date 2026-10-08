@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
-import { isDateInClosedPeriod } from '@/lib/period'
+import { isDateInClosedPeriod, checkDateInOpenPeriod } from '@/lib/period'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -50,9 +50,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (typeof date !== 'string' || !DATE_RE.test(date)) {
       return NextResponse.json({ detail: 'Date must be YYYY-MM-DD' }, { status: 400 })
     }
-    if (await isDateInClosedPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))) {
-    return NextResponse.json({ detail: 'That date is in a closed month and can no longer be changed' }, { status: 400 })
-    }
+    const dateCheck = await checkDateInOpenPeriod(payload.messId, new Date(`${date}T00:00:00.000Z`))
+    if (!dateCheck.ok) return NextResponse.json({ detail: dateCheck.detail, code: 'DATE_OUTSIDE_PERIOD' }, { status: 400 })
     updateData.expenseDate = new Date(`${date as string}T00:00:00.000Z`)
     updateData.yearMonth = (date as string).slice(0, 7)
   }

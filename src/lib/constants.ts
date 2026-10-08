@@ -70,5 +70,8 @@ export const RATE_LIMIT_MAX_REQUESTS = 5
 export const RATE_LIMIT_WINDOW_MS = 10_000
 
 /** Login brute-force protection: 10 attempts per 15 minutes per IP */
+/** Failed sign-ins per email per window */
 export const LOGIN_MAX_ATTEMPTS = 10
+/** Failed sign-ins per IP per window. Higher than per email because housemates share one public IP. */
+export const LOGIN_IP_MAX_FAILURES = 40
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000

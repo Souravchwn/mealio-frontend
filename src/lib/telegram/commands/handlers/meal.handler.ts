@@ -43,7 +43,7 @@ export class MealCommandHandler implements CommandHandler {
 
   async handle(ctx: CommandContext): Promise<void> {
     if (!ctx.member) {
-      await this.sender.sendMessage(ctx.chatId, `❌ Link your account first — send \`/link\` to see how.`)
+      await this.sender.sendMessage(ctx.chatId, `❌ Link your account first. Send \`/link\` to see how.`)
       return
     }
 
@@ -154,7 +154,7 @@ export class MealCommandHandler implements CommandHandler {
 
     await this.sender.sendMessage(
       ctx.chatId,
-      `❓ Unknown meal sub-command.\n\n*Usage:*\n\`/meal on\` — enable next meal (auto-detected by time)\n\`/meal off\` — disable next meal (auto-detected by time)\n\`/meal breakfast\` \`/meal lunch\` \`/meal dinner\` — toggle a specific slot\n\`/meal lunch 2\` — set explicit count (0 to disable)\n\`/meal guest N\` — set guest count`,
+      `❓ Unknown meal sub-command.\n\n*Usage:*\n\`/meal on\`: enable next meal (auto-detected by time)\n\`/meal off\`: disable next meal (auto-detected by time)\n\`/meal breakfast\` \`/meal lunch\` \`/meal dinner\`: toggle a specific slot\n\`/meal lunch 2\`: set explicit count (0 to disable)\n\`/meal guest N\`: set guest count`,
     )
   }
 }

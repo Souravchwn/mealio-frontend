@@ -15,7 +15,14 @@ export interface TelegramLinkedMember {
 export class MemberRepository {
   async findByTelegramUid(telegramUid: number): Promise<ResolvedMember | null> {
     const m = await prisma.member.findFirst({
-      where: { telegramUid: BigInt(telegramUid), isActive: true },
+      where: {
+        telegramUid: BigInt(telegramUid),
+        isActive: true,
+        deletedAt: null,
+        joinStatus: 'APPROVED',
+        // Suspended or deleted messes are locked out of the bot too
+        mess: { isActive: true, suspendedAt: null, deletedAt: null },
+      },
       select: { id: true, messId: true, name: true, role: true },
     })
     if (!m || !m.messId) return null

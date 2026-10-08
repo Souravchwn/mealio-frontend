@@ -24,7 +24,7 @@ export class RateCommandHandler implements CommandHandler {
 
     await this.sender.sendMessage(
       ctx.chatId,
-      `📊 *Meal Rate — ${rate.month}*\n\nTotal Expense: ${C}${rate.totalExpense.toFixed(2)}\nTotal Meals: ${rate.totalMeals}\nMeal Rate: ${C}${rate.mealRate.toFixed(2)} per meal`,
+      `📊 *Meal Rate · ${rate.month}*\n\nTotal Expense: ${C}${rate.totalExpense.toFixed(2)}\nTotal Meals: ${rate.totalMeals}\nMeal Rate: ${C}${rate.mealRate.toFixed(2)} per meal`,
     )
   }
 }

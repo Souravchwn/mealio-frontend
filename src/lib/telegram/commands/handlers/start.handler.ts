@@ -12,7 +12,7 @@ export class StartCommandHandler implements CommandHandler {
   async handle(ctx: CommandContext): Promise<void> {
     await this.sender.sendMessage(
       ctx.chatId,
-      `*Welcome to Mealio Bot!* 🍽\n\nLink your account: open the Mealio web app → *Settings → Telegram*, get a code, then send \`/link <code>\` here.\n\n*Member commands* (after linking):\n• \`/status\` — today's meal status\n• \`/meal on|off\` — all meals on/off\n• \`/meal breakfast|lunch|dinner\` — toggle a slot\n• \`/meal guest N\` — set guest count\n• \`/rate\` — current meal rate\n• \`/balance\` — your balance\n\n*Admin/Manager commands:*\n• \`/nomeal [date] [reason]\` — turn off all meals & notify\n• \`/mealon [date]\` — restore all meals & notify\n• \`/announce <msg>\` — broadcast to all members`,
+      `*Welcome to Mealio Bot!* 🍽\n\nLink your account: open the Mealio web app → *Settings → Telegram*, get a code, then send \`/link <code>\` here.\n\n*Member commands* (after linking):\n• \`/status\`: today's meal status\n• \`/meal on|off\`: all meals on/off\n• \`/meal breakfast|lunch|dinner\`: toggle a slot\n• \`/meal guest N\`: set guest count\n• \`/rate\`: current meal rate\n• \`/balance\`: your balance\n\n*Admin/Manager commands:*\n• \`/nomeal [date] [reason]\`: turn off all meals & notify\n• \`/mealon [date]\`: restore all meals & notify\n• \`/announce <msg>\`: broadcast to all members`,
     )
   }
 }

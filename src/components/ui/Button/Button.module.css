@@ -3,68 +3,88 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    font-weight: 500;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
-    cursor: pointer;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    border-radius: var(--radius-full);
+    border: 1px solid transparent;
     white-space: nowrap;
     user-select: none;
     position: relative;
-    overflow: hidden;
-    letter-spacing: var(--tracking-wide);
+    cursor: pointer;
+    transition:
+        transform 160ms var(--ease-spring),
+        background var(--transition-fast),
+        box-shadow var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+html[lang="bn"] .root {
+    font-family: var(--font-bangla);
+    letter-spacing: 0;
 }
 
 .root:focus-visible {
     outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline-offset: 3px;
 }
 
-.root:active {
-    transform: scale(0.98);
+/* Squish on press */
+.root:active:not(:disabled) {
+    transform: scale(0.96);
 }
 
-/* Sizes */
+/* Sizes — every size is at least a 44px touch target on mobile */
 .small {
-    height: 36px;
+    min-height: 40px;
     padding: 0 var(--space-4);
     font-size: var(--text-sm);
 }
 
 .medium {
-    height: 44px;
+    min-height: 48px;
     padding: 0 var(--space-6);
     font-size: var(--text-base);
 }
 
 .large {
-    height: 52px;
+    min-height: 56px;
     padding: 0 var(--space-8);
     font-size: var(--text-lg);
 }
 
-/* Variants */
-.primary {
-    background: linear-gradient(135deg, var(--color-primary), #7c3aed);
-    color: white;
-    box-shadow: 0 2px 8px rgb(99 102 241 / 0.3);
+@media (min-width: 1024px) {
+    .small {
+        min-height: 36px;
+    }
+
+    .medium {
+        min-height: 44px;
+    }
 }
 
-.primary:hover {
-    background: linear-gradient(135deg, var(--color-primary-hover), #6d28d9);
-    box-shadow: 0 4px 16px rgb(99 102 241 / 0.4);
-    transform: translateY(-1px);
+/* Variants */
+.primary {
+    background: var(--color-primary);
+    color: var(--color-on-primary, #fff);
+    box-shadow: var(--shadow-glow);
+}
+
+.primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    box-shadow: var(--shadow-glow-lg);
 }
 
 .secondary {
     background: var(--color-bg-card);
     color: var(--color-text);
-    border: 1px solid var(--color-border);
+    border-color: var(--color-border);
 }
 
-.secondary:hover {
+.secondary:hover:not(:disabled) {
     border-color: var(--color-primary);
     color: var(--color-primary);
-    box-shadow: var(--shadow-sm);
 }
 
 .ghost {
@@ -72,62 +92,48 @@
     color: var(--color-text-secondary);
 }
 
-.ghost:hover {
+.ghost:hover:not(:disabled) {
     background: var(--color-bg-subtle);
     color: var(--color-text);
 }
 
 .danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+    border-color: transparent;
+}
+
+.danger:hover:not(:disabled) {
     background: var(--color-danger);
-    color: white;
+    color: #fff;
 }
 
-.danger:hover {
-    background: var(--color-danger-dark);
-}
-
+/* Lime highlight — for the one most-wanted action on a screen */
 .accent {
-    background: linear-gradient(135deg, var(--color-accent), #e65100);
-    color: white;
-    box-shadow: 0 2px 8px rgb(245 158 11 / 0.3);
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+    box-shadow: var(--shadow-lime);
 }
 
-.accent:hover {
-    box-shadow: 0 4px 16px rgb(245 158 11 / 0.4);
-    transform: translateY(-1px);
+.accent:hover:not(:disabled) {
+    filter: brightness(1.05);
 }
 
 /* States */
 .disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+    opacity: 0.45;
+    box-shadow: none;
 }
 
 .fullWidth {
     width: 100%;
 }
 
-/* Loading spinner */
 .spinner {
     width: 18px;
     height: 18px;
-    border: 2px solid transparent;
-    border-top-color: currentColor;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
     border-radius: var(--radius-full);
     animation: spin 0.6s linear infinite;
-}
-
-/* Ripple effect pseudo-element */
-.root::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.1);
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}
-
-.root:hover::after {
-    opacity: 1;
 }

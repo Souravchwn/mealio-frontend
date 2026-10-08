@@ -1,25 +1,99 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Settings — mobile first
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .page {
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
-    max-width: 640px;
-    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    gap: var(--space-4);
+    max-width: 760px;
+    margin: 0 auto;
 }
 
 .title {
     font-size: var(--text-2xl);
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .subtitle {
-    color: var(--color-text-secondary);
+    margin-top: 2px;
     font-size: var(--text-sm);
+    color: var(--color-text-muted);
 }
 
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.tabBar {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-card);
+}
+
+.tab {
+    min-height: 44px;
+    border-radius: var(--radius-full);
+    color: var(--color-text-secondary);
+    font-family: var(--font-display);
+    font-weight: 600;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tabActive {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+.sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.sectionTitle svg {
+    color: var(--color-primary);
+}
+
+.sectionTitleRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.helpText {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--color-text-muted);
+}
+
+.sectionTitle + .helpText,
+.sectionTitleRow + .helpText {
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-4);
+}
+
+.prefHeader {
+    margin-bottom: var(--space-4);
+}
+
+.prefHeader .helpText {
+    margin-top: var(--space-1);
+}
+
+/* ── Form bits ───────────────────────────────────────────────────────────── */
 .form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
 }
 
 .field {
@@ -31,60 +105,370 @@
 .label {
     font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--color-text);
 }
 
 .input {
-    height: 44px;
+    width: 100%;
+    min-height: 48px;
     padding: 0 var(--space-4);
-    border: 1px solid var(--color-border);
+    border: 1.5px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-bg);
     color: var(--color-text);
     font-size: var(--text-sm);
-    transition: all var(--transition-fast);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+    box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.14);
 }
 
-.helpText {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
+.inputNarrow {
+    width: 96px;
+    flex: 0 0 auto !important;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    text-align: center;
 }
 
-.codeRow {
+.inputRow {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-3);
 }
 
-.codeRow .input {
-    flex: 1;
-    font-family: var(--font-mono);
-    font-weight: 600;
-    letter-spacing: 0.05em;
+.inputRow .input:not(.inputNarrow) {
+    flex: 1 1 220px;
 }
 
 .formActions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
-    padding-top: var(--space-2);
+    gap: var(--space-3);
+    margin-top: var(--space-4);
 }
 
-/* Danger Zone */
+@media (max-width: 639px) {
+    .formActions > * {
+        flex: 1;
+    }
+}
+
+/* ── Meal preferences grid ───────────────────────────────────────────────── */
+.prefTable {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.prefTableHeader,
+.prefTableRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) 1fr 1fr;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.prefTableRow {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-subtle);
+}
+
+.prefTableCell {
+    min-width: 0;
+}
+
+.prefDayHeader {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.prefMealLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+}
+
+.prefMealIcon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.prefToggleCell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-2) 0;
+}
+
+.prefToggle {
+    position: relative;
+    width: 52px;
+    height: 30px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-card);
+    transition: background var(--transition-base);
+}
+
+.prefToggleKnob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
+    transition: transform 280ms var(--ease-spring), background var(--transition-fast);
+}
+
+.prefOn {
+    border-color: transparent;
+    background: var(--color-primary);
+}
+
+.prefOn .prefToggleKnob {
+    background: #fff;
+    transform: translateX(22px);
+}
+
+.prefSaving {
+    opacity: 0.6;
+}
+
+.prefStatusLabel {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.prefStatusOn {
+    color: var(--color-primary);
+}
+
+.prefStatusOff {
+    color: var(--color-text-muted);
+}
+
+/* ── Cutoff times ────────────────────────────────────────────────────────── */
+.cutoffList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.cutoffRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-subtle);
+}
+
+.cutoffLabel {
+    font-weight: 600;
+}
+
+/* ── Billing rule options ────────────────────────────────────────────────── */
+.optionList {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+@media (min-width: 640px) {
+    .optionList {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg);
+    text-align: left;
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform 160ms var(--ease-spring);
+}
+
+.option:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.option:disabled {
+    cursor: default;
+}
+
+.optionActive {
+    border-color: var(--color-primary);
+    background: var(--color-primary-lighter);
+    box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.12);
+}
+
+.optionTitle {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+}
+
+.optionDesc {
+    display: block;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--color-text-muted);
+}
+
+.switchRow {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg-subtle);
+    cursor: pointer;
+}
+
+.switchRow input {
+    width: 22px;
+    height: 22px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--color-primary);
+}
+
+/* ── Weekend chips ───────────────────────────────────────────────────────── */
+.dayChips {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.dayChip {
+    min-height: 48px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.dayChip:active:not(:disabled) {
+    transform: scale(0.93);
+}
+
+.dayChip:disabled {
+    cursor: default;
+}
+
+.dayChipActive {
+    border-color: transparent;
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+    box-shadow: var(--shadow-lime);
+}
+
+/* ── Invite code ─────────────────────────────────────────────────────────── */
+.inviteCardHeader {
+    margin-bottom: var(--space-4);
+}
+
+.inviteCardDesc {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.inviteCodeDisplay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border: 2px dashed rgba(var(--color-primary-rgb), 0.4);
+    border-radius: var(--radius-xl);
+    background: var(--gradient-brand-soft);
+}
+
+.inviteCodeText {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--color-primary);
+    word-break: break-all;
+}
+
+.linkCodeBox {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+    padding: var(--space-4);
+    border: 2px dashed rgba(var(--color-primary-rgb), 0.4);
+    border-radius: var(--radius-xl);
+    background: var(--gradient-brand-soft);
+    overflow-wrap: anywhere;
+}
+
+.linkCodeBox .inviteCodeText {
+    font-size: var(--text-xl);
+}
+
+.telegramLinkedBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-success-light);
+    color: var(--color-success);
+    font-size: var(--text-xs);
+    font-weight: 700;
+}
+
+/* ── Danger zone ─────────────────────────────────────────────────────────── */
 .dangerCard {
-    border-color: var(--color-danger-light);
-    border-left: 3px solid var(--color-danger);
+    border-color: rgba(225, 29, 72, 0.35) !important;
+    background:
+        linear-gradient(135deg, var(--color-danger-light), transparent 70%),
+        var(--color-bg-card) !important;
 }
 
 .dangerHeader {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    margin-bottom: var(--space-2);
     color: var(--color-danger);
-    margin-bottom: var(--space-3);
 }
 
 .dangerHeader h3 {
@@ -93,408 +477,82 @@
 }
 
 .dangerDesc {
+    margin-bottom: var(--space-4);
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
-    margin-bottom: var(--space-4);
 }
 
-/* ── Tab bar ──────────────────────────────────────────────────────────────── */
-
-.tabBar {
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid var(--color-border);
-    margin-bottom: var(--space-2);
-}
-
-.tab {
-    padding: var(--space-3) var(--space-5);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    white-space: nowrap;
-}
-
-.tab:hover {
-    color: var(--color-text);
-}
-
-.tabActive {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-}
-
-/* ── Section title row ───────────────────────────────────────────────────── */
-
-.sectionTitleRow {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-1);
-}
-
-/* ── Input row ───────────────────────────────────────────────────────────── */
-.inputRow {
-    display: flex;
-    gap: var(--space-3);
-    align-items: flex-start;
-}
-
-.inputRow .input {
-    flex: 1;
-}
-
-/* ── Cutoff times ─────────────────────────────────────────────────────────── */
-.cutoffList {
+/* ── Account and privacy ─────────────────────────────────────────────────── */
+.linkList {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
-}
-
-.cutoffRow {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-}
-
-.cutoffLabel {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    min-width: 120px;
-    color: var(--color-text);
-}
-
-/* ── Meal Preferences (table layout) ─────────────────────────────────────── */
-
-.prefHeader {
-    margin-bottom: var(--space-5);
-}
-
-.sectionTitle {
-    font-size: var(--text-lg);
-    font-weight: 700;
-    margin-bottom: var(--space-1);
-}
-
-.prefTable {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-}
-
-.prefTableHeader,
-.prefTableRow {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.prefTableRow:last-child {
-    border-bottom: none;
-}
-
-.prefTableHeader {
-    background: var(--color-bg-subtle);
-}
-
-.prefTableCell {
-    padding: var(--space-3) var(--space-4);
-    display: flex;
-    align-items: center;
-}
-
-.prefDayHeader {
-    font-size: var(--text-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-muted);
-    justify-content: center;
-}
-
-.prefMealLabel {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text);
     gap: var(--space-2);
+    margin-top: var(--space-3);
 }
 
-.prefMealIcon {
-    display: flex;
-    align-items: center;
-    color: var(--color-text-muted);
-}
-
-.prefToggleCell {
-    justify-content: center;
-    flex-direction: column;
-    gap: 4px;
-}
-
-/* Toggle switch for preferences */
-.prefToggle {
-    position: relative;
-    width: 46px;
-    height: 26px;
-    border-radius: var(--radius-full);
-    border: none;
-    cursor: pointer;
-    transition: background var(--transition-base);
-    flex-shrink: 0;
-}
-
-.prefToggle:disabled,
-.prefSaving {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.prefOn {
-    background: var(--color-success);
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-}
-
-.prefOff {
-    background: var(--color-border);
-}
-
-.prefToggleKnob {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 20px;
-    height: 20px;
-    border-radius: var(--radius-full);
-    background: white;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-    transition: transform var(--transition-spring);
-}
-
-.prefOn .prefToggleKnob {
-    transform: translateX(20px);
-}
-
-.prefStatusLabel {
-    font-size: var(--text-xs);
-    font-weight: 600;
-}
-
-.prefStatusOn {
-    color: var(--color-success);
-}
-
-.prefStatusOff {
-    color: var(--color-text-muted);
-}
-
-/* Old prefGrid/prefDayGroup classes kept for compat */
-.prefGrid {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-}
-
-.prefDayGroup {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-}
-
-.prefDayLabel {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.prefMealRow {
-    display: flex;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-}
-
-.prefEmoji {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-
-.prefMealName {
-    font-size: var(--text-xs);
-    font-weight: 600;
-}
-
-.prefStatus {
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.05em;
-}
-
-/* ── Invite Code Card ─────────────────────────────────────────────────────── */
-
-.inviteCardHeader {
-    margin-bottom: var(--space-4);
-}
-
-.inviteCardDesc {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    margin-top: var(--space-1);
-}
-
-.inviteCodeDisplay {
+.linkRow {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    width: 100%;
+    min-height: 56px;
     padding: var(--space-3) var(--space-4);
-    background: rgba(var(--color-primary-rgb), 0.06);
-    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg-subtle);
+    text-align: left;
+    color: var(--color-text);
+    transition: background var(--transition-fast);
 }
 
-.inviteCodeText {
-    flex: 1;
-    font-family: var(--font-mono);
-    font-size: var(--text-xl);
-    font-weight: 700;
-    letter-spacing: 0.12em;
+.linkRow:hover {
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.linkRow:disabled {
+    opacity: 0.6;
+}
+
+.linkRow > svg:first-child {
+    flex-shrink: 0;
     color: var(--color-primary);
-    user-select: all;
 }
 
-/* ── Telegram Group Section ───────────────────────────────────────────────── */
-
-.sectionDivider {
-    border: none;
-    border-top: 1px solid var(--color-border);
-    margin: var(--space-5) 0;
+.linkRow > span {
+    flex: 1;
+    min-width: 0;
 }
 
-.telegramLinkedBadge {
+.linkRow > svg:last-child {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+}
+
+.textAction {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: rgba(var(--color-success-rgb, 34 197 94), 0.1);
-    border: 1px solid var(--color-success, #22c55e);
-    border-radius: var(--radius-md);
+    min-height: 40px;
+    margin: var(--space-3) 0;
     font-size: var(--text-sm);
-    color: var(--color-success, #22c55e);
-    font-weight: 600;
-    margin-bottom: var(--space-4);
-}
-/* ── Billing rules ─────────────────────────────────────────────────────── */
-.optionList {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
-}
-
-.option {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    color: var(--color-text);
-    text-align: left;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.option:hover:not(:disabled) {
-    border-color: var(--color-primary);
-}
-
-.option:disabled {
-    cursor: default;
-    opacity: 0.8;
-}
-
-.optionActive {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
-}
-
-.optionTitle {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: 600;
-}
-
-.optionDesc {
-    display: block;
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-    line-height: 1.5;
-}
-
-.switchRow {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    margin-bottom: var(--space-2);
-    cursor: pointer;
-}
-
-.switchRow input {
-    margin-top: 3px;
-    accent-color: var(--color-primary);
-}
-
-/* ── Telegram link code ────────────────────────────────────────────────── */
-.linkCodeBox {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-4);
-    margin-bottom: var(--space-2);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    overflow-wrap: anywhere;
-}
-
-/* ── Weekend day chips ─────────────────────────────────────────────────── */
-.dayChips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-bottom: var(--space-2);
-}
-
-.dayChip {
-    min-width: 56px;
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.dayChip:disabled {
-    cursor: default;
-}
-
-.dayChipActive {
-    border-color: var(--color-primary);
-    background: rgba(var(--color-primary-rgb), 0.1);
+    font-weight: 700;
     color: var(--color-primary);
+}
+
+.textAction:disabled {
+    opacity: 0.5;
+}
+
+.servedSwitch {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
     font-weight: 600;
+    cursor: pointer;
+}
+
+.servedSwitch input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-primary);
 }
