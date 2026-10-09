@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Instrument_Serif, Newsreader, Noto_Serif_Bengali, Tiro_Bangla } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,12 +10,9 @@ import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitc
 import { cn } from "@/lib/utils";
 import styles from "./landing.module.css";
 
-const serif = Instrument_Serif({ weight: "400", style: ["normal", "italic"], subsets: ["latin"], variable: "--font-serif" });
-// Editorial type for the public page: Instrument Serif for display, Newsreader for text,
-// and Bangla serifs (Tiro Bangla display, Noto Serif Bengali text) for Bengali glyphs.
-const text = Newsreader({ subsets: ["latin"], style: ["normal", "italic"], variable: "--font-text" });
-const bnDisplay = Tiro_Bangla({ weight: "400", style: ["normal", "italic"], subsets: ["bengali"], variable: "--font-bn-display", preload: false });
-const bnText = Noto_Serif_Bengali({ subsets: ["bengali"], variable: "--font-bn-text", preload: false });
+const grotesk = Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz"], variable: "--font-grotesk" });
+// The public page: Bricolage Grotesque for all English. Bangla: Aborton for display (locale layout),
+// Hind Siliguri for text (globals.css).
 
 /** The brand mark: a plate seen from above, with one meal on it. */
 function Mark({ size = 28 }: { size?: number }) {
@@ -82,7 +79,7 @@ export default function LandingPage() {
     ] as const;
 
     return (
-        <div className={cn(styles.landing, serif.variable, text.variable, bnDisplay.variable, bnText.variable)}>
+        <div className={cn(styles.landing, grotesk.variable)}>
             <nav className={styles.navbar}>
                 <div className={styles.navInner}>
                     <Link href={isAuthenticated ? appHref : `/${locale}`} className={styles.logo}>

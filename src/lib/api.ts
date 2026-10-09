@@ -18,7 +18,6 @@ import type {
     CloseMonthRequest,
     MealToggleRequest,
     GuestUpdateRequest,
-    MessSwitchResponse,
     MealConfig,
     BazaarSessionResponse,
     BazaarSessionRequest,
@@ -624,8 +623,6 @@ export const api = {
                     role: string;
                 }>;
             }>("/api/mess", { method: "GET", token }),
-        switchMess: (messId: string, token: string) =>
-            fetcher<MessSwitchResponse>(`/api/mess/${messId}/switch`, { method: "GET", token }),
         /** The current open billing period and whether it has ended without being closed */
         period: (token: string) =>
             fetcher<{

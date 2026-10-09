@@ -11,6 +11,7 @@
  */
 
 import nodemailer, { type Transporter } from 'nodemailer'
+import { siteUrl } from './site-url'
 
 type Provider = 'resend' | 'smtp' | null
 
@@ -25,7 +26,8 @@ export function isEmailEnabled(): boolean {
 }
 
 export function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+  // Read at runtime, with Vercel's own domain as a fallback (see site-url.ts)
+  return siteUrl()
 }
 
 /** The sender. Gmail only sends as the signed-in account, so SMTP uses that address. */

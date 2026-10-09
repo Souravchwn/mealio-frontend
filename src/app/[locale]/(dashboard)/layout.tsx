@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
-import { MessSwitcher } from "@/components/composed/MessSwitcher/MessSwitcher";
 import { PeriodNotice } from "@/components/composed/PeriodNotice/PeriodNotice";
 import { PeriodProvider } from "@/contexts/PeriodContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -188,7 +187,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                     <h1 className={styles.pageTitle}>{pageTitle}</h1>
                     <div className={styles.topbarRight}>
-                        <MessSwitcher />
                         <span className={styles.topbarTheme}>
                             <ThemeToggle />
                         </span>

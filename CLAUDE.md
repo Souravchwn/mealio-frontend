@@ -81,7 +81,7 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 4. **`isOverride` flag:** `false` = auto-generated from preferences; `true` = manually changed.
 5. **Settings via Redis:** read mess settings with `getMessSettings(messId)` (`src/lib/mess-settings.ts`). Postgres is the durable store; Redis serves reads. After ANY settings write call `refreshMessSettings(messId)`.
 6. **One money calculation:** every meal count, meal rate and balance comes from `calculatePeriodSummary()` in `src/lib/financial.ts`. Never re-implement it in a route.
-7. **Never trust a mess id from the request.** Always use `payload.messId` from `verifyToken()`. `verifyToken()` re-checks the member in the DB and returns their CURRENT role.
+7. **Never trust a mess id from the request.** Always use `payload.messId` from `verifyToken()`. `verifyToken()` re-checks the member in the DB and returns their CURRENT role. If the database does not answer (after one retry) it throws `AuthUnavailableError` instead of returning null: a database hiccup must never sign anyone out (null = 401 = the client signs out).
 
 ---
 
@@ -453,19 +453,12 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 
 ---
 
-### MODULE 13: Mess Switching
+### MODULE 13: One person, one mess
 
-A mess is created only at sign-up (`POST /api/auth/register`, mode `create`). There is no in-app "create another mess": the creator would only hold a `MessMembership` there, not a `Member` row, so their meal logs would be billed in a mess they are not a member of.
-
-| Layer | Files |
-|-------|-------|
-| Component | `src/components/composed/MessSwitcher/MessSwitcher.tsx` + `.module.css` |
-| API routes | `src/app/api/mess/route.ts` (GET list), `src/app/api/mess/[messId]/switch/route.ts` |
-
-- `GET api.mess.list(token)` lists the person's messes; `GET api.mess.switchMess(messId, token)` returns a new JWT for another mess.
-- MessSwitcher renders only when the person belongs to 2 or more messes.
-
-**i18n keys:** `messSwitcher.*`
+**Rule:** every person belongs to exactly one mess (`Member.messId`). There is no mess switching and no second mess.
+A mess is created only at sign-up (`POST /api/auth/register`, mode `create`). `verifyToken()` rejects any token whose
+`messId` is not the member's own mess. `GET /api/mess` returns only that mess (list shape kept for the invite code).
+`MessMembership` rows are no longer used for access.
 
 ---
 

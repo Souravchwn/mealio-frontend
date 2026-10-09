@@ -8,10 +8,11 @@
 
 import type { InlineButton, TelegramSender } from '../infrastructure/sender'
 import type { GroupRepository } from '../repositories/group.repository'
+import { siteUrl } from '@/lib/site-url'
 
 /** The public https address of the Mini App page, or null when the site is not public (local dev). */
 export function miniAppUrl(): string | null {
-  const base = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const base = siteUrl()
   try {
     const u = new URL(base)
     if (u.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1'].includes(u.hostname)) return null

@@ -14,6 +14,7 @@ import { calculatePeriodSummary } from '@/lib/financial'
 import { resolvePeriod } from '@/lib/period'
 import { getMessSettings } from '@/lib/mess-settings'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { siteUrl } from '@/lib/site-url'
 
 const memberRepo = new MemberRepository()
 
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   const rate = await checkRateLimit('tg-home', String(auth.user.id), 60, 5 * 60 * 1000)
   if (!rate.allowed) return NextResponse.json({ detail: 'Slow down a little.' }, { status: 429 })
 
-  const site = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const site = siteUrl()
   try {
     const member = await memberRepo.findByTelegramUid(auth.user.id)
     if (!member) {

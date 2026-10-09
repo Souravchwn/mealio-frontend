@@ -964,10 +964,6 @@
             "saveFailed": "Could not save the default meals"
         }
     },
-    "messSwitcher": {
-        "label": "Switch Mess",
-        "switching": "Switching..."
-    },
     "calculator": {
         "title": "Smart Calculator",
         "smart": "Smart",

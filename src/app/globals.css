@@ -4,8 +4,8 @@
    Violet = brand · Lime = highlight · Green/Rose = money ahead/owed only.
    ======================== */
 
-/* Google Fonts — Space Grotesk (display/numbers), Inter (body), Hind Siliguri (Bangla) */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+/* Google Fonts: Space Grotesk (display/numbers), Inter (body), Hind Siliguri (Bangla text), Baloo 2 (the logo). Bangla headings use Aborton, a local font (src/fonts/bangla.ts) */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Baloo+2:wght@800&display=swap');
 
 /* ===== DESIGN TOKENS (light) ===== */
 :root {
@@ -72,7 +72,10 @@
   /* Typography */
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Inter', -apple-system, sans-serif;
-  --font-bangla: 'Hind Siliguri', sans-serif;
+  --font-bangla: 'Hind Siliguri', 'Inter', sans-serif;
+  --font-bangla-display: var(--font-bangla-face), 'Hind Siliguri', sans-serif;
+  /* The Mealtill wordmark: always Baloo 2 ExtraBold, in every language */
+  --font-logo: 'Baloo 2', var(--font-display);
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   --text-xs: 0.75rem;
@@ -266,11 +269,25 @@ h4 {
   letter-spacing: -0.02em;
 }
 
-/* Bangla locale override */
-html[lang="bn"] body,
+/* Bangla locale override. Never let the browser fake bold or italic Bangla (smeared, unreadable) */
+html[lang="bn"] {
+  font-synthesis: none;
+}
+
+html[lang="bn"] body {
+  font-family: var(--font-bangla);
+  letter-spacing: 0;
+}
+
+/* Aborton is a display face: headings only. Its e-kar is ambiguous at text sizes */
 html[lang="bn"] h1,
 html[lang="bn"] h2,
-html[lang="bn"] h3,
+html[lang="bn"] h3 {
+  font-family: var(--font-bangla-display);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 html[lang="bn"] h4 {
   font-family: var(--font-bangla);
   letter-spacing: 0;

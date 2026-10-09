@@ -2,51 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 
-// GET /api/mess — list all messes the current user belongs to
+/**
+ * GET /api/mess — the signed-in person's mess.
+ *
+ * Rule: one person belongs to exactly one mess (Member.messId). There is no switching and no
+ * second mess. The list shape is kept for the pages that read the invite code from it.
+ * Creating a mess happens only at sign-up (POST /api/auth/register, mode "create").
+ */
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
   if (!token) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
   const payload = await verifyToken(token)
   if (!payload) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
 
-  const [member, memberships] = await Promise.all([
-    prisma.member.findUnique({ where: { id: payload.sub }, select: { messId: true, role: true } }),
-    prisma.messMembership.findMany({
-      where: { memberId: payload.sub, isActive: true },
-      select: { messId: true, role: true },
-    }),
-  ])
+  try {
+    const mess = await prisma.mess.findFirst({
+      where: { id: payload.messId, isActive: true, deletedAt: null, suspendedAt: null },
+      select: { id: true, name: true, inviteCode: true, cutOffTime: true },
+    })
+    if (!mess) return NextResponse.json({ current_mess_id: payload.messId, messes: [] })
 
-  const messIds = new Set<string>()
-  if (member?.messId) messIds.add(member.messId)
-  for (const mb of memberships) messIds.add(mb.messId)
-
-  if (messIds.size === 0) return NextResponse.json({ messes: [] })
-
-  const messes = await prisma.mess.findMany({
-    where: { id: { in: Array.from(messIds) }, isActive: true, deletedAt: null, suspendedAt: null },
-    select: { id: true, name: true, inviteCode: true, cutOffTime: true, isActive: true },
-  })
-
-  const roleMap: Record<string, string> = {}
-  for (const mb of memberships) roleMap[mb.messId] = mb.role
-  if (member?.messId && !roleMap[member.messId]) roleMap[member.messId] = member.role
-
-  return NextResponse.json({
-    current_mess_id: payload.messId,
-    messes: messes.map((mess) => {
-      const role = roleMap[mess.id] ?? 'MEMBER'
-      return {
-        id: mess.id,
-        name: mess.name,
-        // The invite code lets anyone join — only admins and managers see it
-        invite_code: role === 'ADMIN' || role === 'MANAGER' ? mess.inviteCode : null,
-        cut_off_time: mess.cutOffTime.toISOString().slice(11, 16),
-        is_current: mess.id === payload.messId,
-        role,
-      }
-    }),
-  })
+    const privileged = payload.role === 'ADMIN' || payload.role === 'MANAGER'
+    return NextResponse.json({
+      current_mess_id: mess.id,
+      messes: [
+        {
+          id: mess.id,
+          name: mess.name,
+          // The invite code lets anyone join: only admins and managers see it
+          invite_code: privileged ? mess.inviteCode : null,
+          cut_off_time: mess.cutOffTime.toISOString().slice(11, 16),
+          is_current: true,
+          role: payload.role,
+        },
+      ],
+    })
+  } catch (err) {
+    console.error('[GET /api/mess]', err)
+    return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
 }
-
-// Creating a mess happens only at sign-up (POST /api/auth/register, mode "create").

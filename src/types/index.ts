@@ -449,8 +449,3 @@ export interface CloseMonthRequest {
     nextManagerId?: string;
 }
 
-export interface MessSwitchResponse {
-    accessToken: string;
-    refreshToken: string;
-    mess: { id: string; name: string };
-}
