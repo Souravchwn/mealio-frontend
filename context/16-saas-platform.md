@@ -12,7 +12,7 @@ support, monitoring and the staff console at `/console`.
 
 | mode | Needs | Result |
 |------|-------|--------|
-| `create` | `mess_name` | New mess + ADMIN member, `Mess.ownerId` set, returns a session and `invite_code`. Limit: 3 per IP per day, and `getPlan(plan).maxOwnedMesses` per person (`POST /api/mess` checks the same cap). |
+| `create` | `mess_name` | New mess + ADMIN member, `Mess.ownerId` set, returns a session and `invite_code`. Limit: 3 per IP per day, and `getPlan(plan).maxOwnedMesses` per person. This is the only way to create a mess (there is no in-app "create another mess"). |
 | `join` | `mess_invite_code` | If the mess has `requireJoinApproval` (default on), the member is created with `joinStatus = PENDING`, `isActive = false` and the answer is `{ pending: true, mess_name }`. Otherwise a session. Member cap: `getPlan(plan).maxMembers`. |
 
 Pending members are inactive, so `ensureDailyLogs` never counts their meals. Approval

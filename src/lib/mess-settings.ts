@@ -31,6 +31,33 @@ export interface MealSlotSettings {
   maxCount: number
 }
 
+export type DayTypeUpper = 'WEEKDAY' | 'WEEKEND'
+/** Meals eaten by default (per day type) by members who have not set their own */
+export type DefaultMeals = Record<DayTypeUpper, Record<MealTypeUpper, boolean>>
+
+export const ALL_MEALS_ON: DefaultMeals = {
+  WEEKDAY: { BREAKFAST: true, LUNCH: true, DINNER: true },
+  WEEKEND: { BREAKFAST: true, LUNCH: true, DINNER: true },
+}
+
+/** Stored JSON → DefaultMeals; anything missing or invalid counts as ON. */
+export function parseDefaultMeals(raw: string | null | undefined): DefaultMeals {
+  const out: DefaultMeals = { WEEKDAY: { ...ALL_MEALS_ON.WEEKDAY }, WEEKEND: { ...ALL_MEALS_ON.WEEKEND } }
+  if (!raw) return out
+  try {
+    const parsed = JSON.parse(raw) as Partial<Record<string, Partial<Record<string, unknown>>>>
+    for (const day of ['WEEKDAY', 'WEEKEND'] as const) {
+      for (const meal of MEAL_TYPES) {
+        const v = parsed?.[day]?.[meal]
+        if (typeof v === 'boolean') out[day][meal] = v
+      }
+    }
+  } catch {
+    /* fall back to all on */
+  }
+  return out
+}
+
 export interface MessSettings {
   messId: string
   name: string
@@ -47,12 +74,14 @@ export interface MessSettings {
   weekendDays: number[]
   /** New joiners wait for admin approval */
   requireJoinApproval: boolean
+  /** Default meals for members without their own preferences (name-only members, new joiners) */
+  defaultMeals: DefaultMeals
   plan: string
   meals: Record<MealTypeUpper, MealSlotSettings>
 }
 
 /** Bump the version suffix whenever the MessSettings shape changes. */
-const key = (messId: string) => `mealio:mess:${messId}:settings:v4`
+const key = (messId: string) => `mealio:mess:${messId}:settings:v5`
 /** Long TTL — the cache is refreshed on every write; the TTL only self-heals stray drift. */
 const TTL_SECONDS = 24 * 60 * 60
 
@@ -83,6 +112,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
       carryForwardBalance: true,
       weekendDays: true,
       requireJoinApproval: true,
+      defaultMeals: true,
       plan: true,
       telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 },
       mealConfigs: { select: { mealType: true, enabled: true, cutoffTime: true, maxCount: true } },
@@ -124,6 +154,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
     carryForwardBalance: mess.carryForwardBalance,
     weekendDays: parseWeekendDays(mess.weekendDays),
     requireJoinApproval: mess.requireJoinApproval,
+    defaultMeals: parseDefaultMeals(mess.defaultMeals),
     plan: mess.plan,
     meals,
   }

@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
-import { getMessSettings, refreshMessSettings, type MessSettings } from '@/lib/mess-settings'
-import { GUEST_MEAL_POLICIES, type GuestMealPolicy } from '@/lib/constants'
+import { getMessSettings, refreshMessSettings, type DefaultMeals, type MessSettings } from '@/lib/mess-settings'
+import { GUEST_MEAL_POLICIES, MEAL_TYPES, type GuestMealPolicy } from '@/lib/constants'
 import { settleDailyLogs } from '@/lib/daily-logs'
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/** API shape uses lowercase keys: { weekday: { breakfast, lunch, dinner }, weekend: {...} } */
+function defaultMealsOut(d: DefaultMeals) {
+  const day = (x: DefaultMeals['WEEKDAY']) => ({ breakfast: x.BREAKFAST, lunch: x.LUNCH, dinner: x.DINNER })
+  return { weekday: day(d.WEEKDAY), weekend: day(d.WEEKEND) }
+}
 
 function toResponse(s: MessSettings) {
   return {
@@ -20,6 +26,7 @@ function toResponse(s: MessSettings) {
     carry_forward_balance: s.carryForwardBalance,
     weekend_days: s.weekendDays,
     require_join_approval: s.requireJoinApproval,
+    default_meals: defaultMealsOut(s.defaultMeals),
     plan: s.plan,
   }
 }
@@ -56,7 +63,7 @@ export async function PUT(req: NextRequest) {
   }
   const {
     name, cut_off_time, estimated_monthly_budget, month_start_day,
-    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval,
+    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval, default_meals,
   } = body
   const updateData: Record<string, unknown> = {}
 
@@ -134,13 +141,32 @@ export async function PUT(req: NextRequest) {
     updateData.weekendDays = Array.from(new Set(weekend_days as number[])).sort().join(',')
   }
 
+  // { weekday: { breakfast: true, lunch, dinner }, weekend: { ... } }: meals members eat when they set nothing themselves
+  if (default_meals !== undefined) {
+    const d = default_meals as Record<string, Record<string, unknown>> | null
+    const valid =
+      !!d && typeof d === 'object' &&
+      (['weekday', 'weekend'] as const).every((day) =>
+        d[day] && typeof d[day] === 'object' && MEAL_TYPES.every((m) => typeof d[day][m.toLowerCase()] === 'boolean'),
+      )
+    if (!valid || !d) {
+      return NextResponse.json({ detail: 'default_meals must give true or false for each meal on weekdays and weekends' }, { status: 400 })
+    }
+    const stored = {} as DefaultMeals
+    for (const day of ['WEEKDAY', 'WEEKEND'] as const) {
+      stored[day] = { BREAKFAST: true, LUNCH: true, DINNER: true }
+      for (const m of MEAL_TYPES) stored[day][m] = d[day.toLowerCase()][m.toLowerCase()] as boolean
+    }
+    updateData.defaultMeals = JSON.stringify(stored)
+  }
+
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ detail: 'No fields to update' }, { status: 400 })
   }
 
   try {
-    // A new weekend definition must not rewrite days that already happened
-    if (updateData.weekendDays !== undefined) await settleDailyLogs(payload.messId)
+    // A new weekend definition or default must not rewrite days that already happened
+    if (updateData.weekendDays !== undefined || updateData.defaultMeals !== undefined) await settleDailyLogs(payload.messId)
     await prisma.$transaction((tx) =>
       Promise.all([
         tx.mess.update({ where: { id: payload.messId }, data: updateData, select: { id: true } }),

@@ -107,16 +107,6 @@
     background: var(--color-border-hover);
 }
 
-.dropdownItemCreate {
-    margin-top: var(--space-1);
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-.dropdownItemCreate:hover {
-    background: var(--color-primary-lighter);
-}
-
 @keyframes dropIn {
     from {
         opacity: 0;

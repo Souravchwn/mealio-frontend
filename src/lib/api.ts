@@ -29,6 +29,8 @@ import type {
     MessSettingsResponse,
     RegisterResponse,
     SupportTicket,
+    MealPreferenceRow,
+    DefaultMealsSetting,
 } from "@/types";
 import type {
     Paged,
@@ -181,6 +183,11 @@ export const api = {
                 method: "POST",
                 body: data,
             }),
+        /** Names the admin added who have not joined yet (needs the mess invite code) */
+        roster: (code: string) =>
+            fetcher<{ messName: string; names: Array<{ id: string; name: string }> }>("/api/auth/roster", {
+                params: { code },
+            }),
         /** Whether the server can send email (reset links, verification) */
         options: () => fetcher<{ emailEnabled: boolean }>("/api/auth/options"),
         forgot: (email: string, locale?: string) =>
@@ -205,6 +212,17 @@ export const api = {
     tg: {
         home: (initData: string) =>
             fetcher<TgHome>("/api/tg/home", { method: "GET", headers: { "X-Telegram-Init-Data": initData } }),
+    },
+
+    /** Personal invite for a member added by name. Public: the link token is the proof. */
+    invite: {
+        get: (inviteToken: string) =>
+            fetcher<{
+                name: string; messName: string; periodStart: string; periodEnd: string;
+                meals: number; deposited: number; balance: number; mealRate: number;
+            }>(`/api/invite/${encodeURIComponent(inviteToken)}`),
+        claim: (inviteToken: string, data: { email: string; password: string; phone?: string; locale?: string }) =>
+            fetcher<AuthResponse>(`/api/invite/${encodeURIComponent(inviteToken)}`, { method: "POST", body: data }),
     },
 
     /** Closed months. Open to every member of the mess, read-only. */
@@ -417,7 +435,10 @@ export const api = {
                 breakfast: boolean;
                 lunch: boolean;
                 dinner: boolean;
+                /** Guest portions for the whole day */
                 guestCount: number;
+                /** Guests per meal: a guest can come for lunch only, dinner only, or both */
+                guests: { breakfast: number; lunch: number; dinner: number };
                 frozen: boolean;
                 /** HOST = guest meals are charged to this member; SHARED = spread across the mess */
                 guestMealPolicy: GuestMealPolicy;
@@ -454,14 +475,19 @@ export const api = {
 
     mealPreferences: {
         getAll: (token: string) =>
-            fetcher<{
-                preferences: Array<{
-                    mealType: string
-                    dayType: string
-                    enabled: boolean
-                    defaultCount: number
-                }>
-            }>("/api/members/meal-preferences", { method: "GET", token }),
+            fetcher<{ preferences: MealPreferenceRow[] }>("/api/members/meal-preferences", { method: "GET", token }),
+        /** Admin or manager: another member's defaults */
+        getFor: (memberId: string, token: string) =>
+            fetcher<{ preferences: MealPreferenceRow[] }>(`/api/members/${memberId}/meal-preferences`, { method: "GET", token }),
+        updateFor: (memberId: string, data: { mealType: string; dayType: string; enabled: boolean }, token: string) =>
+            fetcher<{ ok: boolean; appliedToday: boolean }>(`/api/members/${memberId}/meal-preferences`, {
+                method: "PUT",
+                body: data,
+                token,
+            }),
+        /** Back to the mess default */
+        resetFor: (memberId: string, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/members/${memberId}/meal-preferences`, { method: "DELETE", token }),
         update: (
             data: { mealType: string; dayType: string; enabled: boolean; defaultCount?: number },
             token: string
@@ -523,16 +549,36 @@ export const api = {
                     isGuest: boolean;
                     guestFrom: string | null;
                     guestUntil: string | null;
+                    /** false = added by name, has not joined yet */
+                    hasAccount: boolean;
+                    /** When the latest live invite was made (null = none) */
+                    invitedAt: string | null;
                 }>;
             }>("/api/members", {
                 method: "GET",
                 params: opts?.includeInactive ? { messId, includeInactive: "1" } : { messId },
                 token,
             }),
+        /** Admin: add someone by name only (no account needed) */
+        add: (name: string, token: string) =>
+            fetcher<{ id: string; name: string; hasAccount: boolean }>("/api/members", { method: "POST", body: { name }, token }),
+        /** Admin: a personal invite link; also emailed when an email is given and email is set up */
+        invite: (memberId: string, data: { email?: string; locale?: string }, token: string) =>
+            fetcher<{ url: string; expiresAt: string; emailed: boolean; emailEnabled: boolean }>(
+                `/api/members/${memberId}/invite`,
+                { method: "POST", body: data, token }
+            ),
         pending: (token: string) =>
             fetcher<{
                 pending: Array<{ id: string; name: string; email: string; phone: string | null; requestedAt: string }>;
+                /** "I am <name>" requests made with the invite code */
+                claims: Array<{
+                    id: string; name: string; email: string; phone: string | null;
+                    memberId: string; memberName: string; requestedAt: string;
+                }>;
             }>("/api/members/pending", { method: "GET", token }),
+        decideClaim: (claimId: string, decision: "approve" | "reject", token: string) =>
+            fetcher<{ ok: boolean }>(`/api/members/claims/${claimId}`, { method: "POST", body: { decision }, token }),
         decideJoin: (memberId: string, decision: "approve" | "reject", token: string) =>
             fetcher<{ ok: boolean }>(`/api/members/${memberId}/join`, { method: "POST", body: { decision }, token }),
         /** One-time code the member types on the reset page together with their email */
@@ -578,12 +624,6 @@ export const api = {
                     role: string;
                 }>;
             }>("/api/mess", { method: "GET", token }),
-        create: (data: { name: string; estimatedMonthlyBudget?: number; cutOffTime?: string }, token: string) =>
-            fetcher<{ id: string; name: string; inviteCode: string; cutOffTime: string }>("/api/mess", {
-                method: "POST",
-                body: data,
-                token,
-            }),
         switchMess: (messId: string, token: string) =>
             fetcher<MessSwitchResponse>(`/api/mess/${messId}/switch`, { method: "GET", token }),
         /** The current open billing period and whether it has ended without being closed */
@@ -687,6 +727,7 @@ export const api = {
                 carryForwardBalance?: boolean;
                 weekendDays?: number[];
                 requireJoinApproval?: boolean;
+                defaultMeals?: DefaultMealsSetting;
             },
             token: string
         ) =>

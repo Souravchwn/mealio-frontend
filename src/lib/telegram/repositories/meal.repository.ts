@@ -11,6 +11,9 @@ export interface DailyLogRow {
   lunchCount: number
   dinnerCount: number
   guestCount: number
+  guestBreakfast: number
+  guestLunch: number
+  guestDinner: number
   frozen: boolean
 }
 
@@ -28,6 +31,9 @@ export class MealRepository {
         lunchCount: true,
         dinnerCount: true,
         guestCount: true,
+        guestBreakfast: true,
+        guestLunch: true,
+        guestDinner: true,
         frozen: true,
       },
     })
@@ -61,6 +67,9 @@ export class MealRepository {
         lunchCount: true,
         dinnerCount: true,
         guestCount: true,
+        guestBreakfast: true,
+        guestLunch: true,
+        guestDinner: true,
         frozen: true,
       },
     })
@@ -71,6 +80,9 @@ export class MealRepository {
     lunchCount: number
     dinnerCount: number
     guestCount: number
+    guestBreakfast: number
+    guestLunch: number
+    guestDinner: number
     isOverride: boolean
     overrideType: string | null
   }>): Promise<void> {
@@ -100,7 +112,15 @@ export class MealRepository {
             overrideType,
             ...data,
           },
-          update: { ...data, isOverride: true, overrideType },
+          // A meal nobody eats has no guests either
+          update: {
+            ...data,
+            ...(data.breakfastCount === 0 ? { guestBreakfast: 0 } : {}),
+            ...(data.lunchCount === 0 ? { guestLunch: 0 } : {}),
+            ...(data.dinnerCount === 0 ? { guestDinner: 0 } : {}),
+            isOverride: true,
+            overrideType,
+          },
         }),
       ),
     )

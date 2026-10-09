@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const me = await prisma.member.findUnique({ where: { id: payload.sub }, select: { passwordHash: true } })
-    if (!me || typeof body.current_password !== 'string' || !(await bcrypt.compare(body.current_password, me.passwordHash))) {
+    if (!me || typeof body.current_password !== 'string' || !me.passwordHash || !(await bcrypt.compare(body.current_password, me.passwordHash))) {
       return NextResponse.json({ detail: 'Your current password is not correct.' }, { status: 400 })
     }
     // Stamp a second earlier than the new token so this device stays signed in

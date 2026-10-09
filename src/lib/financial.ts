@@ -14,6 +14,7 @@ import { CURRENCY_SYMBOL, DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, type GuestMealP
 import { resolvePeriod, calculateNextPeriod, type Period, type PeriodRange } from './period'
 import { requireMessSettings, todayIn } from './mess-settings'
 import { ensureDailyLogs } from './daily-logs'
+import { dayGuestMeals, GUEST_SELECT, type GuestLogData } from './guests'
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -37,12 +38,7 @@ export function endOfPeriodExclusive(end: Date): Date {
 
 // ─── Meal counting ────────────────────────────────────────────────────────────
 
-type MealSlotData = {
-  breakfastCount: number
-  lunchCount: number
-  dinnerCount: number
-  guestCount: number
-}
+type MealSlotData = GuestLogData
 
 /** The member's own portions for one day. */
 export function ownMeals(log: MealSlotData): number {
@@ -50,15 +46,11 @@ export function ownMeals(log: MealSlotData): number {
 }
 
 /**
- * Guest portions for one day. A guest eats every meal their host eats —
- * the same rule the cook's headcount uses — so 2 guests with a host on
- * lunch + dinner = 4 guest meals.
+ * Guest portions for one day: the guests of each meal (src/lib/guests.ts).
+ * Older days stored one guest count for every meal the host ate; those still count that way.
  */
 export function guestMeals(log: MealSlotData): number {
-  if (log.guestCount <= 0) return 0
-  const slotsEaten =
-    (log.breakfastCount > 0 ? 1 : 0) + (log.lunchCount > 0 ? 1 : 0) + (log.dinnerCount > 0 ? 1 : 0)
-  return log.guestCount * slotsEaten
+  return dayGuestMeals(log)
 }
 
 /**
@@ -235,7 +227,7 @@ export async function calculatePeriodSummary(
   const [logs, expenses, ledger, members] = await Promise.all([
     prisma.dailyLog.findMany({
       where: { messId, logDate: { gte: start, lte: mealEnd } },
-      select: { memberId: true, logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: { memberId: true, logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, ...GUEST_SELECT },
     }),
     prisma.expense.findMany({
       where: nonVoidedExpenseWhere(messId, start, end),

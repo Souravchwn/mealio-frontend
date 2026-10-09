@@ -16,7 +16,8 @@
     "test:closed": "node --env-file=.env.local scripts/test-closed-month.mjs",
     "telegram:setup": "node --env-file=.env.local scripts/telegram-setup.mjs",
     "env:production": "node scripts/make-production-env.mjs",
-    "test:telegram": "node --env-file=.env.local scripts/test-telegram-link.mjs"
+    "test:telegram": "node --env-file=.env.local scripts/test-telegram-link.mjs",
+    "test:roster": "node --env-file=.env.local scripts/test-roster.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

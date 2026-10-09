@@ -124,7 +124,7 @@ try {
   // ── Tampering with records ──
   blocked('admin edits a closed-day meal', await api('/api/admin/meals', { method: 'PUT', token: tAdmin, body: { member_id: A.bob.id, date: '2026-01-10', slot: 'lunch', value: false } }))
   blocked('member toggles a closed-day meal', await api('/api/meals/toggle', { method: 'POST', token: tAlice, body: { member_id: A.alice.id, date: '2026-01-10', slot: 'lunch', status: false } }))
-  blocked('member adds guests on a closed day', await api('/api/meals/guest', { method: 'POST', token: tAlice, body: { member_id: A.alice.id, date: '2026-01-10', guest_count: 4 } }))
+  blocked('member adds guests on a closed day', await api('/api/meals/guest', { method: 'POST', token: tAlice, body: { member_id: A.alice.id, date: '2026-01-10', slot: 'lunch', guest_count: 4 } }))
   blocked('no-cook on a closed day', await api('/api/admin/no-cook', { method: 'POST', token: tAdmin, body: { action: 'off', date: '2026-01-10' } }))
   blocked('edit a closed bazaar trip', await api(`/api/expenses/sessions/${A.session.id}`, { method: 'PUT', token: tAdmin, body: { items: [{ category: 'OTHER', amount: 1 }] } }))
   blocked('void a closed bazaar trip', await api(`/api/expenses/sessions/${A.session.id}`, { method: 'DELETE', token: tAdmin, body: { reason: 'x' } }))

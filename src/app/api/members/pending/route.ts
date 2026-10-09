@@ -12,12 +12,29 @@ export async function GET(req: NextRequest) {
   if (payload.role !== 'ADMIN') return NextResponse.json({ detail: 'Admin access required' }, { status: 403 })
 
   try {
-    const pending = await prisma.member.findMany({
-      where: { messId: payload.messId, joinStatus: 'PENDING', deletedAt: null },
-      select: { id: true, name: true, email: true, phone: true, joinedAt: true },
-      orderBy: { joinedAt: 'asc' },
-    })
+    const [pending, claims] = await Promise.all([
+      prisma.member.findMany({
+        where: { messId: payload.messId, joinStatus: 'PENDING', deletedAt: null },
+        select: { id: true, name: true, email: true, phone: true, joinedAt: true },
+        orderBy: { joinedAt: 'asc' },
+      }),
+      // "I am <name>" requests made with the invite code
+      prisma.memberClaim.findMany({
+        where: { messId: payload.messId, status: 'PENDING' },
+        select: { id: true, name: true, email: true, phone: true, createdAt: true, member: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ])
     return NextResponse.json({
+      claims: claims.map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        member_id: c.member.id,
+        member_name: c.member.name,
+        requested_at: c.createdAt.toISOString(),
+      })),
       pending: pending.map((m) => ({
         id: m.id,
         name: m.name,

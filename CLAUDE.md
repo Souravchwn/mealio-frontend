@@ -16,6 +16,7 @@ npm run platform-admin -- --email you@x.com --name "Name"   # Create/reset a /co
 npm run test:isolation  # Tenant isolation test (needs npm run dev running)
 npm run test:closed     # Closed-month integrity test (needs npm run dev running)
 npm run test:telegram   # /link and /linkgroup abuse tests (needs npm run dev running)
+npm run test:roster     # Members by name, invites, claims, default meals, guests per meal (needs npm run dev)
 npm run telegram:setup -- https://public-url   # Connect the bot locally; in production use /console, Telegram
 npm run env:production  # Create .env.deploy.local with fresh secrets (see DEPLOY.md)
 npm run import:sheet -- scripts/data/<file>.local.json   # Load a mess's real sheet (local DB only)
@@ -102,8 +103,7 @@ src/
 │   │       ├── matrix/page.tsx         # Admin only
 │   │       ├── members/page.tsx        # Admin only
 │   │       ├── audit/page.tsx          # Admin only
-│   │       ├── settings/page.tsx       # All users (prefs) + Admin (mess config)
-│   │       └── mess/create/page.tsx    # Admin only
+│   │       └── settings/page.tsx       # All users (prefs) + Admin (mess config)
 │   └── api/                            # API routes (see Module details below)
 ├── components/
 │   ├── ui/                             # Primitives: Button, Card
@@ -450,28 +450,19 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 
 ---
 
-### MODULE 13: Mess Management (Create + Switch)
+### MODULE 13: Mess Switching
 
-**Route:** `/{locale}/mess/create` (Admin only)
+A mess is created only at sign-up (`POST /api/auth/register`, mode `create`). There is no in-app "create another mess": the creator would only hold a `MessMembership` there, not a `Member` row, so their meal logs would be billed in a mess they are not a member of.
 
 | Layer | Files |
 |-------|-------|
-| Page | `src/app/[locale]/(dashboard)/mess/create/page.tsx` |
-| Styles | `src/app/[locale]/(dashboard)/mess/create/create.module.css` |
 | Component | `src/components/composed/MessSwitcher/MessSwitcher.tsx` + `.module.css` |
-| API routes | `src/app/api/mess/route.ts`, `src/app/api/mess/[messId]/switch/route.ts` |
+| API routes | `src/app/api/mess/route.ts` (GET list), `src/app/api/mess/[messId]/switch/route.ts` |
 
-**API calls:**
-- `GET api.mess.list(token)` → list all messes for current user
-- `POST api.mess.create({ name, estimatedMonthlyBudget, cutOffTime }, token)` → create new mess
-- `GET api.mess.switchMess(messId, token)` → switch active mess (returns new JWT)
+- `GET api.mess.list(token)` lists the person's messes; `GET api.mess.switchMess(messId, token)` returns a new JWT for another mess.
+- MessSwitcher renders only when the person belongs to 2 or more messes.
 
-**MessSwitcher behavior:**
-- Renders nothing if user has only 1 mess AND is not ADMIN
-- Dropdown with all messes; active mess has a colored dot
-- ADMIN sees a "+ Create New" option at the bottom
-
-**i18n keys:** `messCreate.*`, `messSwitcher.*`
+**i18n keys:** `messSwitcher.*`
 
 ---
 
@@ -542,11 +533,20 @@ Full reference: `context/17-periods-and-archive.md`. Rules that must not be brok
 - The archive (`/api/archive`, `/archive`) is open to every member and read-only. It must show only closed months and must never include member names that were anonymised.
 - Real mess data lives in `scripts/data/*.local.*` (git-ignored). Never commit it.
 
+### MODULE 18: Members by name, invites and guests per meal
+
+Full reference: `context/19-members-by-name-and-guests.md`. Rules:
+
+- A member can exist with **only a name** (`email` and `passwordHash` NULL). Never assume a member has an email or a password.
+- Meals without an own preference follow the mess default (`settings.defaultMeals`). Per-member defaults go through `src/lib/member-preferences.ts`.
+- Guests are **per meal**. Read and write them only through `src/lib/guests.ts` (`slotGuests`, `setSlotGuestsData`, `GUEST_SELECT`). Any query that feeds money or headcount must select `GUEST_SELECT`.
+- Admins and managers may change anyone's meals and guests; every change is audited with the actor.
+
 ### Billing rules (mess settings)
 
 | Setting | Values | Effect |
 |---------|--------|--------|
-| `guestMealPolicy` | `HOST` (default) / `SHARED` | Guests eat every meal their host eats. `HOST` adds those meals to the host's count; `SHARED` leaves them out of everyone's count so the cost spreads via the meal rate. |
+| `guestMealPolicy` | `HOST` (default) / `SHARED` | Guests are set per meal (older days: every meal the host ate). `HOST` adds them to the host's count; `SHARED` leaves them out of everyone's count so the cost spreads via the meal rate. |
 | `bazaarCountsAsDeposit` | `false` (default) / `true` | When true, bazaar expenses are credited to the member who recorded them. Leave false when shopping uses deposited money (otherwise it is double counted). |
 | `carryForwardBalance` | `true` (default) / `false` | Whether closing a month carries each member's balance into the next month. |
 | `weekendDays` | `[0, 6]` (default) | Which weekdays use members' WEEKEND defaults (0 = Sun … 6 = Sat). |

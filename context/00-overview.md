@@ -15,7 +15,7 @@ This directory contains per-module context files. When working on any module, re
 | `07-settings.md` | Settings, Preferences, Telegram Linking | `settings/page.tsx`, `api/mess/settings`, `api/admin/telegram-group` |
 | `08-matrix.md` | Month Matrix, Close Month, No-Cook | `matrix/page.tsx`, `api/admin/*` |
 | `09-members.md` | Member Management | `members/page.tsx`, `api/members/*` |
-| `10-mess-management.md` | Create Mess, Switch Mess | `mess/create/page.tsx`, `MessSwitcher`, `api/mess/*` |
+| `10-mess-management.md` | Switch Mess | `MessSwitcher`, `api/mess/*` |
 | `11-telegram-bot.md` | Full Telegram Bot | `src/lib/telegram/**` |
 | `12-daily-meal-counting.md` | Automatic daily meal counting (no crons), cutoffs, mismanagement risks | `daily-logs.ts`, `meal-preferences.ts` |
 | `13-shared-libs.md` | All shared `src/lib/` files | `api.ts`, `financial.ts`, `mess-settings.ts`, `daily-logs.ts`, `meal-access.ts`, `auth-utils.ts` |

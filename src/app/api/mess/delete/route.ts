@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     if (typeof body.confirm_name !== 'string' || body.confirm_name.trim() !== mess.name.trim()) {
       return NextResponse.json({ detail: 'Type the mess name exactly to confirm.' }, { status: 400 })
     }
-    if (typeof body.password !== 'string' || !(await bcrypt.compare(body.password, me.passwordHash))) {
+    if (typeof body.password !== 'string' || !me.passwordHash || !(await bcrypt.compare(body.password, me.passwordHash))) {
       return NextResponse.json({ detail: 'Your password is not correct.' }, { status: 400 })
     }
 

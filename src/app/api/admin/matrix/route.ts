@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { calculatePeriodSummary, guestMeals } from '@/lib/financial'
+import { guestsBySlot } from '@/lib/guests'
 import { resolvePeriod } from '@/lib/period'
 import { getMessSettings } from '@/lib/mess-settings'
 
@@ -51,6 +52,9 @@ export async function GET(req: NextRequest) {
           lunchCount: true,
           dinnerCount: true,
           guestCount: true,
+          guestBreakfast: true,
+          guestLunch: true,
+          guestDinner: true,
           frozen: true,
         },
       }),
@@ -80,6 +84,8 @@ export async function GET(req: NextRequest) {
           lunch: l.lunchCount > 0,
           dinner: l.dinnerCount > 0,
           guest_count: l.guestCount,
+          // Guests per meal (older days: guests ate every meal the host ate)
+          guests: guestsBySlot(l),
           guest_meals: guestMeals(l),
           frozen: l.frozen,
         })),

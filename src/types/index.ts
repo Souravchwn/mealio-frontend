@@ -303,8 +303,11 @@ export interface DayEntry {
     breakfast: boolean;
     lunch: boolean;
     dinner: boolean;
+    /** LEGACY: guests at every meal the host ate (older days only) */
     guestCount: number;
-    /** Guest portions that day (guests × meals the host ate) */
+    /** Guests per meal */
+    guests?: { breakfast: number; lunch: number; dinner: number };
+    /** Guest portions that day */
     guestMeals?: number;
     frozen: boolean;
 }
@@ -325,7 +328,21 @@ export interface MessSettingsResponse {
     weekendDays: number[];
     /** New members wait for an admin before they can sign in */
     requireJoinApproval: boolean;
+    /** Meals eaten by members who have not set their own (name-only members, new joiners) */
+    defaultMeals: DefaultMealsSetting;
     plan: string;
+}
+
+export type MealDaySetting = { breakfast: boolean; lunch: boolean; dinner: boolean };
+export type DefaultMealsSetting = { weekday: MealDaySetting; weekend: MealDaySetting };
+
+/** One of a member's 6 default meals; custom = false while it follows the mess default */
+export interface MealPreferenceRow {
+    mealType: string;
+    dayType: "WEEKDAY" | "WEEKEND";
+    enabled: boolean;
+    defaultCount: number;
+    custom: boolean;
 }
 
 /* API Requests */
@@ -345,12 +362,14 @@ export interface RegisterRequest {
     messInviteCode?: string;
     messName?: string;
     locale?: string;
+    /** Join mode: "I am this person" (a member the admin added by name) */
+    claimMemberId?: string;
 }
 
 /** Register answers with a session, or with `pending` when the admin must approve the join first */
 export type RegisterResponse =
     | (AuthResponse & { pending?: undefined; inviteCode?: string })
-    | { pending: true; messName: string };
+    | { pending: true; messName: string; claim?: boolean; memberName?: string };
 
 export interface SupportMessage {
     id: string;
@@ -418,6 +437,8 @@ export interface MealToggleRequest {
 export interface GuestUpdateRequest {
     memberId: string;
     date: string;
+    /** The meal these guests eat: a guest can come for lunch only, dinner only, or both */
+    slot: "breakfast" | "lunch" | "dinner";
     guestCount: number;
 }
 

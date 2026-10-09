@@ -10,8 +10,11 @@ import { appUrl, emailHtml, isEmailEnabled, sendEmail } from './email'
 const VERIFY_TTL_MS = 3 * 24 * 60 * 60 * 1000
 const RESET_LINK_TTL_MS = 60 * 60 * 1000
 export const RESET_CODE_TTL_MINUTES = 30
+export const INVITE_TTL_DAYS = 14
 
-async function storeToken(memberId: string, purpose: 'RESET' | 'VERIFY_EMAIL', raw: string, ttlMs: number, issuedBy: string) {
+type TokenPurpose = 'RESET' | 'VERIFY_EMAIL' | 'INVITE'
+
+async function storeToken(memberId: string, purpose: TokenPurpose, raw: string, ttlMs: number, issuedBy: string) {
   // Only one live token per purpose per member
   await prisma.authToken.updateMany({
     where: { memberId, purpose, usedAt: null },
@@ -65,7 +68,7 @@ export async function issueResetCode(memberId: string, issuedBy: string): Promis
 }
 
 /** Find a valid, unused token by its raw value. Optionally require it to belong to a member. */
-export async function findValidToken(raw: string, purpose: 'RESET' | 'VERIFY_EMAIL', memberId?: string) {
+export async function findValidToken(raw: string, purpose: TokenPurpose, memberId?: string) {
   const row = await prisma.authToken.findUnique({
     where: { tokenHash: sha256(raw) },
     select: { id: true, memberId: true, purpose: true, expiresAt: true, usedAt: true },
@@ -73,4 +76,30 @@ export async function findValidToken(raw: string, purpose: 'RESET' | 'VERIFY_EMA
   if (!row || row.purpose !== purpose || row.usedAt || row.expiresAt < new Date()) return null
   if (memberId && row.memberId !== memberId) return null
   return row
+}
+
+/**
+ * A personal invite for a name-only member: a link that lets them set their email and password
+ * and take over their name. A new invite cancels the previous one. Valid for INVITE_TTL_DAYS days.
+ */
+export async function issueInvite(memberId: string, issuedBy: string, locale: 'en' | 'bn' = 'en'): Promise<{ url: string; expiresAt: Date }> {
+  const raw = randomToken()
+  const ttl = INVITE_TTL_DAYS * 24 * 60 * 60 * 1000
+  await storeToken(memberId, 'INVITE', raw, ttl, issuedBy)
+  return { url: `${appUrl()}/${locale}/invite/${raw}`, expiresAt: new Date(Date.now() + ttl) }
+}
+
+/** Email an invite link. Returns false when email is not configured. */
+export async function sendInviteEmail(email: string, name: string, messName: string, url: string): Promise<boolean> {
+  return sendEmail(
+    email,
+    `You are in ${messName} on Mealio`,
+    `Hi ${name}, ${messName} keeps its meals and money on Mealio. Join to see your meals and balance: ${url}`,
+    emailHtml(
+      `Hi ${name}`,
+      `${messName} keeps its meals and money on Mealio. Tap the button to see your meals and balance, and set your own meal times.`,
+      'See my meals',
+      url,
+    ),
+  )
 }

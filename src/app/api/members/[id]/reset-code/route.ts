@@ -30,9 +30,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const member = await prisma.member.findFirst({
       where: { id, messId: payload.messId, deletedAt: null, joinStatus: 'APPROVED' },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, passwordHash: true },
     })
     if (!member) return NextResponse.json({ detail: 'Member not found' }, { status: 404 })
+    if (!member.passwordHash) {
+      return NextResponse.json({ detail: 'This member has not joined yet. Send them an invite instead.', code: 'NOT_JOINED' }, { status: 400 })
+    }
 
     const { code, expiresAt } = await issueResetCode(member.id, `MESS_ADMIN:${payload.sub}`)
     await createAudit({

@@ -21,8 +21,8 @@ const slotJson = (s: HeadcountSlot) => ({
   total: s.total,
   guests: s.guestCount,
   cutoff_time: s.cutoffTime,
-  // Names only, of people eating this meal (count > 0), with their guests
-  people: s.members.filter((m) => m.count > 0).map((m) => ({ name: m.name, count: m.count, guests: m.guestCount })),
+  // Names only, of people eating this meal or bringing guests to it
+  people: s.members.filter((m) => m.count > 0 || m.guestCount > 0).map((m) => ({ name: m.name, count: m.count, guests: m.guestCount })),
 })
 
 export async function GET(req: NextRequest) {

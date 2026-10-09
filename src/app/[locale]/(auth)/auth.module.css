@@ -522,3 +522,33 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* "Which one is you?" when joining a mess that added people by name */
+fieldset.field {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+}
+
+.nameChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.nameChip {
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    border: 1.5px solid var(--color-border-hover);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-card);
+    font-weight: 600;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.nameChip[aria-pressed="true"] {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}

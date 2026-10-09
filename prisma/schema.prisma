@@ -24,6 +24,8 @@ model Mess {
   carryForwardBalance    Boolean  @default(true) @map("carry_forward_balance")
   /// Weekend days for meal preferences, comma-separated JS weekday numbers (0=Sun … 6=Sat)
   weekendDays            String   @default("0,6") @map("weekend_days")
+  /// Meals a member eats by default when they have not set their own (JSON: WEEKDAY/WEEKEND -> BREAKFAST/LUNCH/DINNER -> bool)
+  defaultMeals           String?  @map("default_meals")
   isActive               Boolean  @default(true) @map("is_active")
   /// New joiners need an admin's approval before they can use the mess
   requireJoinApproval    Boolean  @default(true) @map("require_join_approval")
@@ -51,6 +53,7 @@ model Mess {
   mealPreferences UserMealPreference[]
   mealConfigs     MealConfig[]
   cookNotes       DailyCookNote[]
+  memberClaims    MemberClaim[]
 
   @@map("messes")
 }
@@ -59,9 +62,11 @@ model Member {
   id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   messId         String?   @map("mess_id") @db.Uuid
   name           String
-  email          String    @unique
+  /// NULL for a name-only member (added by the admin, has not joined yet)
+  email          String?   @unique
   phone          String?
-  passwordHash   String    @map("password_hash")
+  /// NULL for a name-only member: counted everywhere, cannot sign in
+  passwordHash   String?   @map("password_hash")
   /// SYSTEM_ADMIN | ADMIN | MANAGER | MEMBER | GUEST
   role           String    @default("MEMBER")
   telegramUid    BigInt?   @unique @map("telegram_uid")
@@ -93,6 +98,7 @@ model Member {
   memberships       MessMembership[]
   mealPreferences   UserMealPreference[]
   managedPeriods    MessMonth[]        @relation("PeriodManager")
+  claims            MemberClaim[]
 
   @@index([messId], map: "idx_members_mess")
   @@index([telegramUid], map: "idx_members_telegram")
@@ -138,7 +144,13 @@ model DailyLog {
   breakfastCount Int      @default(1) @map("breakfast_count")
   lunchCount     Int      @default(1) @map("lunch_count")
   dinnerCount    Int      @default(1) @map("dinner_count")
+  /// LEGACY: guests who eat every meal the host eats. New changes use the per-meal columns
+  /// below and set this to 0 (see src/lib/guests.ts). Kept so older days bill the same.
   guestCount     Int      @default(0) @map("guest_count")
+  /// Guests for each meal, independent of each other (lunch only, dinner only, both)
+  guestBreakfast Int      @default(0) @map("guest_breakfast")
+  guestLunch     Int      @default(0) @map("guest_lunch")
+  guestDinner    Int      @default(0) @map("guest_dinner")
   frozen         Boolean  @default(false)
   isOverride     Boolean  @default(false) @map("is_override")
   /// null | USER | ADMIN | SYSTEM
@@ -394,7 +406,7 @@ model UserMealPreference {
 model AuthToken {
   id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   memberId  String    @map("member_id") @db.Uuid
-  /// RESET | VERIFY_EMAIL
+  /// RESET | VERIFY_EMAIL | INVITE (invite to claim a name-only member)
   purpose   String
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
@@ -495,4 +507,26 @@ model SupportMessage {
 
   @@index([ticketId, createdAt], map: "idx_support_messages_ticket")
   @@map("support_messages")
+}
+
+/// Someone who joined with the mess invite code and says "I am <name>" (a name-only member).
+/// Their credentials wait here until the admin approves; then they move onto the member.
+model MemberClaim {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId       String    @map("mess_id") @db.Uuid
+  memberId     String    @map("member_id") @db.Uuid
+  name         String
+  email        String
+  passwordHash String    @map("password_hash")
+  phone        String?
+  /// PENDING | APPROVED | REJECTED
+  status       String    @default("PENDING")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  decidedAt    DateTime? @map("decided_at") @db.Timestamptz(6)
+
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([messId, status], map: "idx_member_claims_mess")
+  @@map("member_claims")
 }

@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Share2, Send, ChevronDown, UserX, UserCheck, Phone, Search, KeyRound, Check, X, Copy } from "lucide-react";
+import { Share2, Send, ChevronDown, UserX, UserCheck, Phone, Search, KeyRound, Check, X, Copy, UserPlus, Link2, Mail, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { cn, formatCurrency, getInitials, localISODate } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { MealPreferenceRow } from "@/types";
 import styles from "./members.module.css";
 
 interface MemberRow {
@@ -21,6 +22,9 @@ interface MemberRow {
     isActive: boolean;
     guestFrom: string | null;
     guestUntil: string | null;
+    /** false = added by name, has not joined yet */
+    hasAccount: boolean;
+    invitedAt: string | null;
 }
 
 interface JoinRequest {
@@ -30,6 +34,15 @@ interface JoinRequest {
     phone: string | null;
     requestedAt: string;
 }
+
+/** Someone who joined with the code and said "I am <memberName>" */
+interface ClaimRequest extends JoinRequest {
+    memberId: string;
+    memberName: string;
+}
+
+const PREF_MEALS = ["breakfast", "lunch", "dinner"] as const;
+const PREF_DAYS = ["WEEKDAY", "WEEKEND"] as const;
 
 const ROLES = ["ADMIN", "MANAGER", "MEMBER", "GUEST"] as const;
 
@@ -49,6 +62,12 @@ export default function MembersPage() {
     const [requests, setRequests] = useState<JoinRequest[]>([]);
     const [decidingId, setDecidingId] = useState<string | null>(null);
     const [resetCode, setResetCode] = useState<{ memberId: string; code: string; minutes: number } | null>(null);
+    const [claims, setClaims] = useState<ClaimRequest[]>([]);
+    const [newName, setNewName] = useState("");
+    const [adding, setAdding] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState<Record<string, string>>({});
+    const [inviteLink, setInviteLink] = useState<{ memberId: string; url: string; emailed: boolean } | null>(null);
+    const [prefs, setPrefs] = useState<{ memberId: string; rows: MealPreferenceRow[] } | null>(null);
 
     const isAdmin = user?.role === "ADMIN";
 
@@ -68,9 +87,112 @@ export default function MembersPage() {
         if (!token || !isAdmin) return;
         api.members
             .pending(token)
-            .then((r) => setRequests(r.pending))
+            .then((r) => {
+                setRequests(r.pending);
+                setClaims(r.claims ?? []);
+            })
             .catch(() => {});
     }, [token, isAdmin]);
+
+    async function addMember(e: React.FormEvent) {
+        e.preventDefault();
+        const name = newName.trim();
+        if (!token || name.length < 2) return;
+        setAdding(true);
+        try {
+            await api.members.add(name, token);
+            toast.success(t("added", { name }));
+            setNewName("");
+            loadMembers();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("updateFailed"));
+        } finally {
+            setAdding(false);
+        }
+    }
+
+    async function createInvite(member: MemberRow) {
+        if (!token) return;
+        setSavingId(member.id);
+        const email = inviteEmail[member.id]?.trim();
+        try {
+            const r = await api.members.invite(member.id, { email: email || undefined, locale }, token);
+            setInviteLink({ memberId: member.id, url: r.url, emailed: r.emailed });
+            if (r.emailed) toast.success(t("inviteEmailed", { name: member.name }));
+            else if (email && !r.emailEnabled) toast.info(t("inviteNoEmail"));
+            setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, invitedAt: new Date().toISOString() } : m)));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("updateFailed"));
+        } finally {
+            setSavingId(null);
+        }
+    }
+
+    async function shareInviteLink(member: MemberRow, url: string) {
+        const text = t("personalShareText", { name: member.name, mess: messName });
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: "Mealio", text, url });
+                return;
+            }
+        } catch {
+            return;
+        }
+        await copyText(`${text} ${url}`);
+    }
+
+    async function openPrefs(member: MemberRow) {
+        if (!token) return;
+        if (prefs?.memberId === member.id) return setPrefs(null);
+        try {
+            const r = await api.mealPreferences.getFor(member.id, token);
+            setPrefs({ memberId: member.id, rows: r.preferences });
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("loadFailed"));
+        }
+    }
+
+    async function togglePref(member: MemberRow, meal: string, day: (typeof PREF_DAYS)[number]) {
+        if (!token || !prefs) return;
+        const row = prefs.rows.find((p) => p.mealType === meal && p.dayType === day);
+        if (!row) return;
+        const enabled = !row.enabled;
+        setPrefs({ ...prefs, rows: prefs.rows.map((p) => (p === row ? { ...p, enabled, custom: true } : p)) });
+        try {
+            await api.mealPreferences.updateFor(member.id, { mealType: meal.toUpperCase(), dayType: day, enabled }, token);
+        } catch (err) {
+            setPrefs((cur) => (cur ? { ...cur, rows: cur.rows.map((p) => (p.mealType === meal && p.dayType === day ? row : p)) } : cur));
+            toast.error(err instanceof Error ? err.message : t("updateFailed"));
+        }
+    }
+
+    async function resetPrefs(member: MemberRow) {
+        if (!token) return;
+        try {
+            await api.mealPreferences.resetFor(member.id, token);
+            const r = await api.mealPreferences.getFor(member.id, token);
+            setPrefs({ memberId: member.id, rows: r.preferences });
+            toast.success(t("prefsReset", { name: member.name }));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("updateFailed"));
+        }
+    }
+
+    async function decideClaim(c: ClaimRequest, decision: "approve" | "reject") {
+        if (!token) return;
+        setDecidingId(c.id);
+        try {
+            await api.members.decideClaim(c.id, decision, token);
+            toast.success(decision === "approve" ? t("claimApproved", { name: c.memberName }) : t("rejected", { name: c.name }));
+            setClaims((prev) => prev.filter((x) => x.id !== c.id));
+            if (decision === "approve") loadMembers();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("updateFailed"));
+            loadRequests();
+        } finally {
+            setDecidingId(null);
+        }
+    }
 
     useEffect(() => {
         loadMembers();
@@ -210,6 +332,11 @@ export default function MembersPage() {
                                 </span>
                             )}
                             {!member.isActive && <span className={cn(styles.badge, styles.badgeInactive)}>{t("inactive")}</span>}
+                            {member.isActive && !member.hasAccount && (
+                                <span className={cn(styles.badge, styles.badgeNotJoined)}>
+                                    {member.invitedAt ? t("invited") : t("notJoined")}
+                                </span>
+                            )}
                         </span>
                     </span>
                     <span className={styles.memberRight}>
@@ -250,7 +377,85 @@ export default function MembersPage() {
                                 {t("stayDates", { from: fmtDate(member.guestFrom), until: fmtDate(member.guestUntil) })}
                             </p>
                         )}
-                        {resetCode?.memberId === member.id ? (
+                        {!member.hasAccount && member.isActive && (
+                            <div className={styles.inviteBox}>
+                                <span className={styles.adminLabel}>{t("inviteTitle", { name: member.name })}</span>
+                                <p className={styles.guestDates}>{t("inviteHelp")}</p>
+                                <label className={styles.inviteEmail}>
+                                    <Mail size={16} aria-hidden />
+                                    <input
+                                        type="email"
+                                        inputMode="email"
+                                        autoComplete="off"
+                                        placeholder={t("inviteEmailPlaceholder")}
+                                        aria-label={t("inviteEmailPlaceholder")}
+                                        value={inviteEmail[member.id] ?? ""}
+                                        onChange={(e) => setInviteEmail((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                                    />
+                                </label>
+                                <Button size="small" variant="secondary" disabled={isSaving} onClick={() => void createInvite(member)}>
+                                    <Link2 size={16} /> {member.invitedAt ? t("inviteAgain") : t("inviteCreate")}
+                                </Button>
+                                {inviteLink?.memberId === member.id && (
+                                    <div className={styles.codeBox}>
+                                        <span className={styles.inviteUrl}>{inviteLink.url}</span>
+                                        <span className={styles.inviteActions}>
+                                            <button type="button" className={styles.textAction} onClick={() => void copyText(inviteLink.url)}>
+                                                <Copy size={16} /> {t("copyLink")}
+                                            </button>
+                                            <button type="button" className={styles.textAction} onClick={() => void shareInviteLink(member, inviteLink.url)}>
+                                                <Share2 size={16} /> {t("shareLink")}
+                                            </button>
+                                        </span>
+                                        <span className={styles.guestDates}>{t("inviteValid")}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button type="button" className={styles.textAction} onClick={() => void openPrefs(member)} aria-expanded={prefs?.memberId === member.id}>
+                            <UtensilsCrossed size={16} /> {t("defaultMeals")}
+                        </button>
+                        {prefs?.memberId === member.id && (
+                            <div className={styles.prefsBox}>
+                                <p className={styles.guestDates}>{t("defaultMealsHelp", { name: member.name })}</p>
+                                <div className={styles.prefsGrid} role="group" aria-label={t("defaultMeals")}>
+                                    <span />
+                                    {PREF_MEALS.map((m) => (
+                                        <span key={m} className={styles.prefsHead}>{t(`meal.${m}`)}</span>
+                                    ))}
+                                    {PREF_DAYS.map((day) => (
+                                        <div key={day} className={styles.prefsRow}>
+                                            <span className={styles.prefsHead}>{t(`day.${day}`)}</span>
+                                            {PREF_MEALS.map((m) => {
+                                                const row = prefs.rows.find((p) => p.mealType === m && p.dayType === day);
+                                                const on = row?.enabled ?? true;
+                                                return (
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={on}
+                                                        aria-label={`${t(`day.${day}`)} ${t(`meal.${m}`)}`}
+                                                        className={cn(styles.prefChip, on && styles.prefChipOn, row && !row.custom && styles.prefChipDefault)}
+                                                        onClick={() => void togglePref(member, m, day)}
+                                                    >
+                                                        {on ? t("on") : t("off")}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
+                                </div>
+                                {prefs.rows.some((p) => p.custom) && (
+                                    <button type="button" className={styles.textAction} onClick={() => void resetPrefs(member)}>
+                                        {t("useMessDefault")}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {!member.hasAccount ? null : resetCode?.memberId === member.id ? (
                             <div className={styles.codeBox}>
                                 <span className={styles.adminLabel}>{t("resetCodeTitle")}</span>
                                 <span className={styles.codeValue}>
@@ -300,6 +505,26 @@ export default function MembersPage() {
                 )}
             </header>
 
+            {isAdmin && (
+                <form className={styles.addForm} onSubmit={addMember}>
+                    <label className={styles.addInput}>
+                        <UserPlus size={18} aria-hidden />
+                        <input
+                            type="text"
+                            value={newName}
+                            maxLength={60}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder={t("addPlaceholder")}
+                            aria-label={t("addPlaceholder")}
+                        />
+                    </label>
+                    <Button type="submit" size="small" disabled={adding || newName.trim().length < 2}>
+                        {adding ? t("saving") : t("add")}
+                    </Button>
+                    <p className={styles.addHelp}>{t("addHelp")}</p>
+                </form>
+            )}
+
             <label className={styles.search}>
                 <Search size={16} />
                 <input
@@ -340,6 +565,45 @@ export default function MembersPage() {
                                         disabled={decidingId === r.id}
                                         onClick={() => void decide(r, "approve")}
                                         aria-label={t("approve", { name: r.name })}
+                                    >
+                                        <Check size={18} strokeWidth={3} />
+                                    </button>
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            {claims.length > 0 && (
+                <section className={styles.requests} aria-labelledby="claim-requests">
+                    <h3 id="claim-requests" className={styles.requestsTitle}>
+                        {t("claimsTitle")} <span className={styles.countBubble}>{claims.length}</span>
+                    </h3>
+                    <ul className={styles.memberList}>
+                        {claims.map((c) => (
+                            <li key={c.id} className={styles.requestRow}>
+                                <span className={styles.memberAvatar}>{getInitials(c.memberName)}</span>
+                                <span className={styles.memberInfo}>
+                                    <span className={styles.memberName}>{t("claimSays", { name: c.name, member: c.memberName })}</span>
+                                    <span className={styles.requestMeta}>{c.email}{c.phone ? ` · ${c.phone}` : ""}</span>
+                                </span>
+                                <span className={styles.requestActions}>
+                                    <button
+                                        type="button"
+                                        className={cn(styles.decideBtn, styles.rejectBtn)}
+                                        disabled={decidingId === c.id}
+                                        onClick={() => void decideClaim(c, "reject")}
+                                        aria-label={t("reject", { name: c.name })}
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={cn(styles.decideBtn, styles.approveBtn)}
+                                        disabled={decidingId === c.id}
+                                        onClick={() => void decideClaim(c, "approve")}
+                                        aria-label={t("approve", { name: c.name })}
                                     >
                                         <Check size={18} strokeWidth={3} />
                                     </button>

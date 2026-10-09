@@ -20,6 +20,15 @@ import styles from "./matrix.module.css";
 
 /* ─── Date helpers ─── */
 /** Build day info from a date string like "2026-05-10" */
+/** Guest portions of a day: per-meal guests, or older days' guests at every meal the host ate */
+function dayGuests(d: DayEntry): number {
+    if (d.guestCount > 0) {
+        const slots = (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0);
+        return d.guestCount * slots;
+    }
+    return d.guests ? d.guests.breakfast + d.guests.lunch + d.guests.dinner : 0;
+}
+
 function getDayInfoFromDate(dateStr: string, weekendDays: number[]): { day: number; dayOfWeek: number; isWeekend: boolean } {
     const d = new Date(dateStr + "T00:00:00.000Z");
     const dow = d.getUTCDay();
@@ -270,12 +279,12 @@ export default function MatrixPage() {
                             },
                         ];
                     }
-                    // Same rule as the server: guests eat every meal their host eats,
-                    // and only count for the host under the HOST policy.
+                    // Same rule as the server (lib/guests.ts): guests are per meal; older days
+                    // stored guests who ate every meal the host ate. Only HOST charges the host.
                     const hostPays = prev.guestMealPolicy !== "SHARED";
                     const totalMeals = newDays.reduce((s, d) => {
                         const slots = (d.breakfast ? 1 : 0) + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0);
-                        return s + slots + (hostPays ? d.guestCount * slots : 0);
+                        return s + slots + (hostPays ? dayGuests(d) : 0);
                     }, 0);
                     return { ...m, days: newDays, totalMeals };
                 }),
@@ -375,7 +384,8 @@ export default function MatrixPage() {
                         ? (day2.breakfast ? 1 : 0) + (day2.lunch ? 1 : 0) + (day2.dinner ? 1 : 0)
                         : 0;
                     const isActive = activeCell?.memberId === member.memberId && activeCell?.date === dayStr;
-                    const hasGuest = !!(day2?.guestCount && day2.guestCount > 0);
+                    const guestsToday = day2 ? dayGuests(day2) : 0;
+                    const hasGuest = guestsToday > 0;
 
                     return (
                         <td
@@ -398,7 +408,7 @@ export default function MatrixPage() {
                                 )}
                                 title={
                                     day2
-                                        ? `B:${day2.breakfast ? "✓" : "✗"} L:${day2.lunch ? "✓" : "✗"} D:${day2.dinner ? "✓" : "✗"}${day2.guestCount > 0 ? ` +${day2.guestCount}G` : ""}`
+                                        ? `B:${day2.breakfast ? "✓" : "✗"} L:${day2.lunch ? "✓" : "✗"} D:${day2.dinner ? "✓" : "✗"}${hasGuest ? ` +${guestsToday}G` : ""}`
                                         : t("ui.noRecord")
                                 }
                                 onClick={() => {

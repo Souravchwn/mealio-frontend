@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   })
   if (!member) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
   if (member.emailVerifiedAt) return NextResponse.json({ ok: true, already_verified: true })
+  if (!member.email) return NextResponse.json({ detail: 'There is no email on this account.' }, { status: 400 })
 
   let body: { locale?: unknown } = {}
   try {

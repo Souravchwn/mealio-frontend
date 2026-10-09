@@ -223,7 +223,7 @@ const spec = {
     '/meals/guest': {
       post: {
         tags: ['Meals'],
-        summary: 'Update the guest count for a meal log',
+        summary: 'Set the guests of one meal (lunch only, dinner only, or both)',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -231,9 +231,11 @@ const spec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['log_id', 'guest_count'],
+                required: ['slot', 'guest_count'],
                 properties: {
-                  log_id: { type: 'string', format: 'uuid' },
+                  member_id: { type: 'string', format: 'uuid' },
+                  date: { type: 'string', format: 'date' },
+                  slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner'] },
                   guest_count: { type: 'integer', minimum: 0 },
                 },
               },

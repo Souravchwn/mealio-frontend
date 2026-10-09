@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import styles from "./MessSwitcher.module.css";
@@ -22,7 +21,6 @@ export function MessSwitcher() {
     const t = useTranslations("messSwitcher");
     const { user, token, login } = useAuth();
     const router = useRouter();
-    const locale = useLocale();
 
     const [messes, setMesses] = useState<MessItem[]>([]);
     const [open, setOpen] = useState(false);
@@ -45,8 +43,8 @@ export function MessSwitcher() {
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
-    // Only render for ADMIN (always) or if 2+ messes
-    if (user?.role !== "ADMIN" && messes.length < 2) return null;
+    // Only useful when the person belongs to more than one mess
+    if (messes.length < 2) return null;
 
     const current = messes.find((m) => m.isCurrent);
 
@@ -93,15 +91,6 @@ export function MessSwitcher() {
                             {m.name}
                         </button>
                     ))}
-                    {user?.role === "ADMIN" && (
-                        <button
-                            className={`${styles.dropdownItem} ${styles.dropdownItemCreate}`}
-                            onClick={() => { setOpen(false); router.push(`/${locale}/mess/create`); }}
-                        >
-                            <Plus size={14} />
-                            {t("createNew")}
-                        </button>
-                    )}
                 </div>
             )}
         </div>
