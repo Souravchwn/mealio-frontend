@@ -5,8 +5,8 @@
 
 export const BOT_COMMANDS: Array<[string, string]> = [
   ['start', 'Welcome message and command list'],
-  ['link', 'Link your Mealio account: /link CODE from web Settings'],
-  ['mealio', '[Admin] Activate me in this group: just send /mealio'],
+  ['link', 'Link your Mealtill account: /link CODE from web Settings'],
+  ['mealtill', '[Admin] Activate me in this group: just send /mealtill'],
   ['status', "Today's meal status"],
   ['meal', 'Toggle meals: /meal on|off|breakfast|lunch|dinner|guest N'],
   ['rate', 'Current meal rate for this period'],
@@ -134,8 +134,8 @@ export async function connectWebhook(): Promise<{ ok: true } | { ok: false; deta
   if (!set.ok) return { ok: false, detail: set.description ?? 'Telegram refused the webhook' }
   const cmds = await tg('setMyCommands', { commands: BOT_COMMANDS.map(([command, description]) => ({ command, description })) })
   if (!cmds.ok) return { ok: false, detail: cmds.description ?? 'Webhook set, but the command menu was refused' }
-  // A "Mealio" button next to the message box in every private chat with the bot
-  const menu = await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Mealio', web_app: { url: expectedMiniAppUrl() } } })
+  // A "Mealtill" button next to the message box in every private chat with the bot
+  const menu = await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Mealtill', web_app: { url: expectedMiniAppUrl() } } })
   if (!menu.ok) return { ok: false, detail: menu.description ?? 'Webhook set, but the menu button was refused' }
   return { ok: true }
 }

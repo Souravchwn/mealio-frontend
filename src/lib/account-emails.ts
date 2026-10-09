@@ -34,26 +34,48 @@ export async function sendVerificationEmail(memberId: string, email: string, nam
     const url = `${appUrl()}/${locale}/verify-email?token=${raw}`
     await sendEmail(
       email,
-      'Confirm your email for Mealio',
-      `Hi ${name}, confirm your email for Mealio: ${url}`,
-      emailHtml(`Hi ${name}`, 'Tap the button to confirm this is your email address.', 'Confirm email', url),
+      'Confirm your email for Mealtill',
+      `Hi ${name},\n\nWelcome to Mealtill. Confirm this is your email address so you can reset your password yourself if you ever forget it:\n${url}\n\nThe link works for 3 days.`,
+      emailHtml(
+        `Welcome, ${name}`,
+        'Confirm this is your email address. Then you can reset your password yourself if you ever forget it.',
+        'Confirm my email',
+        url,
+        { note: 'The link works for 3 days.' },
+      ),
     )
   } catch (err) {
     console.error('[account-emails] verification failed', err)
   }
 }
 
-/** Email a password reset link. Returns false when email is not configured. */
+/**
+ * Email a password reset: a one-time code (typed on the reset page with the email) and a link.
+ * Both work for 1 hour; using either one cancels the other (see /api/auth/reset).
+ * Returns false when email is not configured.
+ */
 export async function sendResetEmail(memberId: string, email: string, name: string, locale: 'en' | 'bn' = 'en'): Promise<boolean> {
   if (!isEmailEnabled()) return false
   const raw = randomToken()
   await storeToken(memberId, 'RESET', raw, RESET_LINK_TTL_MS, 'SELF')
+  // The code is a second live RESET token next to the link, so it is created without cancelling the link
+  const code = randomCode(8)
+  await prisma.authToken.create({
+    data: { memberId, purpose: 'RESET', tokenHash: sha256(code), expiresAt: new Date(Date.now() + RESET_LINK_TTL_MS), issuedBy: 'SELF' },
+  })
   const url = `${appUrl()}/${locale}/reset-password?token=${raw}`
+  const shown = `${code.slice(0, 4)}-${code.slice(4)}`
   return sendEmail(
     email,
-    'Reset your Mealio password',
-    `Hi ${name}, reset your Mealio password here (valid for 1 hour): ${url}`,
-    emailHtml(`Hi ${name}`, 'Tap the button to choose a new password. The link works for 1 hour.', 'Reset password', url),
+    `${shown} is your Mealtill reset code`,
+    `Hi ${name},\n\nYour code to reset your Mealtill password: ${shown}\n\nType it on the reset page with your email, or open this link:\n${url}\n\nThe code and the link work for 1 hour. If you did not ask for this, ignore this email; your password stays the same.`,
+    emailHtml(
+      'Reset your password',
+      `Hi ${name}, here is your one-time code. Type it on the reset page together with your email, or tap the button.`,
+      'Choose a new password',
+      url,
+      { code: shown, note: 'The code and the link work for 1 hour. If you did not ask for this, ignore this email; your password stays the same.' },
+    ),
   )
 }
 
@@ -93,13 +115,14 @@ export async function issueInvite(memberId: string, issuedBy: string, locale: 'e
 export async function sendInviteEmail(email: string, name: string, messName: string, url: string): Promise<boolean> {
   return sendEmail(
     email,
-    `You are in ${messName} on Mealio`,
-    `Hi ${name}, ${messName} keeps its meals and money on Mealio. Join to see your meals and balance: ${url}`,
+    `You are in ${messName} on Mealtill`,
+    `Hi ${name},\n\n${messName} keeps its meals and money on Mealtill, and you are already on the list. Join to see your meals and balance, and set your own meal times:\n${url}\n\nThis personal link works once, for 14 days.`,
     emailHtml(
-      `Hi ${name}`,
-      `${messName} keeps its meals and money on Mealio. Tap the button to see your meals and balance, and set your own meal times.`,
+      `You are in ${messName}`,
+      `Hi ${name}, ${messName} keeps its meals and money on Mealtill, and you are already on the list.\n\nJoin to see your meals and balance any time, turn meals on or off, and set your own meal times.`,
       'See my meals',
       url,
+      { note: 'This personal link works once, for 14 days. Do not forward it: whoever opens it can join as you.' },
     ),
   )
 }

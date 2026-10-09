@@ -76,7 +76,7 @@ export class CommandDispatcher {
 
 /**
  * Extracts the command word from a message.
- * Handles bot-suffixed commands (e.g. /start@MealioBot → /start).
+ * Handles bot-suffixed commands (e.g. /start@MealtillBot → /start).
  * Returns null for non-command messages.
  */
 function parseCommand(text: string): string | null {

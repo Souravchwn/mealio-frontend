@@ -87,7 +87,7 @@ export default function LandingPage() {
                 <div className={styles.navInner}>
                     <Link href={isAuthenticated ? appHref : `/${locale}`} className={styles.logo}>
                         <Mark />
-                        <span className={styles.wordmark}>mealio</span>
+                        <span className={styles.wordmark}>mealtill</span>
                     </Link>
                     <div className={styles.navActions}>
                         <span className={styles.navPrefs}>
@@ -124,7 +124,7 @@ export default function LandingPage() {
                     </div>
                 </div>
 
-                {/* A member's month, the way Mealio actually keeps it */}
+                {/* A member's month, the way Mealtill actually keeps it */}
                 <figure className={styles.ledger} aria-hidden>
                     <div className={styles.ledgerHead}>
                         <span className={styles.ledgerMonth}>{monthName}</span>
@@ -259,7 +259,7 @@ export default function LandingPage() {
                 <div className={styles.footerInner}>
                     <span className={styles.logo}>
                         <Mark size={24} />
-                        <span className={styles.wordmark}>mealio</span>
+                        <span className={styles.wordmark}>mealtill</span>
                     </span>
                     <nav className={styles.footerLinks} aria-label={t("footer.nav")}>
                         <a href="#features">{t("footer.features")}</a>

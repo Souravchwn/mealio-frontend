@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(JSON.stringify(data, null, 2), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Content-Disposition': `attachment; filename="mealio-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
+        'Content-Disposition': `attachment; filename="mealtill-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
         'Cache-Control': 'no-store',
       },
     })

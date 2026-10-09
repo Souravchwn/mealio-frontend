@@ -1,7 +1,7 @@
 /**
  * GET /api/tg/home — everything the Telegram Mini App shows, for the person who opened it. Read-only.
  *
- * Identity comes ONLY from Telegram's signed initData (header X-Telegram-Init-Data). Their Mealio
+ * Identity comes ONLY from Telegram's signed initData (header X-Telegram-Init-Data). Their Mealtill
  * account is the one linked to that Telegram id; the mess comes from that account. Nothing else in the
  * request is used. Not linked (or account inactive, mess suspended): `{ linked: false }`.
  */

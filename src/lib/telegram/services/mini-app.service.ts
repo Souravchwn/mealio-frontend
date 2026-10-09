@@ -27,7 +27,7 @@ export function miniAppLink(): string | null {
   return bot ? `https://t.me/${bot}?startapp=home` : null
 }
 
-const OPEN_TEXT = '✨ Open my Mealio'
+const OPEN_TEXT = '✨ Open my Mealtill'
 
 export class MiniAppService {
   constructor(
@@ -46,12 +46,12 @@ export class MiniAppService {
   /** Private chat: one message with a button that opens the Mini App right there. */
   async openInPrivate(chatId: number): Promise<void> {
     const b = this.button('private')
-    await this.sender.send(chatId, '🍽 *Your Mealio*\nToday\'s meals, your balance and who is eating today.', b ? [b] : undefined)
+    await this.sender.send(chatId, '🍽 *Your Mealtill*\nToday\'s meals, your balance and who is eating today.', b ? [b] : undefined)
   }
 
   /**
-   * Group: post a fresh "Open my Mealio" prompt and remove the previous one, so the chat holds at most
-   * one. `commandMessageId` (the /mealio someone typed) is removed too when the bot is allowed to.
+   * Group: post a fresh "Open my Mealtill" prompt and remove the previous one, so the chat holds at most
+   * one. `commandMessageId` (the /mealtill someone typed) is removed too when the bot is allowed to.
    */
   async promptInGroup(chatId: number, commandMessageId?: number): Promise<void> {
     if (commandMessageId) await this.sender.deleteMessage(chatId, commandMessageId)
@@ -61,7 +61,7 @@ export class MiniAppService {
     const b = this.button('group')
     const sent = await this.sender.send(
       chatId,
-      '🍽 *Mealio* · tap below to see your meals, your balance and who is eating today. Only you will see it.',
+      '🍽 *Mealtill* · tap below to see your meals, your balance and who is eating today. Only you will see it.',
       b ? [b] : undefined,
       { silent: true },
     )
@@ -80,7 +80,7 @@ export class MiniAppService {
       const b = this.button('group')
       welcomeId = await this.sender.send(
         chatId,
-        `✅ *Mealio is on for ${messName}!*\n\nTap the button any time to see *your* meals, *your* balance and who is eating today. It opens just for you, nobody else sees it.\n\nTip: make me an admin so I can pin this and keep the chat tidy.`,
+        `✅ *Mealtill is on for ${messName}!*\n\nTap the button any time to see *your* meals, *your* balance and who is eating today. It opens just for you, nobody else sees it.\n\nTip: make me an admin so I can pin this and keep the chat tidy.`,
         b ? [b] : undefined,
       )
       if (!welcomeId) return

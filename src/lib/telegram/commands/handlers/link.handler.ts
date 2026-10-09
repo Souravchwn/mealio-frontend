@@ -18,7 +18,7 @@ export class LinkCommandHandler implements CommandHandler {
     if (!code) {
       await this.sender.sendMessage(
         ctx.chatId,
-        `🔗 *Link your account*\n\n1. Open the Mealio web app → *Settings → Telegram*\n2. Tap *Get link code*\n3. Send it here: \`/link ABCD2345\`\n\n_Send the code in a private chat with the bot._`,
+        `🔗 *Link your account*\n\n1. Open the Mealtill web app → *Settings → Telegram*\n2. Tap *Get link code*\n3. Send it here: \`/link ABCD2345\`\n\n_Send the code in a private chat with the bot._`,
       )
       return
     }

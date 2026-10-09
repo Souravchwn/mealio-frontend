@@ -132,7 +132,7 @@ export default function MembersPage() {
         const text = t("personalShareText", { name: member.name, mess: messName });
         try {
             if (navigator.share) {
-                await navigator.share({ title: "Mealio", text, url });
+                await navigator.share({ title: "Mealtill", text, url });
                 return;
             }
         } catch {
@@ -277,7 +277,7 @@ export default function MembersPage() {
         const text = t("shareText", { mess: messName });
         try {
             if (navigator.share) {
-                await navigator.share({ title: "Mealio", text, url });
+                await navigator.share({ title: "Mealtill", text, url });
                 return;
             }
         } catch {

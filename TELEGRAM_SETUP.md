@@ -1,4 +1,4 @@
-# Mealio Telegram Bot — Complete Setup Guide
+# Mealtill Telegram Bot — Complete Setup Guide
 
 ## The short version (read this first)
 
@@ -7,9 +7,9 @@
    @BotFather: Bot Settings, Configure Mini App, paste `https://<site>/en/tg` (the console shows it).
    Local testing: `npm run telegram:setup -- https://your-tunnel-address`.
 3. Every member links their Telegram once: website, Settings, My Telegram, **Open in Telegram**.
-4. The admin adds the bot to the house group. **It sets itself up** and pins an "Open my Mealio" button.
+4. The admin adds the bot to the house group. **It sets itself up** and pins an "Open my Mealtill" button.
    Make it a group admin so it can pin and keep the chat tidy.
-5. Anyone, any time: `/mealio` in the group (or the pinned button) opens their own Mealio, only for them.
+5. Anyone, any time: `/mealtill` in the group (or the pinned button) opens their own Mealtill, only for them.
 
 How it works: `context/18-telegram-mini-app.md`. Verify with `npm run test:telegram`.
 
@@ -35,7 +35,7 @@ How it works: `context/18-telegram-mini-app.md`. Verify with `npm run test:teleg
 1. Open Telegram and search for **@BotFather**
 2. Send `/newbot`
 3. Follow the prompts:
-   - **Name** — e.g. `Mealio`
+   - **Name** — e.g. `Mealtill`
    - **Username** — must end in `bot`, e.g. `mealio_yourname_bot`
 4. BotFather replies with your **bot token**:
    ```
@@ -46,7 +46,7 @@ How it works: `context/18-telegram-mini-app.md`. Verify with `npm run test:teleg
    Send `/setcommands` to BotFather, select your bot, then paste:
    ```
    start - Welcome message & command list
-   link - Link your Mealio account (/link CODE from web Settings)
+   link - Link your Mealtill account (/link CODE from web Settings)
    status - Today's meal status
    meal - Toggle meals (/meal on|off|breakfast|lunch|dinner|guest N)
    rate - Current meal rate for this month
@@ -115,11 +115,11 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/deleteWebhook"
 
 ## 4. Link Your Account
 
-Every Mealio member who wants to use the bot must link once.
+Every Mealtill member who wants to use the bot must link once.
 
 1. Find your bot on Telegram (search by its username)
 2. Send `/start`
-3. In the Mealio web app open **Settings → My Telegram** and tap **Get link code**.
+3. In the Mealtill web app open **Settings → My Telegram** and tap **Get link code**.
 4. Send the code to the bot in a private chat:
    ```
    /link ABCD2345
@@ -172,7 +172,7 @@ Every Mealio member who wants to use the bot must link once.
 
 ## 6. How the Default-Driven Meal System Works
 
-Mealio is designed so members **never need to interact daily** unless their plans differ from their norm.
+Mealtill is designed so members **never need to interact daily** unless their plans differ from their norm.
 
 ### Automatic daily log generation
 
@@ -403,7 +403,7 @@ The bot processes the command and attempts to reply (the reply will fail silentl
 ## 11. Troubleshooting
 
 ### "No account found with phone number"
-- Phone must be stored in the member's Mealio profile (Members page in dashboard)
+- Phone must be stored in the member's Mealtill profile (Members page in dashboard)
 - Must include country code: `+8801...` not `01...`
 - Member must have `isActive = true`
 

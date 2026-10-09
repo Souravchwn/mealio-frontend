@@ -44,7 +44,10 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | `en` or `bn` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | `false` in production |
 | `PLATFORM_JWT_SECRET` | Optional separate secret for /console sessions (falls back to `JWT_SECRET`) |
-| `RESEND_API_KEY` / `EMAIL_FROM` | Optional email (reset links, verification). Without them, resets use admin or console codes |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Email via Resend (wins when set). Reset codes, invites, verification |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` | Email via SMTP (Gmail app password) while Resend is not set. Without any email, resets use admin or console codes. Mail is never sent to reserved test domains (`.invalid`, `.test`, ...) |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Accepted instead of `UPSTASH_REDIS_REST_*` (Vercel's Upstash integration) |
+| `DATABASE_URL_UNPOOLED` | Accepted instead of `DIRECT_URL` for the Prisma CLI (Vercel's Neon integration) |
 
 ## Database
 
@@ -481,7 +484,7 @@ A mess is created only at sign-up (`POST /api/auth/register`, mode `create`). Th
 | DTOs | `src/lib/telegram/dto/` |
 | Infra | `src/lib/telegram/infrastructure/` |
 
-**Bot commands:** `/mealio` (opens the personal Mini App; connects the group when a linked admin sends it), `/link <code>`, `/start <code>` (one-tap link), `/linkgroup <code>` (older fallback), `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
+**Bot commands:** `/mealtill` (opens the personal Mini App; connects the group when a linked admin sends it), `/link <code>`, `/start <code>` (one-tap link), `/linkgroup <code>` (older fallback), `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
 
 **Account linking:** the member gets a one-time code in web Settings → My Telegram (`POST /api/members/telegram-link`) and sends `/link <code>` to the bot. Phone-number linking was removed (anyone knowing a phone number could take over the account).
 

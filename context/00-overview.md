@@ -1,4 +1,4 @@
-# Mealio — Context Overview
+# Mealtill — Context Overview
 
 This directory contains per-module context files. When working on any module, read the relevant file here FIRST, then cross-reference CLAUDE.md for conventions.
 

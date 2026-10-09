@@ -147,7 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span className={styles.brandMark}>
                         <Utensils size={18} />
                     </span>
-                    <span className={styles.brandText}>Mealio</span>
+                    <span className={styles.brandText}>Mealtill</span>
                 </Link>
 
                 <nav className={styles.sidebarNav}>
@@ -181,7 +181,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* ── Main column ─────────────────────────────────────────────── */}
             <div className={styles.main}>
                 <header className={styles.topbar}>
-                    <Link href={nav.overview.href} className={styles.topbarBrand} aria-label="Mealio">
+                    <Link href={nav.overview.href} className={styles.topbarBrand} aria-label="Mealtill">
                         <span className={styles.brandMark}>
                             <Utensils size={16} />
                         </span>

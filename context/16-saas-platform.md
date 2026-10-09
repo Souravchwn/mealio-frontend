@@ -1,6 +1,6 @@
 # Module 16: SaaS platform (sign-up, recovery, support, console)
 
-Mealio is open to the public: anyone can start a mess, and people join one with an invite code.
+Mealtill is open to the public: anyone can start a mess, and people join one with an invite code.
 This module covers everything that makes that safe to run: account lifecycle, abuse limits,
 support, monitoring and the staff console at `/console`.
 
@@ -114,7 +114,7 @@ and `Cache-Control: no-store` on `/api/*`.
 ## Session flow
 
 - `/login` and `/register` send signed-in people to the app (register keeps the form open only when the URL carries someone else's invite `?code=`).
-- The landing page and every brand link outside the app (support, privacy, terms, auth screens) turn into "Open Mealio" and lead to `/overview` when signed in.
+- The landing page and every brand link outside the app (support, privacy, terms, auth screens) turn into "Open Mealtill" and lead to `/overview` when signed in.
 - The dashboard guard sends signed-out visitors to `/login?next=<page>`; login returns them there (only same-language paths are accepted).
 - `api.ts` fires `mealio:session-rejected` when the server answers 401 to a request that carried a member token (not for `/api/platform` or `/api/auth/*`). `AuthContext` then clears the session and leaves a flag so the login page explains "You were signed out".
 - Languages: `routing.ts` lists `en` and `bn`; both resolve under `/en/...` and `/bn/...`. Keep the two message files on identical keys.

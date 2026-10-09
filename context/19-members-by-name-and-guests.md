@@ -1,6 +1,6 @@
 # Module 19: Members by name, invites, default meals, guests per meal
 
-Most mess members never sign up. Mealio works like the notebook or Excel sheet they already use:
+Most mess members never sign up. Mealtill works like the notebook or Excel sheet they already use:
 the admin types names, meals count from defaults, and people join later if they want to.
 
 ## Members by name (`POST /api/members`, ADMIN)

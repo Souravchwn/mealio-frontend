@@ -36,7 +36,7 @@ export default function ConsoleTelegramPage() {
               { ok: s.appUrlPublic, label: "Public https address", note: s.appUrlPublic ? s.appUrl : "NEXT_PUBLIC_APP_URL must be your public https address. Telegram cannot call localhost." },
               { ok: s.connected, label: "Webhook connected", note: s.connected ? s.webhookUrl ?? "" : s.webhookUrl ? `Points somewhere else: ${s.webhookUrl}` : "Not connected yet." },
               { ok: s.connected && s.hearsGroupAdds, label: "Sets itself up in groups", note: s.hearsGroupAdds ? "The bot hears when it is added to a group." : "Press Connect (again) so Telegram also sends group join events." },
-              { ok: s.menuButtonSet, label: "Menu button opens the Mini App", note: s.menuButtonSet ? "Private chats show a Mealio button." : "Set by Connect." },
+              { ok: s.menuButtonSet, label: "Menu button opens the Mini App", note: s.menuButtonSet ? "Private chats show a Mealtill button." : "Set by Connect." },
               { ok: s.hasMiniApp, label: "Mini App set in @BotFather", note: s.hasMiniApp ? "The group button can open the Mini App." : `Once, in @BotFather: Bot Settings, Configure Mini App, and paste ${s.miniAppUrl}` },
           ]
         : [];

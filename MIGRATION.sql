@@ -440,7 +440,7 @@ ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS mess_id UUID;
 -- ============================================================
 -- 24. Telegram Mini App prompts in the group
 -- ============================================================
--- Remember the bot's latest "Open my Mealio" reply (deleted on the next /mealio) and the pinned one.
+-- Remember the bot's latest "Open my Mealtill" reply (deleted on the next /mealio) and the pinned one.
 ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS last_prompt_message_id INTEGER;
 ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS pinned_message_id INTEGER;
 

@@ -1,7 +1,8 @@
 /**
  * redis.ts — Server-only Upstash Redis client.
  *
- * Reads UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN. When they are not
+ * Reads UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN, or KV_REST_API_URL / KV_REST_API_TOKEN
+ * (the names the Upstash integration on Vercel sets). When they are not
  * set (local dev), `getRedis()` returns null and callers fall back to Postgres
  * or in-memory behaviour. Every helper here swallows Redis errors so a Redis
  * outage degrades to "slower", never to "broken".
@@ -14,8 +15,9 @@ let _warned = false
 
 export function getRedis(): Redis | null {
   if (_redis !== undefined) return _redis
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  // The Upstash integration on Vercel names them KV_REST_API_URL / KV_REST_API_TOKEN
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
   if (!url || !token) {
     if (!_warned && process.env.NODE_ENV === 'production') {
       console.warn('[redis] UPSTASH_REDIS_REST_URL/TOKEN not set, falling back to Postgres for settings')

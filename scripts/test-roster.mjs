@@ -218,6 +218,27 @@ try {
   status('the admin calls a no-cook day', await api('/api/admin/no-cook', { method: 'POST', token: tAdmin, body: { action: 'off', date: today } }), 200)
   r = await api('/api/meals/today', { token: tAlice })
   check('nobody eats, guests included', r.json?.guest_count === 0 && !r.json?.lunch && !r.json?.dinner, JSON.stringify(r.json?.guests))
+
+  // ── Password reset email: a code and a link, one use between them ──
+  {
+    const { createHash } = await import('node:crypto')
+    const sha = (v) => createHash('sha256').update(v).digest('hex')
+    const link = randomBytes(32).toString('base64url')
+    const code = 'K7QXM2PD'
+    const exp = new Date(Date.now() + 3600_000)
+    await prisma.authToken.createMany({
+      data: [
+        { memberId: A.alice.id, purpose: 'RESET', tokenHash: sha(link), expiresAt: exp },
+        { memberId: A.alice.id, purpose: 'RESET', tokenHash: sha(code), expiresAt: exp },
+      ],
+    })
+    status('a wrong reset code fails', await api('/api/auth/reset', { method: 'POST', body: { email: A.alice.email, code: 'AAAA-BBBB', password: `${PASSWORD}-new` } }), 400)
+    status('the emailed code resets the password (dash and case do not matter)', await api('/api/auth/reset', { method: 'POST', body: { email: A.alice.email, code: 'k7qx-m2pd', password: `${PASSWORD}-new` } }), 200)
+    check('Alice signs in with the new password', !!(await login(A.alice.email, `${PASSWORD}-new`)))
+    status('the code works only once', await api('/api/auth/reset', { method: 'POST', body: { email: A.alice.email, code, password: `${PASSWORD}-x` } }), 400)
+    status('the old session is signed out after the reset', await api('/api/meals/today', { token: tAlice }), 401)
+    status('using the code cancels the emailed link', await api('/api/auth/reset', { method: 'POST', body: { token: link, password: `${PASSWORD}-y` } }), 400)
+  }
 } catch (err) {
   console.error(err)
   failures++

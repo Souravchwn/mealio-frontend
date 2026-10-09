@@ -110,7 +110,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const taken = await prisma.member.findUnique({ where: { email: normEmail }, select: { id: true } })
     if (taken) {
       return NextResponse.json(
-        { detail: 'This email already has a Mealio account. Use another email address.', code: 'EMAIL_TAKEN' },
+        { detail: 'This email already has a Mealtill account. Use another email address.', code: 'EMAIL_TAKEN' },
         { status: 400 },
       )
     }

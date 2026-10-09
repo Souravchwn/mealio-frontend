@@ -208,7 +208,7 @@ export const api = {
             }),
     },
 
-    /** Telegram Mini App. Identity is Telegram's signed initData, not a Mealio token. */
+    /** Telegram Mini App. Identity is Telegram's signed initData, not a Mealtill token. */
     tg: {
         home: (initData: string) =>
             fetcher<TgHome>("/api/tg/home", { method: "GET", headers: { "X-Telegram-Init-Data": initData } }),

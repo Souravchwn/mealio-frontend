@@ -28,7 +28,7 @@ export class StartCommandHandler implements CommandHandler {
 
     await this.sender.sendMessage(
       ctx.chatId,
-      `*Welcome to Mealio!* 🍽\n\n*Link your account once:* in the Mealio website open *Settings → My Telegram* and tap *Open in Telegram*.\n\n*Then any time:* send \`/mealio\` (here or in your house group) to see your meals, your balance and who is eating today.\n\n*Admin:* add me to your house group. I set myself up.\n\n*More commands*\n• \`/status\`, \`/meal on|off\`, \`/meal guest N\`, \`/rate\`, \`/balance\`\n• Admin: \`/nomeal\`, \`/mealon\`, \`/announce <msg>\``,
+      `*Welcome to Mealtill!* 🍽\n\n*Link your account once:* in the Mealtill website open *Settings → My Telegram* and tap *Open in Telegram*.\n\n*Then any time:* send \`/mealtill\` (here or in your house group) to see your meals, your balance and who is eating today.\n\n*Admin:* add me to your house group. I set myself up.\n\n*More commands*\n• \`/status\`, \`/meal on|off\`, \`/meal guest N\`, \`/rate\`, \`/balance\`\n• Admin: \`/nomeal\`, \`/mealon\`, \`/announce <msg>\``,
     )
   }
 }
