@@ -42,3 +42,6 @@ next-env.d.ts
 
 # real mess data and generated logins (never commit)
 /scripts/data/*.local.*
+
+# production env template is committed; the filled-in file never is
+!.env.production.example

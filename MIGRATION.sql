@@ -429,3 +429,17 @@ ALTER TABLE bazaar_memos ENABLE ROW LEVEL SECURITY;
 -- bazaar credit, ...) can never rewrite a closed month. Periods closed before this
 -- column existed are snapshotted the first time they are read.
 ALTER TABLE mess_months ADD COLUMN IF NOT EXISTS snapshot JSONB;
+
+-- ============================================================
+-- 23. Telegram group link codes
+-- ============================================================
+-- /linkgroup CODE in the house group links it to a mess without anyone hunting for a chat id.
+ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'MEMBER';
+ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS mess_id UUID;
+
+-- ============================================================
+-- 24. Telegram Mini App prompts in the group
+-- ============================================================
+-- Remember the bot's latest "Open my Mealio" reply (deleted on the next /mealio) and the pinned one.
+ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS last_prompt_message_id INTEGER;
+ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS pinned_message_id INTEGER;

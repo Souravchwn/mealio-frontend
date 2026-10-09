@@ -13,7 +13,9 @@
     "import:sheet": "node --env-file=.env.local scripts/import-mess-sheet.mjs",
     "reconcile:sheet": "node scripts/reconcile-sheet.mjs",
     "test:closed": "node --env-file=.env.local scripts/test-closed-month.mjs",
-    "telegram:setup": "node --env-file=.env.local scripts/telegram-setup.mjs"
+    "telegram:setup": "node --env-file=.env.local scripts/telegram-setup.mjs",
+    "env:production": "node scripts/make-production-env.mjs",
+    "test:telegram": "node --env-file=.env.local scripts/test-telegram-link.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

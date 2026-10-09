@@ -27,7 +27,23 @@ export class GroupRepository {
     return { id: group.id, chatId: group.chatId, messId: group.messId, timezone: group.timezone }
   }
 
+  /** The bot left or was removed: stop using this chat. Forget its message ids too. */
   async deactivate(chatId: string): Promise<void> {
-    await prisma.telegramGroup.updateMany({ where: { chatId }, data: { isActive: false } })
+    await prisma.telegramGroup.updateMany({
+      where: { chatId },
+      data: { isActive: false, lastPromptMessageId: null, pinnedMessageId: null },
+    })
+  }
+
+  async getMessageIds(chatId: string): Promise<{ lastPromptMessageId: number | null; pinnedMessageId: number | null } | null> {
+    return prisma.telegramGroup.findUnique({ where: { chatId }, select: { lastPromptMessageId: true, pinnedMessageId: true } })
+  }
+
+  async setLastPrompt(chatId: string, messageId: number | null): Promise<void> {
+    await prisma.telegramGroup.updateMany({ where: { chatId }, data: { lastPromptMessageId: messageId } })
+  }
+
+  async setPinned(chatId: string, messageId: number | null): Promise<void> {
+    await prisma.telegramGroup.updateMany({ where: { chatId }, data: { pinnedMessageId: messageId } })
   }
 }

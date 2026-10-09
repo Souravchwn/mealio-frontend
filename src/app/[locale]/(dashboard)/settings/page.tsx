@@ -78,6 +78,9 @@ export default function SettingsPage() {
 
     // ── Telegram group ───────────────────────────────────────────────────────────
     const [linkedGroup, setLinkedGroup] = useState<{ chatId: string; chatName: string } | null>(null);
+    // The easy way to link a group: the admin sends /linkgroup CODE inside it
+    const [groupCode, setGroupCode] = useState<{ code: string; botUsername: string | null; adminTelegramLinked: boolean } | null>(null);
+    const [gettingGroupCode, setGettingGroupCode] = useState(false);
     const [tgChatId, setTgChatId] = useState("");
     const [tgChatName, setTgChatName] = useState("");
     const [tgTimezone, setTgTimezone] = useState("");
@@ -356,6 +359,39 @@ export default function SettingsPage() {
         setTimeout(() => setCopied(false), 2000);
     }
 
+    async function getGroupCode() {
+        if (!token) return;
+        setGettingGroupCode(true);
+        try {
+            const res = await api.admin.telegramGroupCode(token);
+            setGroupCode({ code: res.code, botUsername: res.botUsername, adminTelegramLinked: res.adminTelegramLinked });
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("errors.linkGroup"));
+        } finally {
+            setGettingGroupCode(false);
+        }
+    }
+
+    // While the group is not connected, notice when it gets connected from Telegram (for 3 minutes)
+    useEffect(() => {
+        if (!token || !isAdmin || linkedGroup || activeTab !== "mess") return;
+        let tries = 0;
+        const id = setInterval(() => {
+            if (++tries > 36) return clearInterval(id);
+            api.admin
+                .getTelegramGroup(token)
+                .then((g) => {
+                    if (g.isLinked) {
+                        setLinkedGroup({ chatId: g.chatId ?? "", chatName: g.chatName ?? "" });
+                        setGroupCode(null);
+                        toast.success(t("telegramGroup.linkedFromTelegram"));
+                    }
+                })
+                .catch(() => {});
+        }, 4000);
+        return () => clearInterval(id);
+    }, [token, isAdmin, linkedGroup, activeTab, t]);
+
     // ── Link Telegram group ───────────────────────────────────────────────────
     async function handleLinkTelegram(e: React.FormEvent) {
         e.preventDefault();
@@ -371,8 +407,7 @@ export default function SettingsPage() {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.detail || t("errors.linkGroup"));
             }
-            const data = await res.json();
-            setLinkedGroup(data.group);
+            setLinkedGroup({ chatId: tgChatId.trim(), chatName: tgChatName.trim() });
             toast.success(t("telegramGroup.linked"));
         } catch (err) {
             toast.error(err instanceof Error ? err.message : t("errors.linkGroup"));
@@ -494,6 +529,16 @@ export default function SettingsPage() {
 
                         {tgLinkCode && (
                             <div className={styles.linkCodeBox}>
+                                {tgBotUsername && (
+                                    <a
+                                        className={styles.openTgBtn}
+                                        href={`https://t.me/${tgBotUsername}?start=${tgLinkCode.code}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <Send size={16} /> {t("telegramAccount.openInTelegram")}
+                                    </a>
+                                )}
                                 <span className={styles.inviteCodeText}>/link {tgLinkCode.code}</span>
                                 <p className={styles.helpText}>
                                     {t("telegramAccount.instructions", {
@@ -758,6 +803,40 @@ export default function SettingsPage() {
                                 <p className={styles.helpText}>{t("telegramGroup.description")}</p>
                             </div>
 
+                            <ol className={styles.steps}>
+                                <li>
+                                    {t("telegramGroup.easy1")}
+                                    {tgAccountLinked && <span className={styles.doneTick}> <Check size={14} /></span>}
+                                </li>
+                                <li>{t("telegramGroup.easy2", { bot: tgBotUsername ? `@${tgBotUsername}` : t("telegramGroup.theBot") })}</li>
+                                <li>{t("telegramGroup.easy3")}</li>
+                            </ol>
+                            {!linkedGroup && <p className={styles.helpText}>{t("telegramGroup.watching")}</p>}
+
+                            <details className={styles.advanced}>
+                            <summary>{t("telegramGroup.advanced")}</summary>
+                            <p className={styles.helpText}>{t("telegramGroup.codeWay")}</p>
+                            <div className={styles.stepAction}>
+                                <Button type="button" variant="secondary" size="small" onClick={() => void getGroupCode()} disabled={gettingGroupCode}>
+                                    {gettingGroupCode ? t("saving") : groupCode ? t("telegramGroup.newCode") : t("telegramGroup.getCode")}
+                                </Button>
+                            </div>
+                            {groupCode && (
+                                <div className={styles.groupCodeBox}>
+                                    <code className={styles.groupCode}>/linkgroup {groupCode.code}</code>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="small"
+                                        onClick={() => void navigator.clipboard.writeText(`/linkgroup ${groupCode.code}`).then(() => toast.success(t("inviteCard.copied")))}
+                                    >
+                                        <Copy size={14} /> {t("inviteCard.copy")}
+                                    </Button>
+                                </div>
+                            )}
+                            {groupCode && !groupCode.adminTelegramLinked && (
+                                <p className={styles.warnText}>{t("telegramGroup.needOwnLink")}</p>
+                            )}
                             <form className={styles.form} onSubmit={handleLinkTelegram}>
                                 <div className={styles.field}>
                                     <label className={styles.label}>{t("telegramGroup.chatId")}</label>
@@ -798,6 +877,7 @@ export default function SettingsPage() {
                                     </Button>
                                 </div>
                             </form>
+                            </details>
                         </Card>
                     )}
 

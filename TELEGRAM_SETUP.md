@@ -1,5 +1,20 @@
 # Mealio Telegram Bot — Complete Setup Guide
 
+## The short version (read this first)
+
+1. Create the bot with **@BotFather** (`/newbot`) and put the token in `TELEGRAM_BOT_TOKEN`.
+2. Deployed site: sign in to `/en/console`, open **Telegram**, press **Connect the bot**. Then, once, in
+   @BotFather: Bot Settings, Configure Mini App, paste `https://<site>/en/tg` (the console shows it).
+   Local testing: `npm run telegram:setup -- https://your-tunnel-address`.
+3. Every member links their Telegram once: website, Settings, My Telegram, **Open in Telegram**.
+4. The admin adds the bot to the house group. **It sets itself up** and pins an "Open my Mealio" button.
+   Make it a group admin so it can pin and keep the chat tidy.
+5. Anyone, any time: `/mealio` in the group (or the pinned button) opens their own Mealio, only for them.
+
+How it works: `context/18-telegram-mini-app.md`. Verify with `npm run test:telegram`.
+
+---
+
 ## Table of Contents
 1. [Create the Bot](#1-create-the-bot)
 2. [Configure Environment Variables](#2-configure-environment-variables)

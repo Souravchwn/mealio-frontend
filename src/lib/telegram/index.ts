@@ -24,9 +24,12 @@ import { MealService } from './services/meal.service'
 import { NoMealService } from './services/nomeal.service'
 import { AnnounceService } from './services/announce.service'
 import { ReportService } from './services/report.service'
+import { MiniAppService } from './services/mini-app.service'
+import { GroupPresenceService } from './services/group-presence.service'
 
 import { StartCommandHandler } from './commands/handlers/start.handler'
 import { LinkCommandHandler } from './commands/handlers/link.handler'
+import { LinkGroupCommandHandler } from './commands/handlers/linkgroup.handler'
 import { MealCommandHandler } from './commands/handlers/meal.handler'
 import { StatusCommandHandler } from './commands/handlers/status.handler'
 import { NoMealCommandHandler, MealOnCommandHandler } from './commands/handlers/nomeal.handler'
@@ -54,10 +57,12 @@ function buildDispatcher(): CommandDispatcher {
   const noMealService = new NoMealService(mealRepo, memberRepo, prefRepo, sender)
   const announceService = new AnnounceService(memberRepo, sender)
   const reportService = new ReportService()
+  const miniApp = new MiniAppService(sender, groupRepo)
 
   const handlers = [
-    new StartCommandHandler(sender),
+    new StartCommandHandler(sender, linkingService, miniApp),
     new LinkCommandHandler(linkingService, sender),
+    new LinkGroupCommandHandler(otpRepo, sender, miniApp),
     new MealCommandHandler(mealService, mealConfigRepo, prefRepo, sender),
     new StatusCommandHandler(mealService, sender),
     new NoMealCommandHandler(noMealService, sender),
@@ -78,7 +83,27 @@ function getDispatcher(): CommandDispatcher {
 
 // ── Public API (called by the webhook route) ─────────────────────────────────
 
+let _presence: GroupPresenceService | null = null
+function getPresence(): GroupPresenceService {
+  if (!_presence) {
+    const sender = getTelegramSender()
+    _presence = new GroupPresenceService(sender, memberRepo, groupRepo, new MiniAppService(sender, groupRepo))
+  }
+  return _presence
+}
+
 export async function handleWebhookUpdate(update: TelegramUpdate): Promise<void> {
+  // The bot itself was added, removed or promoted: set the group up (or stop using it) on its own
+  if (update.my_chat_member) {
+    if (!(await getIdempotencyGuard().markProcessed(update.update_id))) return
+    try {
+      await getPresence().handle(update.my_chat_member)
+    } catch (err) {
+      console.error(`[Telegram] my_chat_member ${update.update_id} failed:`, err)
+    }
+    return
+  }
+
   const message = update.message
   if (!message?.from) return
 

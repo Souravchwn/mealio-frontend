@@ -15,6 +15,9 @@ npm run seed -- --yes   # Seed demo data (dev DB only — public passwords)
 npm run platform-admin -- --email you@x.com --name "Name"   # Create/reset a /console staff admin
 npm run test:isolation  # Tenant isolation test (needs npm run dev running)
 npm run test:closed     # Closed-month integrity test (needs npm run dev running)
+npm run test:telegram   # /link and /linkgroup abuse tests (needs npm run dev running)
+npm run telegram:setup -- https://public-url   # Connect the bot locally; in production use /console, Telegram
+npm run env:production  # Create .env.deploy.local with fresh secrets (see DEPLOY.md)
 npm run import:sheet -- scripts/data/<file>.local.json   # Load a mess's real sheet (local DB only)
 npm run reconcile:sheet -- scripts/data/<file>.local.json # Compare the site with that sheet
 npx prisma generate   # Regenerate Prisma client after schema changes
@@ -487,7 +490,7 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 | DTOs | `src/lib/telegram/dto/` |
 | Infra | `src/lib/telegram/infrastructure/` |
 
-**Bot commands:** `/link <code>`, `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
+**Bot commands:** `/mealio` (opens the personal Mini App; connects the group when a linked admin sends it), `/link <code>`, `/start <code>` (one-tap link), `/linkgroup <code>` (older fallback), `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
 
 **Account linking:** the member gets a one-time code in web Settings → My Telegram (`POST /api/members/telegram-link`) and sends `/link <code>` to the bot. Phone-number linking was removed (anyone knowing a phone number could take over the account).
 
@@ -495,6 +498,8 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 - Before `lunchCutoffTime` (default 10:00) → targets LUNCH
 - After `lunchCutoffTime`, before `cutOffTime` (default 21:00) → targets DINNER
 - After `cutOffTime` → command rejected
+
+**Self-setup:** when a linked admin adds the bot to a group it connects itself (`my_chat_member`, `services/group-presence.service.ts`). The **Mini App** (`/[locale]/tg`, `GET /api/tg/home`) is read-only and identifies people only by Telegram's signed `initData` (`webapp-auth.ts`). Today's meals and headcount logic live in `src/lib/today.ts`, shared with `/api/meals/today` and `/api/cook/headcount`. Full reference: `context/18-telegram-mini-app.md`.
 
 See `TELEGRAM_SETUP.md` for full documentation.
 

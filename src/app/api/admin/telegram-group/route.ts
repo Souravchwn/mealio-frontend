@@ -8,11 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
-import { groupRepo } from '@/lib/telegram'
+import { linkGroupToMess } from '@/lib/telegram/services/group-link.service'
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_TIMEZONE } from '@/lib/constants'
-import { isValidTimezone, refreshMessSettings } from '@/lib/mess-settings'
-import { createAudit } from '@/lib/audit'
+import { isValidTimezone } from '@/lib/mess-settings'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -56,27 +55,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // A chat already linked to another mess must not be silently taken over
-    const existing = await prisma.telegramGroup.findUnique({ where: { chatId }, select: { messId: true, isActive: true } })
-    if (existing && existing.isActive && existing.messId !== payload.messId) {
+    const result = await linkGroupToMess({ chatId, chatName, messId: payload.messId, actorId: payload.sub, timezone })
+    if (!result.ok) {
       return NextResponse.json({ detail: 'This Telegram group is already linked to another mess' }, { status: 409 })
     }
-
-    // One active group per mess
-    await prisma.telegramGroup.updateMany({
-      where: { messId: payload.messId, isActive: true, chatId: { not: chatId } },
-      data: { isActive: false },
-    })
-    const group = await groupRepo.register(chatId, chatName, payload.messId, timezone)
-    await createAudit({
-      messId: payload.messId,
-      actorId: payload.sub,
-      action: 'ADMIN_SETTINGS_UPDATE',
-      targetTable: 'telegram_groups',
-      newValue: { chat_id: chatId, chat_name: chatName, timezone },
-    })
-    await refreshMessSettings(payload.messId)
-    return NextResponse.json({ ok: true, group })
+    return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[POST /api/admin/telegram-group]', err)
     return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })

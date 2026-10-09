@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
-import { Building2, Gauge, LifeBuoy, LogOut, ScrollText, ShieldAlert, Users, Utensils } from "lucide-react";
+import { Building2, Gauge, LifeBuoy, LogOut, ScrollText, Send, ShieldAlert, Users, Utensils } from "lucide-react";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { useConsoleAuth, useConsoleGuard } from "./ConsoleAuth";
@@ -17,6 +17,7 @@ const NAV = [
     { href: "/support", label: "Support", icon: LifeBuoy },
     { href: "/security", label: "Security", icon: ShieldAlert },
     { href: "/audit", label: "Audit", icon: ScrollText },
+    { href: "/telegram", label: "Telegram", icon: Send },
 ];
 
 /** Console chrome: sidebar on desktop, scrollable tab strip on phones. Staff only, English only. */

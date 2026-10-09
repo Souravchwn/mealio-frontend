@@ -1,0 +1,340 @@
+/*
+ * Telegram Mini App. Colours come from the person's Telegram theme (Telegram injects --tg-theme-*),
+ * with Mealio's violet and lime as accents. Falls back to Mealio tokens outside Telegram.
+ */
+.app {
+    --bg: var(--tg-theme-secondary-bg-color, var(--color-bg));
+    --surface: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, var(--color-bg-card)));
+    --text: var(--tg-theme-text-color, var(--color-text));
+    --hint: var(--tg-theme-hint-color, var(--color-text-muted));
+    --line: color-mix(in srgb, var(--hint) 22%, transparent);
+
+    min-height: 100dvh;
+    padding: var(--space-4) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
+    background: var(--bg);
+    color: var(--text);
+    overscroll-behavior-y: contain;
+}
+
+.pull {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--color-primary);
+    transition: height 160ms ease-out;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-1) var(--space-1);
+}
+
+.kicker {
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-primary);
+}
+
+.title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.small {
+    font-size: var(--text-xs);
+    color: var(--hint);
+}
+
+.hint {
+    color: var(--hint);
+}
+
+.centerText {
+    text-align: center;
+}
+
+.iconBtn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.spinning svg {
+    animation: tg-spin 0.8s linear infinite;
+}
+
+@keyframes tg-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-2xl);
+    background: var(--surface);
+}
+
+.cardHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.cardLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--hint);
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+/* Money */
+.moneyCard {
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+}
+
+.moneyCard .cardLabel,
+.moneyCard .small,
+.moneyCard .balanceNote {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ahead {
+    background: linear-gradient(135deg, #059669 0%, #10b981 55%, #84cc16 100%);
+}
+
+.behind {
+    background: var(--gradient-brand);
+}
+
+.balance {
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 11vw, 3rem);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.balanceNote {
+    margin-top: -6px;
+    font-weight: 700;
+}
+
+.statRow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.statRow span {
+    display: block;
+    font-size: 0.6875rem;
+    opacity: 0.85;
+}
+
+.statRow b {
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Today's meals */
+.mealRow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+}
+
+.meal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-3) var(--space-2);
+    border-radius: var(--radius-xl);
+    text-align: center;
+}
+
+.mealName {
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+.meal b {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+}
+
+.mealOn {
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+}
+
+.mealOff {
+    background: var(--line);
+    color: var(--hint);
+}
+
+/* Who is eating */
+.segment {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--radius-full);
+    background: var(--line);
+}
+
+.segBtn {
+    min-height: 40px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--hint);
+}
+
+.segBtn span {
+    margin-left: 4px;
+    font-family: var(--font-display);
+}
+
+.segBtn[aria-selected="true"] {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.headcount b {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+}
+
+.people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.people li {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    background: var(--line);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.people em {
+    font-style: normal;
+    font-weight: 800;
+    color: var(--color-primary);
+}
+
+/* Footer link */
+.linkOut {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    font-weight: 700;
+    color: var(--tg-theme-link-color, var(--color-primary));
+}
+
+/* States */
+.center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    max-width: 360px;
+    margin: 18vh auto 0;
+    text-align: center;
+}
+
+.bigEmoji {
+    font-size: 3rem;
+}
+
+.primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 52px;
+    border-radius: var(--radius-full);
+    background: var(--tg-theme-button-color, var(--color-primary));
+    color: var(--tg-theme-button-text-color, #fff);
+    font-weight: 700;
+}
+
+.skeleton {
+    border-radius: var(--radius-2xl);
+    background: var(--surface);
+    animation: tg-pulse 1.2s ease-in-out infinite;
+}
+
+.skHead {
+    height: 72px;
+}
+
+.skCard {
+    height: 180px;
+}
+
+@keyframes tg-pulse {
+    50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinning svg,
+    .skeleton {
+        animation: none;
+    }
+}

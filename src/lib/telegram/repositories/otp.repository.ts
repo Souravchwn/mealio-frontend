@@ -31,8 +31,8 @@ export class OtpRepository {
     const expiresAt = new Date(Date.now() + TELEGRAM_LINK_CODE_TTL_MINUTES * 60 * 1000)
 
     await prisma.$transaction([
-      prisma.telegramOtp.updateMany({ where: { memberId, used: false }, data: { used: true } }),
-      prisma.telegramOtp.create({ data: { memberId, otp: code, expiresAt } }),
+      prisma.telegramOtp.updateMany({ where: { memberId, used: false, purpose: 'MEMBER' }, data: { used: true } }),
+      prisma.telegramOtp.create({ data: { memberId, otp: code, expiresAt, purpose: 'MEMBER' } }),
     ])
 
     return { code, expiresAt }
@@ -44,7 +44,7 @@ export class OtpRepository {
     if (code.length !== CODE_LENGTH) return null
 
     const row = await prisma.telegramOtp.findFirst({
-      where: { otp: code, used: false, memberId: { not: null }, expiresAt: { gt: new Date() } },
+      where: { otp: code, used: false, purpose: 'MEMBER', memberId: { not: null }, expiresAt: { gt: new Date() } },
       select: { id: true, memberId: true },
     })
     if (!row?.memberId) return null
@@ -55,5 +55,31 @@ export class OtpRepository {
       data: { used: true, telegramId: String(telegramId) },
     })
     return claimed.count === 1 ? row.memberId : null
+  }
+
+  /** Issue a code an ADMIN sends in the house group as `/linkgroup <code>`. */
+  async createGroupCode(adminId: string, messId: string): Promise<{ code: string; expiresAt: Date }> {
+    const code = generateCode()
+    const expiresAt = new Date(Date.now() + TELEGRAM_LINK_CODE_TTL_MINUTES * 60 * 1000)
+
+    await prisma.$transaction([
+      prisma.telegramOtp.updateMany({ where: { memberId: adminId, used: false, purpose: 'GROUP' }, data: { used: true } }),
+      prisma.telegramOtp.create({ data: { memberId: adminId, messId, otp: code, expiresAt, purpose: 'GROUP' } }),
+    ])
+    return { code, expiresAt }
+  }
+
+  /**
+   * Atomically use a group code, but only for the admin and mess it was issued to.
+   * Anyone else trying it gets "invalid" and the code stays usable for its owner.
+   */
+  async consumeGroupCode(rawCode: string, adminId: string, messId: string): Promise<boolean> {
+    const code = normalizeLinkCode(rawCode)
+    if (code.length !== CODE_LENGTH) return false
+    const claimed = await prisma.telegramOtp.updateMany({
+      where: { otp: code, used: false, purpose: 'GROUP', memberId: adminId, messId, expiresAt: { gt: new Date() } },
+      data: { used: true },
+    })
+    return claimed.count === 1
   }
 }

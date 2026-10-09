@@ -22,9 +22,27 @@ export interface TelegramMessage {
   date: number
 }
 
+export type TelegramMemberStatus = 'creator' | 'administrator' | 'member' | 'restricted' | 'left' | 'kicked'
+
+export interface TelegramChatMember {
+  status: TelegramMemberStatus
+  user: TelegramUser
+}
+
+/** The bot itself was added to, removed from, or promoted in a chat (`my_chat_member` update). */
+export interface TelegramChatMemberUpdated {
+  chat: TelegramChat
+  /** Who did it */
+  from: TelegramUser
+  date: number
+  old_chat_member: TelegramChatMember
+  new_chat_member: TelegramChatMember
+}
+
 export interface TelegramUpdate {
   update_id: number
   message?: TelegramMessage
+  my_chat_member?: TelegramChatMemberUpdated
 }
 
 // ─── Application Enums ──────────────────────────────────────────────────────
@@ -45,6 +63,8 @@ export enum UserRole {
 export enum CommandType {
   START = '/start',
   LINK = '/link',
+  LINKGROUP = '/linkgroup',
+  MEALIO = '/mealio',
   STATUS = '/status',
   MEAL = '/meal',
   NOMEAL = '/nomeal',

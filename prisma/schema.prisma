@@ -294,6 +294,10 @@ model TelegramGroup {
   messId    String   @map("mess_id") @db.Uuid
   timezone  String   @default("Asia/Dhaka")
   isActive  Boolean  @default(true) @map("is_active")
+  /// The bot's latest "Open my Mealio" reply, deleted when the next /mealio comes in (keeps the chat tidy)
+  lastPromptMessageId Int? @map("last_prompt_message_id")
+  /// The pinned "Open my Mealio" message, so it is pinned only once
+  pinnedMessageId     Int? @map("pinned_message_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
@@ -311,6 +315,10 @@ model TelegramOtp {
   otp        String
   expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
   used       Boolean  @default(false)
+  /// MEMBER = /link (links a person to their account), GROUP = /linkgroup (links a Telegram group to a mess)
+  purpose    String   @default("MEMBER")
+  /// For GROUP codes: the mess the code was issued for
+  messId     String?  @map("mess_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([telegramId], map: "idx_telegram_otps_uid")

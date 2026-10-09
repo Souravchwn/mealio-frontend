@@ -752,7 +752,18 @@
             "linking": "Linking...",
             "linked": "Linked",
             "unlinked": "No group linked yet",
-            "chatNamePlaceholder": "e.g. Bashundhara Mess Group"
+            "chatNamePlaceholder": "e.g. Bashundhara Mess Group",
+            "theBot": "the Mealio bot",
+            "getCode": "Get group code",
+            "newCode": "New code",
+            "needOwnLink": "First link your own Telegram under General, My Telegram. The bot only accepts this from a linked admin.",
+            "linkedFromTelegram": "Group linked from Telegram",
+            "advanced": "Enter the Telegram chat id by hand instead",
+            "easy1": "Link your own Telegram first (General tab, My Telegram).",
+            "easy2": "Add {bot} to your house group. It sets itself up and pins an \"Open my Mealio\" button.",
+            "easy3": "Did not start? Send /mealio in the group. Make the bot a group admin so it can pin and keep the chat tidy.",
+            "watching": "This page updates by itself when the group is connected.",
+            "codeWay": "Other ways: a one-time code, or the chat id by hand."
         },
         "dangerDesc": "Permanently deletes the mess and all associated data. This cannot be undone.",
         "monthStart": {
@@ -799,7 +810,8 @@
             "unlinkFailed": "Failed to unlink Telegram",
             "codeFailed": "Failed to create a link code",
             "theBot": "the Mealio bot",
-            "instructions": "Send this message to {bot} in a private chat. The code works once and expires at {time}."
+            "instructions": "Send this message to {bot} in a private chat. The code works once and expires at {time}.",
+            "openInTelegram": "Open in Telegram"
         },
         "weekend": {
             "title": "Weekend days",
@@ -1111,5 +1123,45 @@
         "recordedBy": "recorded by {name}",
         "voided": "Cancelled before closing: {reason}",
         "daysNote": "Meals each member had on each day. A small +n is the number of guest meals that day."
+    },
+    "tg": {
+        "error": "Could not load. Pull down to try again.",
+        "tryAgain": "Try again",
+        "outsideTitle": "Open this in Telegram",
+        "outsideBody": "This page is the Mealio Mini App. Send /mealio to the Mealio bot or tap the button in your house group.",
+        "unlinkedTitle": "Hi {name}!",
+        "unlinkedBody": "Link your Telegram to your Mealio account once. It takes one tap on the Mealio website: Settings, My Telegram, Open in Telegram.",
+        "linkButton": "Link my Telegram",
+        "unlinkedAfter": "Then come back here and pull down to refresh.",
+        "hi": "Hi {name} 👋",
+        "period": "Billing period {from} – {to}",
+        "refresh": "Refresh",
+        "myBalance": "My balance",
+        "getBack": "You get this back",
+        "owe": "You owe this to the mess",
+        "meals": "Meals",
+        "paid": "Paid",
+        "rate": "Meal rate",
+        "carriedIn": "Includes {amount} carried in from last month",
+        "myToday": "My meals today",
+        "locks": "{meal} locks {time}",
+        "inHoursMinutes": "in {h}h {m}m",
+        "inMinutes": "in {m}m",
+        "slot": {
+            "breakfast": "Breakfast",
+            "lunch": "Lunch",
+            "dinner": "Dinner"
+        },
+        "on": "ON",
+        "off": "OFF",
+        "guests": "{n, plural, one {You have # guest today} other {You have # guests today}}",
+        "changeHint": "To change, use /meal in a private chat with the bot or the Mealio website.",
+        "whoEats": "Who is eating today",
+        "plates": "plates",
+        "guestPlates": "{n} for guests",
+        "locksAt": "locks at {time}",
+        "nobody": "Nobody is eating this meal today.",
+        "openFull": "Open full Mealio",
+        "readOnly": "Only you can see this. Nothing here can change your meals or money."
     }
 }
