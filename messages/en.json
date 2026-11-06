@@ -25,159 +25,123 @@
         "nav": {
             "signIn": "Sign in"
         },
-        "openApp": "Open Mealtill",
         "hero": {
-            "kicker": "You make the rules. Mealtill does the math.",
-            "title": "Your mess, your rules.",
-            "titleHighlight": "On autopilot.",
-            "subtitle": "Set your own meal times, cutoffs, guest rules and how the money works. Mealtill follows them every day: meals count themselves, the meal rate updates after every bazaar, and everyone can see where they stand. You stay in control. Mealtill just does the work.",
+            "badge": "Made for mess life in Bangladesh",
+            "title": "Your mess,",
+            "titleHighlight": "on autopilot.",
+            "subtitle": "Meals count themselves every day. Bazaar and deposits turn into a live meal rate. Everyone sees their balance, and nobody does the math in a group chat again.",
             "cta": "Start for free",
-            "ctaSecondary": "See a day in the mess"
-        },
-        "ledger": {
-            "name": "Your meals",
-            "meals": "{count} meals so far",
-            "rate": "Meal rate",
-            "perMeal": "per meal",
-            "balance": "You get back",
-            "ate": "Ate",
-            "skipped": "Skipped",
-            "guest": "Guest",
-            "sticker": "Lunch is on"
-        },
-        "ticker": [
-            "Breakfast is on",
-            "14 meals tonight",
-            "Meal rate ৳62.40",
-            "Arif is off for lunch",
-            "Bazaar added ৳1,850",
-            "2 guests for dinner",
-            "September closed and locked",
-            "৳3,000 deposit received"
-        ],
-        "day": {
-            "title": "A day in the mess",
-            "subtitle": "No notebook, no spreadsheet, no arguments. Here is what happens instead.",
-            "items": {
-                "morning": {
-                    "time": "7:00 am",
-                    "title": "Meals turn on by themselves",
-                    "text": "Everyone's usual meals are counted from their defaults. Nobody has to open the app."
-                },
-                "skip": {
-                    "time": "9:40 am",
-                    "title": "Arif is off for lunch",
-                    "text": "One tap on the phone, or /meal off in the Telegram group, before the 10:00 cutoff."
-                },
-                "cook": {
-                    "time": "12:30 pm",
-                    "title": "The cook knows: 14 meals",
-                    "text": "The count changes the moment anyone changes a meal, guests included."
-                },
-                "bazaar": {
-                    "time": "6:15 pm",
-                    "title": "The bazaar goes in",
-                    "text": "The manager adds the shopping. The meal rate and every balance update straight away."
-                },
-                "close": {
-                    "time": "Month end",
-                    "title": "The month closes and locks",
-                    "text": "Balances carry forward. The closed month moves to the archive, where every member can check it."
-                }
-            }
+            "ctaSecondary": "See how it works"
         },
         "features": {
-            "title": "What it does",
-            "subtitle": "Everything a mess needs, from the first name on the list to the month-end settlement.",
-            "rules": {
-                "title": "Your rules, not ours",
-                "description": "Weekend days, how guests are billed, whether balances carry forward, when the month starts. Every mess runs differently, so you decide and Mealtill follows."
-            },
+            "title": "Everything your mess needs",
+            "subtitle": "From daily meal toggles to monthly settlements, all in one place.",
             "mealToggle": {
                 "title": "Meals count themselves",
-                "description": "Every day starts from those usual meals, even if nobody opens the app. Skip a meal with one tap before its cutoff."
+                "description": "Your defaults are counted every day without anyone logging in. Skip a meal or add a guest with one tap, before the cutoff."
             },
             "expense": {
-                "title": "Bazaar, trip by trip",
-                "description": "Log each shopping trip item by item, or snap a photo of the memo and enter the total. The meal rate updates at once."
-            },
-            "matrix": {
-                "title": "The whole month on one page",
-                "description": "Every member and every day in one grid. Fix a day, see totals and balances, and close the month when it ends."
-            },
-            "telegram": {
-                "title": "Right inside Telegram",
-                "description": "Type /mealtill in your mess group and your own Mealtill opens: today’s meals, your money and who is eating. Only you see it."
-            },
-            "finance": {
-                "title": "Every change has a name on it",
-                "description": "Deposits, bazaar and meal costs always add up. When an admin or manager changes someone’s meal or guests, the audit log shows who did it and when."
-            },
-            "cutoffs": {
-                "title": "A cutoff for every meal",
-                "description": "Set breakfast, lunch and dinner to lock at their own times, or switch a meal off for the whole mess. After the cutoff the count is final, so the cook can start."
-            },
-            "preferences": {
-                "title": "Everyone’s usual meals",
-                "description": "Each person sets the meals they normally eat, separately for weekdays and weekends. The admin sets a mess default, and can set it for anyone who never signs in."
-            },
-            "guests": {
-                "title": "Guests, meal by meal",
-                "description": "A guest for lunch only, dinner only, or both. Each meal has its own count and its own cutoff, and the host pays or the mess shares, as you choose."
-            },
-            "names": {
-                "title": "Start with just names",
-                "description": "Add the members the way you would write them in a notebook. Nobody has to sign up. Send each one a personal link later and they see their own numbers."
+                "title": "Bazaar tracking",
+                "description": "Log every bazaar trip by category, like protein, vegetables and spices. The meal rate updates live, so everyone knows exactly what they owe."
             },
             "headcount": {
-                "title": "A clear count for the cook",
-                "description": "The cook sees how many plates to make for each meal, guests included, with names. Less guessing, less waste."
+                "title": "Live cook view",
+                "description": "The cook sees how many people are eating each meal, guests included. Less guessing, less waste."
             },
-            "archive": {
-                "title": "Closed months, open to all",
-                "description": "When a month closes it is frozen and moved to the archive. Every member can check every figure, any time. Nothing can be quietly changed."
+            "matrix": {
+                "title": "Month matrix",
+                "description": "Every member and every day on one screen, with totals, balances and month closing built in."
+            },
+            "finance": {
+                "title": "Every taka is traceable",
+                "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
+            },
+            "telegram": {
+                "title": "Telegram bot",
+                "description": "Turn meals on or off, check the rate and your balance right from Telegram."
             }
         },
         "roles": {
-            "title": "One mess, four views",
+            "title": "Built for everyone in your mess",
             "member": {
                 "title": "Members",
-                "description": "Turn meals on or off, add guests and check your balance from your phone."
+                "description": "Toggle meals, add guests and check your balance, all from your phone."
             },
             "manager": {
                 "title": "Meal manager",
-                "description": "Adds the bazaar, and turns anyone’s meals or guests on or off when they ask. Every change is logged."
+                "description": "Log daily bazaar expenses and track the live meal rate effortlessly."
             },
             "admin": {
                 "title": "Admin",
-                "description": "Adds members by name, sets the mess rules and cutoffs, fixes days in the matrix and closes the month."
+                "description": "Full control over the month matrix, settlements, members and the audit trail."
             },
             "cook": {
                 "title": "Cook",
-                "description": "One number that matters: how many meals to make today."
+                "description": "One big number: today's headcount. No clutter, just clarity."
             }
         },
-        "rolesExtra": {
-            "subtitle": "Everyone sees the number that matters to them.",
-            "member": "your balance",
-            "manager": "today's meal rate",
-            "admin": "members × days",
-            "cook": "meals tonight"
-        },
         "cta": {
-            "title": "Ready to make it easy?",
-            "subtitle": "Set up your mess in a few minutes. Free while we grow.",
+            "title": "Ready to fix your mess?",
+            "subtitle": "Set it up in a few minutes. Free while we grow.",
             "button": "Create your mess"
         },
         "footer": {
             "features": "Features",
             "roles": "Who it's for",
             "getStarted": "Get started",
-            "copyright": "© 2026 Mealtill",
+            "copyright": "© {year} Mealtill. All rights reserved.",
             "nav": "Footer",
             "support": "Support",
             "privacy": "Privacy",
             "terms": "Terms"
+        },
+        "facts": {
+            "taps": {
+                "value": "0",
+                "label": "taps needed on a normal day"
+            },
+            "auto": {
+                "value": "Live",
+                "label": "meal rate after every bazaar"
+            },
+            "lang": {
+                "value": "EN · বাং",
+                "label": "English and Bangla"
+            }
+        },
+        "steps": {
+            "title": "How it works",
+            "one": {
+                "title": "Create your mess",
+                "description": "Set meal times and share the invite link with your mess mates."
+            },
+            "two": {
+                "title": "Set your defaults once",
+                "description": "Choose which meals you usually eat on weekdays and weekends. Mealtill counts them every day."
+            },
+            "three": {
+                "title": "Log the bazaar",
+                "description": "The manager adds each shopping trip. The meal rate and everyone's balance update on their own."
+            }
+        },
+        "openApp": "Open Mealtill",
+        "ledger": {
+            "label": "Sample month",
+            "title": "This month's khata",
+            "bazaar": "Bazaar spent",
+            "bazaarValue": "৳18,600",
+            "meals": "Meals eaten",
+            "mealsValue": "620",
+            "rate": "Meal rate",
+            "rateValue": "৳30.00",
+            "member": "Sohel",
+            "memberMeals": "52 meals × ৳30",
+            "memberCost": "৳1,560",
+            "deposited": "Deposited",
+            "depositedValue": "৳2,800",
+            "balance": "Ahead by",
+            "balanceValue": "+৳1,240",
+            "note": "Worked out the moment the bazaar is logged."
         }
     },
     "auth": {
