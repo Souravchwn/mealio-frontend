@@ -735,6 +735,17 @@
     color: var(--color-text-secondary);
 }
 
+/* 44px-tall tap areas on phones; the row gap shrinks so the footer keeps its rhythm */
+.footerLinks {
+    row-gap: 0;
+}
+
+.footerLinks a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
 .footerLinks a:hover {
     color: var(--color-primary);
 }

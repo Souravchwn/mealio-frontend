@@ -1163,5 +1163,10 @@
         "nobody": "Nobody is eating this meal today.",
         "openFull": "Open full Mealio",
         "readOnly": "Only you can see this. Nothing here can change your meals or money."
+    },
+    "meta": {
+        "homeTitle": "Mealio | Smart mess management",
+        "description": "Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.",
+        "supportTitle": "Support"
     }
 }

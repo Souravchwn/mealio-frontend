@@ -52,10 +52,26 @@ const telegramAppHeaders = [
     ...commonHeaders,
 ];
 
+/**
+ * Pages that must never appear in search results: the signed-in app, sign-in flows, the staff
+ * console, the Telegram Mini App and private support threads. Only the landing page, /support,
+ * /privacy and /terms are indexable (src/lib/seo.ts, src/app/sitemap.ts).
+ */
+const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+const privatePages = [
+    "login", "register", "forgot-password", "reset-password", "verify-email",
+    "overview", "meals", "expenses", "headcount", "my-summary", "matrix", "members",
+    "audit", "settings", "mess", "archive", "console", "tg",
+].join("|");
+
 const nextConfig: NextConfig = {
     poweredByHeader: false,
     async headers() {
         return [
+            { source: `/:locale(en|bn)/:page(${privatePages})/:rest*`, headers: noindex },
+            { source: "/:locale(en|bn)/support/:id", headers: noindex },
+            { source: "/api-docs", headers: noindex },
+            { source: "/api/:path*", headers: noindex },
             // Every page except the Mini App keeps the strict rules
             { source: "/", headers: securityHeaders },
             { source: "/:path((?!en/tg$|bn/tg$).*)", headers: securityHeaders },
