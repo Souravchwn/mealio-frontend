@@ -8,7 +8,7 @@ import { getMessSettings } from '@/lib/mess-settings'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 /**
- *  /mealio              Anyone, anywhere: opens their own Mealio Mini App.
+ *  /mealio              Anyone, anywhere: opens their own Manager Babu Mini App.
  *                       In a group that is not connected yet, a linked ADMIN sending it connects the group.
  *  /linkgroup <code>    Older way to connect a group with a code from the website. Still works.
  */
@@ -56,8 +56,8 @@ export class LinkGroupCommandHandler implements CommandHandler {
     await this.sender.sendMessage(
       ctx.chatId,
       ctx.member
-        ? '🔒 This group is not connected to Mealio yet. Ask your mess *admin* to send `/mealio` here.'
-        : '👋 This group is not connected to Mealio yet. Your mess *admin* can connect it by sending `/mealio` here (after linking their Telegram in the Mealio website).',
+        ? '🔒 This group is not connected to Manager Babu yet. Ask your mess *admin* to send `/mealio` here.'
+        : '👋 This group is not connected to Manager Babu yet. Your mess *admin* can connect it by sending `/mealio` here (after linking their Telegram in the Manager Babu website).',
     )
   }
 

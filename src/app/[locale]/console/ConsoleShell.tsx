@@ -46,7 +46,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
                 <Link href={base} className={styles.brand}>
                     <span className={styles.brandMark}><Utensils size={18} /></span>
                     <span>
-                        Mealio
+                        Manager Babu
                         <small>Console</small>
                     </span>
                 </Link>

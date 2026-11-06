@@ -294,9 +294,9 @@ model TelegramGroup {
   messId    String   @map("mess_id") @db.Uuid
   timezone  String   @default("Asia/Dhaka")
   isActive  Boolean  @default(true) @map("is_active")
-  /// The bot's latest "Open my Mealio" reply, deleted when the next /mealio comes in (keeps the chat tidy)
+  /// The bot's latest "Open Manager Babu" reply, deleted when the next /mealio comes in (keeps the chat tidy)
   lastPromptMessageId Int? @map("last_prompt_message_id")
-  /// The pinned "Open my Mealio" message, so it is pinned only once
+  /// The pinned "Open Manager Babu" message, so it is pinned only once
   pinnedMessageId     Int? @map("pinned_message_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

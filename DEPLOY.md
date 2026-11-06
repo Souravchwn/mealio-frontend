@@ -1,4 +1,4 @@
-# Deploying Mealio
+# Deploying Manager Babu
 
 A checklist from empty to live. Takes about 30 minutes the first time.
 
@@ -47,8 +47,8 @@ Then sign in at `https://your-domain/en/console`.
 1. Create the bot with @BotFather and put the token in `TELEGRAM_BOT_TOKEN` (use a separate bot for local testing).
 2. Sign in to the console, open **Telegram**, press **Connect the bot**. The page shows a checklist of what is still missing.
 3. Once in @BotFather: Bot Settings, Configure Mini App, paste the URL the console shows (`https://your-domain/en/tg`).
-4. Members link their Telegram once (Settings, My Telegram, **Open in Telegram**). The admin adds the bot to the house group: it sets itself up and pins an "Open my Mealio" button. Make the bot a group admin so it can pin and tidy up.
-5. Anyone sends `/mealio` in the group to open their own Mealio inside Telegram.
+4. Members link their Telegram once (Settings, My Telegram, **Open in Telegram**). The admin adds the bot to the house group: it sets itself up and pins an "Open Manager Babu" button. Make the bot a group admin so it can pin and tidy up.
+5. Anyone sends `/mealio` in the group to open their own Manager Babu inside Telegram.
 
 ## 7. Before you invite people
 

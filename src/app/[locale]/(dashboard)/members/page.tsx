@@ -155,7 +155,7 @@ export default function MembersPage() {
         const text = t("shareText", { mess: messName });
         try {
             if (navigator.share) {
-                await navigator.share({ title: "Mealio", text, url });
+                await navigator.share({ title: "Manager Babu", text, url });
                 return;
             }
         } catch {

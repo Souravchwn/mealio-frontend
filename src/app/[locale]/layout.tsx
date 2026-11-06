@@ -42,6 +42,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         applicationName: appName,
         openGraph: { type: "website", siteName: appName, title: t("homeTitle"), description: t("description") },
         twitter: { card: "summary_large_image" },
+        // Google Search Console "HTML tag" method: put only the content="..." value in the env var
+        ...(process.env.GOOGLE_SITE_VERIFICATION
+            ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+            : {}),
     };
 }
 

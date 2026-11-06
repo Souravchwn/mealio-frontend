@@ -1,4 +1,4 @@
-/* Mealio Console: the platform owner's staff tool. Same tokens as the app, denser layout. */
+/* Manager Babu Console: the platform owner's staff tool. Same tokens as the app, denser layout. */
 
 .blank {
     min-height: 100dvh;
@@ -914,6 +914,7 @@ a.row:hover {
 
 .loginCard {
     width: 100%;
+    min-width: 0; /* grid items default to their content width; let it fit 320px phones */
     max-width: 400px;
     padding: var(--space-8) var(--space-6);
     border-radius: var(--radius-2xl);

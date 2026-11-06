@@ -28,7 +28,7 @@ export function publicPageMetadata(opts: {
     path: (typeof INDEXABLE_PATHS)[number];
     title: string;
     description: string;
-    /** Use the title as is, without the "| Mealio" template. */
+    /** Use the title as is, without the "| Manager Babu" template. */
     absoluteTitle?: boolean;
     siteName: string;
 }): Metadata {

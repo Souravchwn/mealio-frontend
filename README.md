@@ -1,4 +1,4 @@
-# Mealio — Smart Mess Management
+# Manager Babu — Smart Mess Management
 
 Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.
 
@@ -6,7 +6,7 @@ Automate meal tracking, expense splitting, and monthly settlements for shared li
 
 ## Table of Contents
 
-1. [What is Mealio?](#what-is-mealio)
+1. [What is Manager Babu?](#what-is-mealio)
 2. [Tech Stack](#tech-stack)
 3. [Architecture Overview](#architecture-overview)
 4. [Default-Driven Meal System](#default-driven-meal-system)
@@ -24,9 +24,9 @@ Automate meal tracking, expense splitting, and monthly settlements for shared li
 
 ---
 
-## What is Mealio?
+## What is Manager Babu?
 
-Mealio replaces the WhatsApp group chaos of "who's eating today" with a structured system:
+Manager Babu replaces the WhatsApp group chaos of "who's eating today" with a structured system:
 
 - **Members** set their default meal preferences once. The system auto-generates daily logs — no daily interaction needed unless plans change.
 - **Exception commands** (`/meal off`, `/meal on`) handle edge cases via Telegram.
@@ -87,7 +87,7 @@ There is **no separate backend server**. All business logic lives in Next.js API
 
 ## Default-Driven Meal System
 
-Mealio uses a **default-driven model** — the system works automatically; commands are exceptions.
+Manager Babu uses a **default-driven model** — the system works automatically; commands are exceptions.
 
 ### How it works
 
@@ -279,7 +279,7 @@ curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d "url=https://your-app.vercel.app/api/telegram/webhook" \
   -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
 
-# 3. Link your Mealio account in the bot:
+# 3. Link your Manager Babu account in the bot:
 /link +880XXXXXXXXXX
 /verify 123456
 ```

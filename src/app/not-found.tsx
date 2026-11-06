@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-    title: "Page not found | Mealio",
+    title: "Page not found | Manager Babu",
     robots: { index: false, follow: true },
 };
 
@@ -18,7 +18,7 @@ export default function RootNotFound() {
                     <h1>Page not found</h1>
                     <p>This page does not exist.</p>
                     <p>
-                        <Link href="/en">Go to Mealio</Link>
+                        <Link href="/en">Go to Manager Babu</Link>
                     </p>
                 </main>
             </body>

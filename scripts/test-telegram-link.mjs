@@ -167,7 +167,7 @@ try {
   check("another mess's member sees only their own mess", r.json?.mess?.name === B.mess.name)
 
   // ── The bot sets itself up when added to a group (my_chat_member) ────────────
-  const botUser = { id: 999_000_111, is_bot: true, first_name: 'Mealio' }
+  const botUser = { id: 999_000_111, is_bot: true, first_name: 'Manager Babu' }
   async function joined(fromId, chatId, oldStatus, newStatus, { type = 'supergroup', secret = SECRET } = {}) {
     await fetch(BASE + '/api/telegram/webhook', {
       method: 'POST',

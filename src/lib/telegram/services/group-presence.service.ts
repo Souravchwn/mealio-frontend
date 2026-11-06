@@ -67,7 +67,7 @@ export class GroupPresenceService {
     }
     await this.sender.sendMessage(
       chat.id,
-      '👋 Hi! I am Mealio. Your mess *admin* can switch me on by sending `/mealio` here (after linking their Telegram in the Mealio website).',
+      '👋 Hi! I am Manager Babu. Your mess *admin* can switch me on by sending `/mealio` here (after linking their Telegram in the Manager Babu website).',
     )
   }
 }
