@@ -4,8 +4,9 @@
    Violet = brand · Lime = highlight · Green/Rose = money ahead/owed only.
    ======================== */
 
-/* Google Fonts: Space Grotesk (display/numbers), Inter (body), Hind Siliguri (Bangla text), Baloo 2 (the logo). Bangla headings use Aborton, a local font (src/fonts/bangla.ts) */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Baloo+2:wght@800&display=swap');
+/* Fonts — Space Grotesk (display/numbers), Inter (body), Hind Siliguri (Bangla), Baloo 2 (the logo).
+   Bangla headings use Aborton, a local font (src/fonts/bangla.ts).
+   Self-hosted by next/font in src/app/[locale]/layout.tsx, which sets the --font-* variables used below. */
 
 /* ===== DESIGN TOKENS (light) ===== */
 :root {
@@ -70,12 +71,12 @@
     radial-gradient(45% 35% at 100% 0%, rgba(236, 72, 153, 0.07), transparent 70%);
 
   /* Typography */
-  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-display: 'Space Grotesk', 'Inter', -apple-system, sans-serif;
-  --font-bangla: 'Hind Siliguri', 'Inter', sans-serif;
-  --font-bangla-display: var(--font-bangla-face), 'Hind Siliguri', sans-serif;
+  --font-primary: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: var(--font-space-grotesk), 'Space Grotesk', 'Inter', -apple-system, sans-serif;
+  --font-bangla: var(--font-hind-siliguri), 'Hind Siliguri', sans-serif;
+  --font-bangla-display: var(--font-bangla-face), var(--font-hind-siliguri), 'Hind Siliguri', sans-serif;
   /* The Mealtill wordmark: always Baloo 2 ExtraBold, in every language */
-  --font-logo: 'Baloo 2', var(--font-display);
+  --font-logo: var(--font-baloo), 'Baloo 2', var(--font-display);
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   --text-xs: 0.75rem;
