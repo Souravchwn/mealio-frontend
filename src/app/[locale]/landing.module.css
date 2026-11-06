@@ -193,6 +193,10 @@
     padding: 48px var(--page-gutter) 64px;
 }
 
+.heroCopy {
+    min-width: 0; /* grid item: let long words wrap instead of widening the column */
+}
+
 .eyebrow {
     display: flex;
     align-items: center;
