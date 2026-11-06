@@ -15,8 +15,8 @@ function buildCsp(opts: { scripts?: string; frameAncestors: string }) {
     return [
         "default-src 'self'",
         `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${opts.scripts ? ` ${opts.scripts}` : ""}`,
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self' data:",
         "img-src 'self' data: blob:",
         `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
         `frame-ancestors ${opts.frameAncestors}`,

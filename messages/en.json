@@ -23,7 +23,7 @@
     },
     "landing": {
         "nav": {
-            "signIn": "Sign In"
+            "signIn": "Sign in"
         },
         "hero": {
             "badge": "Made for mess life in Bangladesh",
@@ -33,11 +33,6 @@
             "cta": "Start for free",
             "ctaSecondary": "See how it works"
         },
-        "stats": {
-            "messes": "Active Messes",
-            "meals": "Meals Tracked",
-            "saved": "Hours Saved Monthly"
-        },
         "features": {
             "title": "Everything your mess needs",
             "subtitle": "From daily meal toggles to monthly settlements, all in one place.",
@@ -46,7 +41,7 @@
                 "description": "Your defaults are counted every day without anyone logging in. Skip a meal or add a guest with one tap, before the cutoff."
             },
             "expense": {
-                "title": "Smart Expense Tracking",
+                "title": "Bazaar tracking",
                 "description": "Log every bazaar trip by category, like protein, vegetables and spices. The meal rate updates live, so everyone knows exactly what they owe."
             },
             "headcount": {
@@ -61,23 +56,19 @@
                 "title": "Every taka is traceable",
                 "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
             },
-            "ai": {
-                "title": "AI Insights (Coming Soon)",
-                "description": "Nutrition analysis, commodity price tracking, and predictive shopping. Your mess data becomes a goldmine for health and economic insights."
-            },
             "telegram": {
                 "title": "Telegram bot",
                 "description": "Turn meals on or off, check the rate and your balance right from Telegram."
             }
         },
         "roles": {
-            "title": "Built for Everyone in Your Mess",
+            "title": "Built for everyone in your mess",
             "member": {
                 "title": "Members",
                 "description": "Toggle meals, add guests and check your balance, all from your phone."
             },
             "manager": {
-                "title": "Meal Manager",
+                "title": "Meal manager",
                 "description": "Log daily bazaar expenses and track the live meal rate effortlessly."
             },
             "admin": {
@@ -96,9 +87,9 @@
         },
         "footer": {
             "features": "Features",
-            "roles": "Who It's For",
-            "getStarted": "Get Started",
-            "copyright": "© 2026 Manager Babu. All rights reserved.",
+            "roles": "Who it's for",
+            "getStarted": "Get started",
+            "copyright": "© {year} Manager Babu. All rights reserved.",
             "nav": "Footer",
             "support": "Support",
             "privacy": "Privacy",
@@ -118,17 +109,6 @@
                 "label": "English and Bangla"
             }
         },
-        "mock": {
-            "date": "Wed, 7 Oct",
-            "greeting": "Hey Sohel",
-            "balance": "Your balance",
-            "ahead": "You are ahead",
-            "breakfast": "Breakfast",
-            "lunch": "Lunch",
-            "dinner": "Dinner",
-            "float1": "Lunch is ON",
-            "float2": "14 eating tonight"
-        },
         "steps": {
             "title": "How it works",
             "one": {
@@ -144,7 +124,25 @@
                 "description": "The manager adds each shopping trip. The meal rate and everyone's balance update on their own."
             }
         },
-        "openApp": "Open Manager Babu"
+        "openApp": "Open Manager Babu",
+        "ledger": {
+            "label": "Sample month",
+            "title": "This month's khata",
+            "bazaar": "Bazaar spent",
+            "bazaarValue": "৳18,600",
+            "meals": "Meals eaten",
+            "mealsValue": "620",
+            "rate": "Meal rate",
+            "rateValue": "৳30.00",
+            "member": "Sohel",
+            "memberMeals": "52 meals × ৳30",
+            "memberCost": "৳1,560",
+            "deposited": "Deposited",
+            "depositedValue": "৳2,800",
+            "balance": "Ahead by",
+            "balanceValue": "+৳1,240",
+            "note": "Worked out the moment the bazaar is logged."
+        }
     },
     "auth": {
         "login": {
