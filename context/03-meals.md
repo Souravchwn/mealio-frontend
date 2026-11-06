@@ -62,8 +62,6 @@ DailyLog {
 - A meal switched off for the whole mess (`meal_configs.enabled = false`) cannot be turned on.
 - Counts must be whole numbers `0 … maxCount`; guests `0 … MAX_GUEST_COUNT` (20).
 
-The Telegram bot (`/meal`) applies the same limits — see `11-telegram-bot.md`.
-
 ---
 
 ## API: GET `/api/meals/today`

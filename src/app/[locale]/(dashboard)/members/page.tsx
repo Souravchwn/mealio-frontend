@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Share2, Send, ChevronDown, UserX, UserCheck, Phone, Search, KeyRound, Check, X, Copy } from "lucide-react";
+import { Share2, ChevronDown, UserX, UserCheck, Phone, Search, KeyRound, Check, X, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { cn, formatCurrency, getInitials, localISODate } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -16,7 +16,6 @@ interface MemberRow {
     phone: string | null;
     role: string;
     balance: number;
-    telegramLinked: boolean;
     isGuest: boolean;
     isActive: boolean;
     guestFrom: string | null;
@@ -155,7 +154,7 @@ export default function MembersPage() {
         const text = t("shareText", { mess: messName });
         try {
             if (navigator.share) {
-                await navigator.share({ title: "Mealio", text, url });
+                await navigator.share({ title: "Manager Babu", text, url });
                 return;
             }
         } catch {
@@ -196,11 +195,6 @@ export default function MembersPage() {
                     <span className={styles.memberInfo}>
                         <span className={styles.memberNameRow}>
                             <span className={styles.memberName}>{member.name}</span>
-                            {member.telegramLinked && (
-                                <span className={styles.telegramBadge} title={t("telegramLinked")}>
-                                    <Send size={10} />
-                                </span>
-                            )}
                         </span>
                         <span className={styles.memberSub}>
                             <span className={cn(styles.rolePill, styles[`role_${member.role}`])}>{t(`roles.${member.role}`)}</span>

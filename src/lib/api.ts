@@ -27,6 +27,7 @@ import type {
     ContributionRequest,
     GuestMealPolicy,
     MessSettingsResponse,
+    Announcement,
     RegisterResponse,
     SupportTicket,
 } from "@/types";
@@ -44,7 +45,6 @@ import type {
     PlatformAuditRow,
 } from "@/types/platform";
 import type { ArchivePeriodRow, ArchiveDetail } from "@/types/archive";
-import type { TgHome } from "@/types/telegram-app";
 
 // Empty base URL = relative paths (Next.js API routes)
 const API_BASE_URL = "";
@@ -201,12 +201,6 @@ export const api = {
             }),
     },
 
-    /** Telegram Mini App. Identity is Telegram's signed initData, not a Mealio token. */
-    tg: {
-        home: (initData: string) =>
-            fetcher<TgHome>("/api/tg/home", { method: "GET", headers: { "X-Telegram-Init-Data": initData } }),
-    },
-
     /** Closed months. Open to every member of the mess, read-only. */
     archive: {
         list: (token: string) => fetcher<{ periods: ArchivePeriodRow[] }>("/api/archive", { method: "GET", token }),
@@ -287,15 +281,6 @@ export const api = {
             fetcher<{ ok: boolean }>(`/api/platform/tickets/${id}`, { method: "POST", body: data, token }),
         updateTicket: (id: string, data: { status?: string; priority?: string }, token: string) =>
             fetcher<{ ok: boolean }>(`/api/platform/tickets/${id}`, { method: "PATCH", body: data, token }),
-        telegram: (token: string) =>
-            fetcher<{
-                tokenSet: boolean; secretSet: boolean; botOk: boolean; botError: string | null; botUsername: string | null;
-                botNameFromEnv: string | null; appUrl: string; appUrlPublic: boolean; expectedUrl: string;
-                webhookUrl: string | null; connected: boolean; pending: number; lastError: string | null;
-                hearsGroupAdds: boolean; miniAppUrl: string; hasMiniApp: boolean; menuButtonSet: boolean;
-            }>("/api/platform/telegram", { token }),
-        telegramAction: (action: "connect" | "disconnect", token: string) =>
-            fetcher<{ connected: boolean }>("/api/platform/telegram", { method: "POST", body: { action }, token }),
         securityEvents: (params: { type?: string; severity?: string; q?: string; page?: number }, token: string) =>
             fetcher<Paged & {
                 events: SecurityEventRow[];
@@ -473,19 +458,18 @@ export const api = {
             }),
     },
 
-    telegramLink: {
-        status: (token: string) =>
-            fetcher<{ linked: boolean; botUsername: string | null }>("/api/members/telegram-link", {
-                method: "GET",
-                token,
-            }),
-        createCode: (token: string) =>
-            fetcher<{ code: string; expiresAt: string; botUsername: string | null }>("/api/members/telegram-link", {
+    /** Broadcasts from admins and managers. Everyone can read; only Admin/Manager can send or remove. */
+    announcements: {
+        list: (token: string) =>
+            fetcher<{ announcements: Announcement[] }>("/api/announcements", { method: "GET", token }),
+        create: (message: string, token: string) =>
+            fetcher<{ ok: boolean; announcement: Announcement }>("/api/announcements", {
                 method: "POST",
+                body: { message },
                 token,
             }),
-        unlink: (token: string) =>
-            fetcher<{ ok: boolean }>("/api/members/telegram-link", { method: "DELETE", token }),
+        remove: (id: string, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/announcements/${id}`, { method: "DELETE", token }),
     },
 
     mealConfigs: {
@@ -519,7 +503,6 @@ export const api = {
                     guestMeals: number;
                     contributed: number;
                     balance: number;
-                    telegramLinked: boolean;
                     isGuest: boolean;
                     guestFrom: string | null;
                     guestUntil: string | null;
@@ -630,7 +613,7 @@ export const api = {
             data: { action: "on" | "off"; date?: string; reason?: string },
             token: string
         ) =>
-            fetcher<{ ok: boolean; membersUpdated: number; telegramNotified: number }>(
+            fetcher<{ ok: boolean; membersUpdated: number; announced: boolean }>(
                 "/api/admin/no-cook",
                 { method: "POST", body: data, token }
             ),
@@ -687,33 +670,12 @@ export const api = {
                 carryForwardBalance?: boolean;
                 weekendDays?: number[];
                 requireJoinApproval?: boolean;
+                timezone?: string;
             },
             token: string
         ) =>
             fetcher<{ ok: boolean } & MessSettingsResponse>("/api/mess/settings", {
                 method: "PUT",
-                body: data,
-                token,
-            }),
-        getTelegramGroup: (token: string) =>
-            fetcher<{
-                chatId: string | null;
-                chatName: string | null;
-                timezone: string | null;
-                isLinked: boolean;
-            }>("/api/admin/telegram-group", { method: "GET", token }),
-        /** One-time code the admin sends in the house group as /linkgroup CODE */
-        telegramGroupCode: (token: string) =>
-            fetcher<{ code: string; expiresAt: string; botUsername: string | null; adminTelegramLinked: boolean }>(
-                "/api/admin/telegram-group/code",
-                { method: "POST", token }
-            ),
-        linkTelegramGroup: (
-            data: { chatId: string; chatName?: string; timezone?: string },
-            token: string
-        ) =>
-            fetcher<{ ok: boolean }>("/api/admin/telegram-group", {
-                method: "POST",
                 body: data,
                 token,
             }),

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         where: { id: payload.sub },
         select: {
           id: true, name: true, email: true, phone: true, role: true, joinedAt: true,
-          emailVerifiedAt: true, telegramLinked: true, lastLoginAt: true,
+          emailVerifiedAt: true, lastLoginAt: true,
           mess: { select: { name: true } },
         },
       }),
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(JSON.stringify(data, null, 2), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Content-Disposition': `attachment; filename="mealio-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
+        'Content-Disposition': `attachment; filename="manager-babu-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
         'Cache-Control': 'no-store',
       },
     })
@@ -122,8 +122,6 @@ export async function DELETE(req: NextRequest) {
         email: `deleted+${me.id}@mealio.invalid`,
         phone: null,
         passwordHash: await bcrypt.hash(randomToken(), 10),
-        telegramUid: null,
-        telegramLinked: false,
         isActive: false,
         deletedAt: new Date(),
         passwordChangedAt: new Date(),

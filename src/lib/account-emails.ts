@@ -31,8 +31,8 @@ export async function sendVerificationEmail(memberId: string, email: string, nam
     const url = `${appUrl()}/${locale}/verify-email?token=${raw}`
     await sendEmail(
       email,
-      'Confirm your email for Mealio',
-      `Hi ${name}, confirm your email for Mealio: ${url}`,
+      'Confirm your email for Manager Babu',
+      `Hi ${name}, confirm your email for Manager Babu: ${url}`,
       emailHtml(`Hi ${name}`, 'Tap the button to confirm this is your email address.', 'Confirm email', url),
     )
   } catch (err) {
@@ -48,8 +48,8 @@ export async function sendResetEmail(memberId: string, email: string, name: stri
   const url = `${appUrl()}/${locale}/reset-password?token=${raw}`
   return sendEmail(
     email,
-    'Reset your Mealio password',
-    `Hi ${name}, reset your Mealio password here (valid for 1 hour): ${url}`,
+    'Reset your Manager Babu password',
+    `Hi ${name}, reset your Manager Babu password here (valid for 1 hour): ${url}`,
     emailHtml(`Hi ${name}`, 'Tap the button to choose a new password. The link works for 1 hour.', 'Reset password', url),
   )
 }

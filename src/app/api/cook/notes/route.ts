@@ -28,9 +28,9 @@ export async function GET(req: NextRequest) {
   // Resolve timezone for default date
   const mess = await prisma.mess.findUnique({
     where: { id: payload.messId },
-    select: { telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 } },
+    select: { timezone: true },
   })
-  const timezone = mess?.telegramGroups[0]?.timezone ?? DEFAULT_TIMEZONE
+  const timezone = mess?.timezone ?? DEFAULT_TIMEZONE
   const dateStr = searchParams.get('date') || todayInTimezone(timezone)
   const logDateObj = new Date(`${dateStr}T00:00:00.000Z`)
 
@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
   // Resolve date
   const mess = await prisma.mess.findUnique({
     where: { id: payload.messId },
-    select: { telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 } },
+    select: { timezone: true },
   })
-  const timezone = mess?.telegramGroups[0]?.timezone ?? DEFAULT_TIMEZONE
+  const timezone = mess?.timezone ?? DEFAULT_TIMEZONE
   const dateStr = date || todayInTimezone(timezone)
   const logDateObj = new Date(`${dateStr}T00:00:00.000Z`)
 

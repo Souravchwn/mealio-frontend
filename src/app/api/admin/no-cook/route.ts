@@ -6,39 +6,13 @@ import { getMessSettings, todayIn } from '@/lib/mess-settings'
 import { isDateInClosedPeriod } from '@/lib/period'
 import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
-// Shared helper — also used by the Telegram webhook
-export async function broadcastTelegram(
-  messId: string,
-  text: string,
-): Promise<number> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
-  if (!botToken) return 0
-
-  const linked = await prisma.member.findMany({
-    where: { messId, isActive: true, telegramLinked: true },
-    select: { telegramUid: true },
-  })
-
-  const uids = linked.filter(m => m.telegramUid)
-  await Promise.all(
-    uids.map(m =>
-      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: Number(m.telegramUid), text, parse_mode: 'Markdown' }),
-      }),
-    ),
-  )
-  return uids.length
-}
-
 /**
  * POST /api/admin/no-cook
  *
  * Body:
  *   { date?: "YYYY-MM-DD", action: "off" | "on", reason?: string }
  *
- * Turns all member meals ON or OFF for the given date and broadcasts via Telegram.
+ * Turns all member meals ON or OFF for the given date and posts a broadcast about it.
  */
 export async function POST(req: NextRequest) {
   const token = extractToken(req)
@@ -124,22 +98,27 @@ export async function POST(req: NextRequest) {
     data: { messId, actorId: payload.sub, action: 'NO_COOK', targetTable: 'daily_logs', newValue: { date, action, reason: reason || null, via: 'web' } },
   })
 
-  // Telegram broadcast (non-blocking)
-  let broadcastMsg: string
-  if (action === 'off') {
-    const reasonLine = reason ? `\n📝 *Reason:* ${reason}` : ''
-    broadcastMsg = `🚫 *No Meals · ${date}*\n\nAll meals have been turned *OFF* for ${date}.${reasonLine}\n\n_Turn individual meals back on with \`/meal on\` if needed._`
-  } else {
-    broadcastMsg = `✅ *Meals Restored · ${date}*\n\nMeals have been restored to your personal defaults for ${date}.\n\nAdjust individually: \`/meal breakfast\` \`/meal lunch\` \`/meal dinner\``
+  // Tell the mess: a broadcast members see on their Overview page. A failure here must not
+  // undo the meals change, so it is logged and swallowed.
+  const notice = action === 'off'
+    ? `No meals on ${date}. All meals are turned off for the day.${reason ? ` Reason: ${reason}` : ''}`
+    : `Meals are back on for ${date}, set to everyone's usual defaults.`
+  let announced = false
+  try {
+    const author = await prisma.member.findUnique({ where: { id: payload.sub }, select: { name: true } })
+    await prisma.announcement.create({
+      data: { messId, authorId: payload.sub, authorName: author?.name ?? 'Admin', message: notice },
+    })
+    announced = true
+  } catch (err) {
+    console.error('[POST /api/admin/no-cook] announcement failed messId=%s', messId, err)
   }
-
-  const notified = await broadcastTelegram(messId, broadcastMsg)
 
   return NextResponse.json({
     ok: true,
     date,
     action,
     members_updated: members.length,
-    telegram_notified: notified,
+    announced,
   })
 }

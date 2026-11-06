@@ -14,7 +14,7 @@
  */
 
 import { prisma } from './prisma'
-import { getRedis, redisDel, redisGet, redisSet } from './redis'
+import { redisDel, redisGet, redisSet } from './redis'
 import { getBulkMealDefaults, getDayType, type MealDefaults, type DayType } from './meal-preferences'
 import { getCurrentPeriod } from './period'
 import { requireMessSettings, todayIn } from './mess-settings'
@@ -26,31 +26,6 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
-}
-
-/**
- * Housekeeping that used to need a scheduled job: purge processed Telegram
- * update ids (> 30 days) and spent/expired link codes (> 1 day).
- * Runs at most once a day across all instances (Redis SET NX); without Redis
- * it runs on ~1% of calls instead.
- */
-async function purgeOldRecordsOncePerDay(): Promise<void> {
-  const redis = getRedis()
-  if (redis) {
-    const day = new Date().toISOString().slice(0, 10)
-    const first = await redis.set(`mealio:cleanup:${day}`, 1, { nx: true, ex: MARKER_TTL_SECONDS }).catch(() => null)
-    if (!first) return
-  } else if (Math.random() > 0.01) {
-    return
-  }
-
-  const now = Date.now()
-  await Promise.all([
-    prisma.processedUpdate.deleteMany({ where: { processedAt: { lt: new Date(now - 30 * DAY_MS) } } }),
-    prisma.telegramOtp.deleteMany({
-      where: { OR: [{ used: true }, { expiresAt: { lt: new Date(now) } }], createdAt: { lt: new Date(now - DAY_MS) } },
-    }),
-  ])
 }
 
 async function deactivateExpiredGuests(messId: string, today: string): Promise<void> {
@@ -82,7 +57,6 @@ export async function ensureDailyLogs(messId: string): Promise<void> {
     const today = todayIn(settings.timezone)
     if (await redisGet<number>(markerKey(messId, today))) return
 
-    await purgeOldRecordsOncePerDay().catch((err) => console.error('[ensureDailyLogs] cleanup failed', err))
 
     const period = await getCurrentPeriod(messId)
     if (period) {

@@ -15,8 +15,8 @@ function buildCsp(opts: { scripts?: string; frameAncestors: string }) {
     return [
         "default-src 'self'",
         `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${opts.scripts ? ` ${opts.scripts}` : ""}`,
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self' data:",
         "img-src 'self' data: blob:",
         `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
         `frame-ancestors ${opts.frameAncestors}`,
@@ -40,26 +40,27 @@ const securityHeaders = [
 ];
 
 /**
- * The Telegram Mini App page only: it must load Telegram's script and be shown inside Telegram
- * (Telegram Web opens Mini Apps in an iframe). No X-Frame-Options here; frame-ancestors decides.
- * It holds no web login token, so a wider frame rule exposes nothing.
+ * Pages that must never appear in search results: the signed-in app, sign-in flows, the staff
+ * console and private support threads. Only the landing page, /support,
+ * /privacy and /terms are indexable (src/lib/seo.ts, src/app/sitemap.ts).
  */
-const telegramAppHeaders = [
-    {
-        key: "Content-Security-Policy",
-        value: buildCsp({ scripts: "https://telegram.org", frameAncestors: "'self' https://web.telegram.org https://*.telegram.org" }),
-    },
-    ...commonHeaders,
-];
+const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+const privatePages = [
+    "login", "register", "forgot-password", "reset-password", "verify-email",
+    "overview", "meals", "expenses", "headcount", "my-summary", "matrix", "members",
+    "audit", "settings", "mess", "archive", "console",
+].join("|");
 
 const nextConfig: NextConfig = {
     poweredByHeader: false,
     async headers() {
         return [
-            // Every page except the Mini App keeps the strict rules
+            { source: `/:locale(en|bn)/:page(${privatePages})/:rest*`, headers: noindex },
+            { source: "/:locale(en|bn)/support/:id", headers: noindex },
+            { source: "/api-docs", headers: noindex },
+            { source: "/api/:path*", headers: noindex },
             { source: "/", headers: securityHeaders },
-            { source: "/:path((?!en/tg$|bn/tg$).*)", headers: securityHeaders },
-            { source: "/:locale(en|bn)/tg", headers: telegramAppHeaders },
+            { source: "/:path+", headers: securityHeaders },
             // Never cache API answers in shared caches
             { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
         ];

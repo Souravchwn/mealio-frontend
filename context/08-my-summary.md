@@ -53,7 +53,7 @@ Query `year_month?`. Built entirely from `calculatePeriodSummary(...).forMember(
   balance: number         // contributed − mealCost (positive = mess owes you)
 }
 ```
-Same numbers as the Matrix and Telegram `/balance`.
+Same numbers as the Matrix.
 
 ## `src/lib/api.ts` — Client Method
 

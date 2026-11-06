@@ -72,7 +72,6 @@ async function seed() {
           phone: u.phone,
           passwordHash,
           isActive: true,
-          telegramLinked: false,
         },
         update: { name: u.name, passwordHash, isActive: true },
       })

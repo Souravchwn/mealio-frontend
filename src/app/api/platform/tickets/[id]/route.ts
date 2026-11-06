@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     if (!ticket) return NextResponse.json({ detail: 'Ticket not found' }, { status: 404 })
     await prisma.$transaction([
       prisma.supportMessage.create({
-        data: { ticketId: id, authorType: 'STAFF', authorId: auth.admin.id, authorName: 'Mealio Support', body: text },
+        data: { ticketId: id, authorType: 'STAFF', authorId: auth.admin.id, authorName: 'Manager Babu Support', body: text },
       }),
       prisma.supportTicket.update({ where: { id }, data: { status: nextStatus } }),
     ])
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     void sendEmail(
       ticket.email,
       `Re: ${ticket.subject}`,
-      `Hi ${ticket.name},\n\n${text}\n\nMealio Support`,
-      emailHtml(`Hi ${ticket.name}`, text, 'Open Mealio', `${appUrl()}/en/support`),
+      `Hi ${ticket.name},\n\n${text}\n\nManager Babu Support`,
+      emailHtml(`Hi ${ticket.name}`, text, 'Open Manager Babu', `${appUrl()}/en/support`),
     )
     return NextResponse.json({ ok: true }, { status: 201 })
   } catch (err) {

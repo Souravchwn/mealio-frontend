@@ -1,7 +1,7 @@
 /**
  * email.ts — Server-only, optional transactional email via Resend's HTTP API.
  *
- * Set RESEND_API_KEY and EMAIL_FROM (e.g. "Mealio <no-reply@yourdomain.com>")
+ * Set RESEND_API_KEY and EMAIL_FROM (e.g. "Manager Babu <no-reply@yourdomain.com>")
  * to turn on email verification and self-service password reset. Without them
  * the app still works: password resets go through a code from the mess admin
  * or the platform team, and emails are simply not sent.

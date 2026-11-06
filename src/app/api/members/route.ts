@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       getMessSettings(messId),
       prisma.member.findMany({
         where: includeInactive ? { messId, joinStatus: 'APPROVED', deletedAt: null } : { messId, isActive: true },
-        select: { id: true, name: true, phone: true, role: true, isActive: true, telegramLinked: true, isGuest: true, guestFrom: true, guestUntil: true },
+        select: { id: true, name: true, phone: true, role: true, isActive: true, isGuest: true, guestFrom: true, guestUntil: true },
         orderBy: { joinedAt: 'asc' },
       }),
       calculatePeriodSummary(messId, period),
@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
           contributed: s.contributed,
           balance: s.balance,
           is_active: member.isActive,
-          telegram_linked: member.telegramLinked,
           is_guest: member.isGuest,
           guest_from: member.guestFrom?.toISOString().slice(0, 10) ?? null,
           guest_until: member.guestUntil?.toISOString().slice(0, 10) ?? null,

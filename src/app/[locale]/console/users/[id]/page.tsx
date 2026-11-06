@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
-import { ArrowLeft, BadgeCheck, KeyRound, LogOut, Mail, Unlink, UserCheck, UserX } from "lucide-react";
+import { ArrowLeft, BadgeCheck, KeyRound, LogOut, Mail, UserCheck, UserX } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { UserAction } from "@/types/platform";
@@ -84,11 +84,6 @@ export default function ConsoleUserDetail() {
                         <button type="button" className={styles.actionBtn} disabled={busy} onClick={() => setEmailOpen((v) => !v)}>
                             <Mail size={16} /> Change email
                         </button>
-                        {u.telegramLinked && (
-                            <button type="button" className={styles.actionBtn} disabled={busy} onClick={() => void act({ action: "unlink_telegram" }, "Unlink this Telegram account?")}>
-                                <Unlink size={16} /> Unlink Telegram
-                            </button>
-                        )}
                         <button
                             type="button"
                             className={styles.actionBtn}
@@ -170,10 +165,6 @@ export default function ConsoleUserDetail() {
                         <div className={styles.kvItem}>
                             <span className={styles.kvLabel}>Email</span>
                             <span className={styles.kvValue}>{u.emailVerified ? "Verified" : "Not verified"}</span>
-                        </div>
-                        <div className={styles.kvItem}>
-                            <span className={styles.kvLabel}>Telegram</span>
-                            <span className={styles.kvValue}>{u.telegramLinked ? "Linked" : "Not linked"}</span>
                         </div>
                         <div className={styles.kvItem}>
                             <span className={styles.kvLabel}>Joined</span>

@@ -12,15 +12,15 @@ This directory contains per-module context files. When working on any module, re
 | `04-expenses.md` | Expenses, Meal Rate, Categories | `expenses/page.tsx`, `api/expenses/*` |
 | `05-headcount.md` | Cook Headcount View | `headcount/page.tsx`, `api/cook/headcount` |
 | `06-overview.md` | Overview Dashboard | `overview/page.tsx` |
-| `07-settings.md` | Settings, Preferences, Telegram Linking | `settings/page.tsx`, `api/mess/settings`, `api/admin/telegram-group` |
+| `07-settings.md` | Settings, Preferences, Timezone, Broadcast | `settings/page.tsx`, `api/mess/settings`, `api/announcements` |
 | `08-matrix.md` | Month Matrix, Close Month, No-Cook | `matrix/page.tsx`, `api/admin/*` |
 | `09-members.md` | Member Management | `members/page.tsx`, `api/members/*` |
 | `10-mess-management.md` | Create Mess, Switch Mess | `mess/create/page.tsx`, `MessSwitcher`, `api/mess/*` |
-| `11-telegram-bot.md` | Full Telegram Bot | `src/lib/telegram/**` |
 | `12-daily-meal-counting.md` | Automatic daily meal counting (no crons), cutoffs, mismanagement risks | `daily-logs.ts`, `meal-preferences.ts` |
 | `13-shared-libs.md` | All shared `src/lib/` files | `api.ts`, `financial.ts`, `mess-settings.ts`, `daily-logs.ts`, `meal-access.ts`, `auth-utils.ts` |
 | `14-database-schema.md` | Prisma models, fields, relationships | `prisma/schema.prisma` |
 | `15-audit.md` | Admin Audit Log | `audit/page.tsx`, `api/admin/audit`, `src/lib/audit.ts` |
+| `18-broadcasts.md` | Broadcasts from admins and managers | `api/announcements/*`, `announcements.ts`, Settings + Overview |
 
 ## Golden Rules (always apply)
 

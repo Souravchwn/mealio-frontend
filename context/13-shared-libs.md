@@ -77,7 +77,7 @@ yourModule: {
 
 ## `src/lib/financial.ts` — Server-Only Financial Logic
 
-**`calculatePeriodSummary(messId, period)` is the ONE place meal counts, meal rate and balances are calculated.** Matrix, Members, My Summary, Overview, expense stats, Telegram `/rate` + `/balance` and month closing all use it.
+**`calculatePeriodSummary(messId, period)` is the ONE place meal counts, meal rate and balances are calculated.** Matrix, Members, My Summary, Overview, expense stats and month closing all use it.
 
 ### `calculatePeriodSummary(messId, period): Promise<PeriodSummary>`
 1. `ensureDailyLogs(messId)` — fills missing days first (see `12-daily-meal-counting.md`)
@@ -111,7 +111,7 @@ Returns `{ guestMealPolicy, bazaarCountsAsDeposit, totalExpense, totalMeals, tot
 
 ```ts
 MessSettings {
-  messId, name, timezone            // timezone = active Telegram group's, else DEFAULT_TIMEZONE
+  messId, name, timezone            // timezone = Mess.timezone (default DEFAULT_TIMEZONE)
   cutOffTime, monthStartDay, estimatedMonthlyBudget
   guestMealPolicy: 'HOST' | 'SHARED'
   bazaarCountsAsDeposit: boolean
@@ -198,7 +198,7 @@ getInitials(name: string): string
 ```typescript
 DEFAULT_CUTOFF_TIME = "21:00"          // Dinner cutoff fallback
 DEFAULT_LUNCH_CUTOFF_TIME = "10:00"    // Lunch cutoff fallback (deprecated — use meal_configs)
-DEFAULT_TIMEZONE = "Asia/Dhaka"        // Fallback when no Telegram group linked
+DEFAULT_TIMEZONE = "Asia/Dhaka"        // Default for Mess.timezone
 VALID_MEAL_SLOTS = ['breakfast', 'lunch', 'dinner'] as const
 MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER'] as const
 DEFAULT_MEAL_CONFIGS = [
@@ -226,7 +226,7 @@ MonthStatus: 'OPEN' | 'CLOSED'
 User { id, name, email, role, messId, messName }
 DailyLog { id, memberId, date, breakfastCount, lunchCount, dinnerCount, breakfast, lunch, dinner, guestCount, frozen, overrideType? }
 MealConfig { id, messId, mealType, enabled, cutoffTime: string, maxCount }
-Member { id, messId, name, phone?, telegramUid?, telegramLinked, role, isActive, isGuest, balance }
+Member { id, messId, name, phone?, role, isActive, isGuest, balance }
 Expense { id, messId, memberId, memberName?, amount, category, description, date, createdAt }
 MonthlySnapshot { id, messId, yearMonth, totalExpense, mealRate, totalMeals, isClosed, closedAt? }
 MonthMatrixResponse { messId, messName, yearMonth, mealRate, totalExpense, totalMeals, members: MemberMatrixRow[] }
@@ -317,5 +317,5 @@ export const prisma: PrismaClient
 
 ## `src/lib/rate-limit.ts`
 
-`checkRateLimit(name, key, max, windowMs)` — Redis fixed window shared by all instances; in-memory fallback. `checkLoginRateLimit(ip, email)` — 10 / 15 min per IP and per email. Registration: 10 / hour per IP. Telegram link codes: 10 / hour per member.
+`checkRateLimit(name, key, max, windowMs)` — Redis fixed window shared by all instances; in-memory fallback. `checkLoginRateLimit(ip, email)` — 10 / 15 min per IP and per email. Registration: 10 / hour per IP. Broadcasts: 10 / day per mess.
 

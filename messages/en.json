@@ -1,6 +1,6 @@
 {
     "common": {
-        "appName": "Mealio",
+        "appName": "Manager Babu",
         "tagline": "Smart Mess Management",
         "save": "Save",
         "cancel": "Cancel",
@@ -23,7 +23,7 @@
     },
     "landing": {
         "nav": {
-            "signIn": "Sign In"
+            "signIn": "Sign in"
         },
         "hero": {
             "badge": "Made for mess life in Bangladesh",
@@ -33,11 +33,6 @@
             "cta": "Start for free",
             "ctaSecondary": "See how it works"
         },
-        "stats": {
-            "messes": "Active Messes",
-            "meals": "Meals Tracked",
-            "saved": "Hours Saved Monthly"
-        },
         "features": {
             "title": "Everything your mess needs",
             "subtitle": "From daily meal toggles to monthly settlements, all in one place.",
@@ -46,7 +41,7 @@
                 "description": "Your defaults are counted every day without anyone logging in. Skip a meal or add a guest with one tap, before the cutoff."
             },
             "expense": {
-                "title": "Smart Expense Tracking",
+                "title": "Bazaar tracking",
                 "description": "Log every bazaar trip by category, like protein, vegetables and spices. The meal rate updates live, so everyone knows exactly what they owe."
             },
             "headcount": {
@@ -60,24 +55,16 @@
             "finance": {
                 "title": "Every taka is traceable",
                 "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
-            },
-            "ai": {
-                "title": "AI Insights (Coming Soon)",
-                "description": "Nutrition analysis, commodity price tracking, and predictive shopping. Your mess data becomes a goldmine for health and economic insights."
-            },
-            "telegram": {
-                "title": "Telegram bot",
-                "description": "Turn meals on or off, check the rate and your balance right from Telegram."
             }
         },
         "roles": {
-            "title": "Built for Everyone in Your Mess",
+            "title": "Built for everyone in your mess",
             "member": {
                 "title": "Members",
                 "description": "Toggle meals, add guests and check your balance, all from your phone."
             },
             "manager": {
-                "title": "Meal Manager",
+                "title": "Meal manager",
                 "description": "Log daily bazaar expenses and track the live meal rate effortlessly."
             },
             "admin": {
@@ -96,9 +83,9 @@
         },
         "footer": {
             "features": "Features",
-            "roles": "Who It's For",
-            "getStarted": "Get Started",
-            "copyright": "© 2026 Mealio. All rights reserved.",
+            "roles": "Who it's for",
+            "getStarted": "Get started",
+            "copyright": "© {year} Manager Babu. All rights reserved.",
             "nav": "Footer",
             "support": "Support",
             "privacy": "Privacy",
@@ -118,17 +105,6 @@
                 "label": "English and Bangla"
             }
         },
-        "mock": {
-            "date": "Wed, 7 Oct",
-            "greeting": "Hey Sohel",
-            "balance": "Your balance",
-            "ahead": "You are ahead",
-            "breakfast": "Breakfast",
-            "lunch": "Lunch",
-            "dinner": "Dinner",
-            "float1": "Lunch is ON",
-            "float2": "14 eating tonight"
-        },
         "steps": {
             "title": "How it works",
             "one": {
@@ -137,14 +113,32 @@
             },
             "two": {
                 "title": "Set your defaults once",
-                "description": "Choose which meals you usually eat on weekdays and weekends. Mealio counts them every day."
+                "description": "Choose which meals you usually eat on weekdays and weekends. Manager Babu counts them every day."
             },
             "three": {
                 "title": "Log the bazaar",
                 "description": "The manager adds each shopping trip. The meal rate and everyone's balance update on their own."
             }
         },
-        "openApp": "Open Mealio"
+        "openApp": "Open Manager Babu",
+        "ledger": {
+            "label": "Sample month",
+            "title": "This month's khata",
+            "bazaar": "Bazaar spent",
+            "bazaarValue": "৳18,600",
+            "meals": "Meals eaten",
+            "mealsValue": "620",
+            "rate": "Meal rate",
+            "rateValue": "৳30.00",
+            "member": "Sohel",
+            "memberMeals": "52 meals × ৳30",
+            "memberCost": "৳1,560",
+            "deposited": "Deposited",
+            "depositedValue": "৳2,800",
+            "balance": "Ahead by",
+            "balanceValue": "+৳1,240",
+            "note": "Worked out the moment the bazaar is logged."
+        }
     },
     "auth": {
         "login": {
@@ -181,7 +175,7 @@
                 },
                 "MESS_SUSPENDED": {
                     "title": "Mess on hold",
-                    "body": "This mess is on hold by Mealio. Contact support and we will sort it out."
+                    "body": "This mess is on hold by Manager Babu. Contact support and we will sort it out."
                 }
             },
             "contactSupport": "Contact support",
@@ -240,7 +234,7 @@
             "backToLogin": "Back to sign in",
             "sentTitle": "Check your inbox",
             "sentSubtitle": "The link works for 30 minutes",
-            "sentBody": "If {email} has a Mealio account, a reset link is on its way. Check spam too.",
+            "sentBody": "If {email} has a Manager Babu account, a reset link is on its way. Check spam too.",
             "codeTitle": "Ask your mess admin",
             "codeSubtitle": "Email is not set up on this server yet",
             "codeBody": "Your mess admin can make a one-time reset code for you from the Members page. If you are the admin, contact support.",
@@ -252,7 +246,7 @@
             "subtitleCode": "Enter your email and the code you were given",
             "email": "Email address",
             "code": "Reset code",
-            "codeHelp": "8 characters, from your mess admin or Mealio support. It works once.",
+            "codeHelp": "8 characters, from your mess admin or Manager Babu support. It works once.",
             "newPassword": "New password",
             "submit": "Save new password",
             "success": "Password changed. Sign in with the new one.",
@@ -266,7 +260,7 @@
             "failedTitle": "Link did not work",
             "failedSubtitle": "It may have expired or been used already",
             "failedBody": "Sign in and ask for a new link from Settings.",
-            "continue": "Continue to Mealio"
+            "continue": "Continue to Manager Babu"
         }
     },
     "nav": {
@@ -318,7 +312,11 @@
         "youOwe": "You owe the mess",
         "myMealsCount": "{n} meals this month",
         "viewAll": "View all",
-        "noExpenses": "No bazaar yet this month"
+        "noExpenses": "No bazaar yet this month",
+        "broadcast": {
+            "title": "Broadcast",
+            "from": "From {name}"
+        }
     },
     "meals": {
         "title": "Today",
@@ -564,9 +562,8 @@
         "updateFailed": "Could not update the member",
         "reactivated": "{name} is back in the mess",
         "deactivated": "{name} was removed from the mess",
-        "shareText": "Join {mess} on Mealio.",
+        "shareText": "Join {mess} on Manager Babu.",
         "linkCopied": "Invite link copied",
-        "telegramLinked": "Telegram linked",
         "expired": "Stay ended",
         "guestStay": "Guest stay",
         "inactive": "Inactive",
@@ -639,7 +636,9 @@
             "VOID_CONTRIBUTION": "Voided a deposit",
             "NO_COOK": "No-cook day",
             "MEAL_PREFERENCE_UPDATE": "Changed defaults",
-            "AUTO_DEACTIVATE_GUEST": "Guest stay ended"
+            "AUTO_DEACTIVATE_GUEST": "Guest stay ended",
+            "POST_ANNOUNCEMENT": "Sent a broadcast",
+            "DELETE_ANNOUNCEMENT": "Removed a broadcast"
         }
     },
     "mySummary": {
@@ -658,9 +657,6 @@
         "times": "times",
         "last7Days": "Last 7 Days",
         "financialSummary": "Financial Summary",
-        "telegramStatus": "Telegram",
-        "telegramLinked": "Linked",
-        "telegramNotLinked": "Not linked. Use /link in the bot.",
         "myMeals": "My meals",
         "aheadHint": "The mess owes you this. Nice!",
         "oweHint": "Top up with the manager to clear it",
@@ -741,30 +737,6 @@
             "approvalOn": "New members now need your approval",
             "approvalOff": "Anyone with the code can join right away"
         },
-        "telegramGroup": {
-            "title": "Telegram Group",
-            "description": "Link a Telegram group to enable bot commands and meal notifications",
-            "chatId": "Telegram Chat ID",
-            "chatIdHelp": "Run /start in your group with the Mealio bot to get the chat ID",
-            "chatName": "Group Name (optional)",
-            "timezone": "Timezone",
-            "link": "Link Group",
-            "linking": "Linking...",
-            "linked": "Linked",
-            "unlinked": "No group linked yet",
-            "chatNamePlaceholder": "e.g. Bashundhara Mess Group",
-            "theBot": "the Mealio bot",
-            "getCode": "Get group code",
-            "newCode": "New code",
-            "needOwnLink": "First link your own Telegram under General, My Telegram. The bot only accepts this from a linked admin.",
-            "linkedFromTelegram": "Group linked from Telegram",
-            "advanced": "Enter the Telegram chat id by hand instead",
-            "easy1": "Link your own Telegram first (General tab, My Telegram).",
-            "easy2": "Add {bot} to your house group. It sets itself up and pins an \"Open my Mealio\" button.",
-            "easy3": "Did not start? Send /mealio in the group. Make the bot a group admin so it can pin and keep the chat tidy.",
-            "watching": "This page updates by itself when the group is connected.",
-            "codeWay": "Other ways: a one-time code, or the chat id by hand."
-        },
         "dangerDesc": "Permanently deletes the mess and all associated data. This cannot be undone.",
         "monthStart": {
             "title": "Billing Period Start Day",
@@ -799,20 +771,6 @@
                 "description": "When a month is closed, each member's leftover balance (credit or due) moves into the next month. Turn off if you settle up in cash at month end and start every month at zero."
             }
         },
-        "telegramAccount": {
-            "title": "My Telegram",
-            "description": "Link your Telegram account to manage meals and check your balance from the Mealio bot.",
-            "linked": "Linked",
-            "getCode": "Get link code",
-            "relink": "Link a different account",
-            "unlink": "Unlink",
-            "unlinked": "Telegram unlinked",
-            "unlinkFailed": "Failed to unlink Telegram",
-            "codeFailed": "Failed to create a link code",
-            "theBot": "the Mealio bot",
-            "instructions": "Send this message to {bot} in a private chat. The code works once and expires at {time}.",
-            "openInTelegram": "Open in Telegram"
-        },
         "weekend": {
             "title": "Weekend days",
             "help": "Members set separate default meals for weekdays and weekends. Choose which days count as the weekend (for Bangladesh this is usually Friday and Saturday). Changes apply from today; past days are not changed.",
@@ -822,8 +780,7 @@
         "errors": {
             "preference": "Could not update the preference",
             "cutoffs": "Could not save the cutoff times",
-            "save": "Could not save. Please try again.",
-            "linkGroup": "Could not link the group"
+            "save": "Could not save. Please try again."
         },
         "account": {
             "passwordTitle": "Password",
@@ -852,6 +809,27 @@
             "label": "Served",
             "on": "Meal switched on from now",
             "off": "Meal switched off from now. Past days are not changed."
+        },
+        "broadcast": {
+            "title": "Broadcast",
+            "description": "Send a message every member sees on their Overview page for the next {days} days.",
+            "placeholder": "e.g. Bazaar is done, all three meals are confirmed.",
+            "send": "Send broadcast",
+            "sending": "Sending...",
+            "sent": "Broadcast sent",
+            "failed": "Could not send the broadcast. Please try again.",
+            "recent": "Recent broadcasts",
+            "none": "Nothing sent in the last {days} days.",
+            "by": "by {name}",
+            "remove": "Remove",
+            "removed": "Broadcast removed",
+            "removeConfirm": "Remove this broadcast for everyone?"
+        },
+        "timezone": {
+            "title": "Timezone",
+            "help": "Decides when each day starts and when meal cutoffs fall. Days that already happened are not changed.",
+            "saved": "Timezone saved",
+            "adminOnly": "Only the admin can change this."
         }
     },
     "createMess": {
@@ -955,7 +933,7 @@
         "backToSupport": "Support",
         "notFound": "We could not find that ticket. Check the link, or sign in with the account that opened it.",
         "opened": "Opened {date}",
-        "supportTeam": "Mealio Support",
+        "supportTeam": "Manager Babu Support",
         "you": "You",
         "closedNote": "This ticket is closed. Open a new one if you need more help.",
         "reply": "Reply",
@@ -966,7 +944,7 @@
         "privacy": {
             "eyebrow": "Privacy",
             "title": "Privacy Policy",
-            "lead": "What Mealio keeps about you, why, and how to take it back.",
+            "lead": "What Manager Babu keeps about you, why, and how to take it back.",
             "updated": "Last updated October 2026",
             "sections": [
                 {
@@ -974,7 +952,6 @@
                     "bullets": [
                         "Account details: your name, email address, optional phone number and a hashed password. We never store the password itself.",
                         "Mess records: meals, guests, bazaar costs, deposits and settings that you or your mess admin enter.",
-                        "Telegram: your Telegram user ID, only if you link the bot.",
                         "Security records: sign-in attempts, the IP address they came from and similar events, so we can spot attacks on accounts.",
                         "Support messages you send us."
                     ]
@@ -990,7 +967,7 @@
                     "heading": "Who can see it",
                     "paragraphs": [
                         "People in your mess see your name, meals, deposits and balance. Admins and managers also see your phone number and can manage your membership.",
-                        "A small number of Mealio staff can access accounts to fix problems, handle support and stop abuse. Every staff action is logged."
+                        "A small number of Manager Babu staff can access accounts to fix problems, handle support and stop abuse. Every staff action is logged."
                     ]
                 },
                 {
@@ -1024,7 +1001,7 @@
                 {
                     "heading": "The service",
                     "paragraphs": [
-                        "Mealio helps a shared mess keep track of meals, bazaar costs, deposits and balances. It is a record-keeping tool. Mealio never holds or moves money for you."
+                        "Manager Babu helps a shared mess keep track of meals, bazaar costs, deposits and balances. It is a record-keeping tool. Manager Babu never holds or moves money for you."
                     ]
                 },
                 {
@@ -1038,7 +1015,7 @@
                 {
                     "heading": "Mess admins",
                     "paragraphs": [
-                        "Whoever creates a mess is its admin. Admins decide who joins, set the billing rules and can correct records. The numbers Mealio shows are only as accurate as the records the mess enters, so check them before settling money."
+                        "Whoever creates a mess is its admin. Admins decide who joins, set the billing rules and can correct records. The numbers Manager Babu shows are only as accurate as the records the mess enters, so check them before settling money."
                     ]
                 },
                 {
@@ -1052,13 +1029,13 @@
                 {
                     "heading": "Price",
                     "paragraphs": [
-                        "Mealio is free during early access, within fair limits on mess size. If we introduce paid plans later, we will announce them in advance and existing messes will not lose their records."
+                        "Manager Babu is free during early access, within fair limits on mess size. If we introduce paid plans later, we will announce them in advance and existing messes will not lose their records."
                     ]
                 },
                 {
                     "heading": "No warranty",
                     "paragraphs": [
-                        "We work hard to keep Mealio running and your data safe, but the service is provided as it is. We are not liable for disagreements between mess members or for losses that come from records being wrong or unavailable."
+                        "We work hard to keep Manager Babu running and your data safe, but the service is provided as it is. We are not liable for disagreements between mess members or for losses that come from records being wrong or unavailable."
                     ]
                 },
                 {
@@ -1124,44 +1101,9 @@
         "voided": "Cancelled before closing: {reason}",
         "daysNote": "Meals each member had on each day. A small +n is the number of guest meals that day."
     },
-    "tg": {
-        "error": "Could not load. Pull down to try again.",
-        "tryAgain": "Try again",
-        "outsideTitle": "Open this in Telegram",
-        "outsideBody": "This page is the Mealio Mini App. Send /mealio to the Mealio bot or tap the button in your house group.",
-        "unlinkedTitle": "Hi {name}!",
-        "unlinkedBody": "Link your Telegram to your Mealio account once. It takes one tap on the Mealio website: Settings, My Telegram, Open in Telegram.",
-        "linkButton": "Link my Telegram",
-        "unlinkedAfter": "Then come back here and pull down to refresh.",
-        "hi": "Hi {name} 👋",
-        "period": "Billing period {from} – {to}",
-        "refresh": "Refresh",
-        "myBalance": "My balance",
-        "getBack": "You get this back",
-        "owe": "You owe this to the mess",
-        "meals": "Meals",
-        "paid": "Paid",
-        "rate": "Meal rate",
-        "carriedIn": "Includes {amount} carried in from last month",
-        "myToday": "My meals today",
-        "locks": "{meal} locks {time}",
-        "inHoursMinutes": "in {h}h {m}m",
-        "inMinutes": "in {m}m",
-        "slot": {
-            "breakfast": "Breakfast",
-            "lunch": "Lunch",
-            "dinner": "Dinner"
-        },
-        "on": "ON",
-        "off": "OFF",
-        "guests": "{n, plural, one {You have # guest today} other {You have # guests today}}",
-        "changeHint": "To change, use /meal in a private chat with the bot or the Mealio website.",
-        "whoEats": "Who is eating today",
-        "plates": "plates",
-        "guestPlates": "{n} for guests",
-        "locksAt": "locks at {time}",
-        "nobody": "Nobody is eating this meal today.",
-        "openFull": "Open full Mealio",
-        "readOnly": "Only you can see this. Nothing here can change your meals or money."
+    "meta": {
+        "homeTitle": "Manager Babu | Smart mess management",
+        "description": "Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.",
+        "supportTitle": "Support"
     }
 }

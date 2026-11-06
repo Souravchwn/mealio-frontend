@@ -173,8 +173,8 @@ export default function ConsoleMessDetail() {
                             <span className={styles.kvValue}>{m.requireJoinApproval ? "Required" : "Off"}</span>
                         </div>
                         <div className={styles.kvItem}>
-                            <span className={styles.kvLabel}>Telegram group</span>
-                            <span className={styles.kvValue}>{m.telegramGroup ? `${m.telegramGroup.chatName ?? "Linked"} (${m.telegramGroup.timezone})` : "Not linked"}</span>
+                            <span className={styles.kvLabel}>Timezone</span>
+                            <span className={styles.kvValue}>{m.timezone}</span>
                         </div>
                         <div className={styles.kvItem}>
                             <span className={styles.kvLabel}>Current period</span>

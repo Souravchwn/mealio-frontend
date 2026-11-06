@@ -22,6 +22,7 @@ name            String
 inviteCode      String   @unique           // "MESS-XXXX" format
 cutOffTime      DateTime @db.Time          // stored as 1970-01-01T{HH:MM}Z
 estimatedMonthlyBudget  Decimal?
+timezone        String   @default("Asia/Dhaka")  // IANA zone: when "today" starts, when cutoffs fall
 isActive        Boolean  @default(true)
 createdAt       DateTime @default(now())
 
@@ -30,7 +31,7 @@ members         Member[]
 expenses        Expense[]
 dailyLogs       DailyLog[]
 messMonths      MessMonth[]
-telegramGroups  TelegramGroup[]
+announcements   Announcement[]
 mealConfigs     MealConfig[]
 memberships     MessMembership[]
 auditLogs       AuditLog[]
@@ -59,8 +60,6 @@ name            String
 phone           String?
 passwordHash    String
 role            String   @default("MEMBER")  // ADMIN|MANAGER|MEMBER|GUEST
-telegramUid     BigInt?  @unique            // Telegram user ID (bigint!)
-telegramLinked  Boolean  @default(false)
 isActive        Boolean  @default(true)
 isGuest         Boolean  @default(false)
 guestFrom       DateTime? @db.Date
@@ -76,7 +75,6 @@ mealPreferences UserMealPreference[]
 ```
 
 **Key notes:**
-- `telegramUid` is `BigInt` — Telegram user IDs exceed JavaScript's safe integer range. Always use `BigInt(uid)` when writing.
 - `messId` can be null for SYSTEM_ADMIN accounts.
 
 ---
@@ -208,21 +206,20 @@ createdAt       DateTime @default(now())
 
 ---
 
-### `TelegramGroup`
+### `Announcement`
 
-Links a Telegram group chat to a mess.
+A broadcast from an admin or manager, shown to every member of the mess for 3 days.
 
 ```
 id          String   @id @default(uuid())
-chatId      String   @unique                // Telegram chat ID (string, can be negative)
-messId      String                          // FK → Mess
-chatName    String   @default("")
-timezone    String   @default("Asia/Dhaka")
-isActive    Boolean  @default(true)
+messId      String                          // FK → Mess (cascade delete)
+authorId    String?                         // no FK: the author may leave
+authorName  String                          // stored so it survives that
+message     String                          // up to 1000 characters
 createdAt   DateTime @default(now())
 ```
 
-Only one active group per mess is used. Timezone from here drives all time calculations.
+Index `(messId, createdAt desc)`. "Active" is computed (`createdAt` within `ANNOUNCEMENT_VISIBLE_DAYS`), nothing is purged. See `18-broadcasts.md`.
 
 ---
 
@@ -276,18 +273,6 @@ prisma.auditLog.findMany({
 
 ---
 
-### `TelegramOtp`
-
-One-time Telegram **link codes** issued by the web app to a logged-in member.
-
-| Field | Notes |
-|-------|-------|
-| `memberId` | Member the code belongs to (null on rows from the old phone flow — all invalidated) |
-| `otp` | 8-char code (indexed) |
-| `telegramId` | Set when redeemed |
-| `phone` | Legacy, nullable |
-| `expiresAt`, `used` | 10-minute, single use. Rows older than a day are purged daily |
-
 ## Common Query Patterns
 
 ### Get today's log for a member
@@ -317,14 +302,9 @@ await prisma.dailyLog.upsert({
 
 ### Get mess timezone
 ```typescript
-const mess = await prisma.mess.findUnique({
-  where: { id: messId },
-  select: {
-    cutOffTime: true,
-    telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 }
-  }
-})
-const timezone = mess?.telegramGroups[0]?.timezone ?? 'Asia/Dhaka'
+// Prefer getMessSettings(messId).timezone (served from Redis). Directly:
+const mess = await prisma.mess.findUnique({ where: { id: messId }, select: { timezone: true } })
+const timezone = mess?.timezone ?? 'Asia/Dhaka'
 ```
 
 ---

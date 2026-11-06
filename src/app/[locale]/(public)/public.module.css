@@ -84,6 +84,18 @@
     color: var(--color-text-muted);
 }
 
+/* 44px-tall tap areas on phones */
+.footer {
+    align-items: center;
+    row-gap: 0;
+}
+
+.footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
 .footer a:hover {
     color: var(--color-primary);
 }

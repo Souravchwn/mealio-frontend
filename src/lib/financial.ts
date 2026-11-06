@@ -1,10 +1,10 @@
 /**
  * financial.ts — Server-only shared financial logic.
- * Used by API routes and the Telegram bot. Never import from client components.
+ * Used by API routes. Never import from client components.
  *
  * `calculatePeriodSummary()` is the ONE place meal counts, meal rate and
  * member balances are calculated. Every screen (matrix, members, my-summary,
- * overview, Telegram /rate and /balance) and month closing use it, so they
+ * overview) and month closing use it, so they
  * always agree.
  */
 

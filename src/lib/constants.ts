@@ -44,11 +44,8 @@ export const DEFAULT_GUEST_MEAL_POLICY: GuestMealPolicy = 'HOST'
  */
 export const DEFAULT_WEEKEND_DAYS: readonly number[] = [0, 6]
 
-/** Currency symbol used in server-generated text (Telegram, ledger notes). */
+/** Currency symbol used in server-generated text (ledger notes). */
 export const CURRENCY_SYMBOL = '৳'
-
-/** Telegram link code validity in minutes */
-export const TELEGRAM_LINK_CODE_TTL_MINUTES = 10
 
 /** Lowercase slot names used in API toggle requests. */
 export const VALID_MEAL_SLOTS = ['breakfast', 'lunch', 'dinner'] as const
@@ -59,11 +56,15 @@ export const EXPENSE_CATEGORIES = [
 ] as const
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
+/** Broadcasts (Settings → Broadcast): longest message, in characters */
+export const ANNOUNCEMENT_MAX_LENGTH = 1000
+/** How many days a broadcast stays visible to members */
+export const ANNOUNCEMENT_VISIBLE_DAYS = 3
+/** Broadcasts a mess may send per day (automatic "no cook" notices do not count) */
+export const ANNOUNCEMENT_DAILY_LIMIT = 10
+
 /** JWT TTL in seconds (30 days) */
 export const JWT_TTL_SECONDS = 30 * 24 * 60 * 60
-
-/** Telegram broadcast batch size */
-export const TELEGRAM_BATCH_SIZE = 25
 
 /** Rate limiter defaults */
 export const RATE_LIMIT_MAX_REQUESTS = 5
