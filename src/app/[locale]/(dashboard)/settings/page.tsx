@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { TimePicker } from "@/components/ui/TimePicker/TimePicker";
-import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw } from "lucide-react";
+import { Select } from "@/components/ui/Select/Select";
+import { Sun, CloudSun, Moon, Save, Copy, Check, Calendar, Users, RefreshCw, Globe, Megaphone, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { GuestMealPolicy } from "@/types";
+import { ANNOUNCEMENT_MAX_LENGTH, ANNOUNCEMENT_VISIBLE_DAYS } from "@/lib/constants";
+import type { Announcement, GuestMealPolicy } from "@/types";
 import { AccountSection, DeleteMessCard } from "./AccountSection";
 import styles from "./settings.module.css";
 
@@ -30,6 +32,24 @@ const MEAL_ICONS: Record<MealType, React.ReactNode> = {
 };
 
 const SLOT_UPPER = ["BREAKFAST", "LUNCH", "DINNER"] as const;
+
+// Zones people look for first (South Asia, the Gulf, and where members often work abroad)
+const COMMON_TIMEZONES = [
+    "Asia/Dhaka", "Asia/Kolkata", "Asia/Karachi", "Asia/Kathmandu", "Asia/Colombo", "Asia/Thimphu",
+    "Asia/Dubai", "Asia/Riyadh", "Asia/Qatar", "Asia/Kuwait", "Asia/Muscat", "Asia/Bahrain",
+    "Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Bangkok", "Asia/Jakarta", "Asia/Tokyo", "Asia/Seoul", "Asia/Hong_Kong",
+    "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Rome",
+    "America/New_York", "America/Chicago", "America/Los_Angeles", "America/Toronto",
+    "Australia/Sydney", "Australia/Melbourne", "Pacific/Auckland", "Africa/Cairo", "Africa/Johannesburg",
+];
+// Old names some browsers still list, and the current name for each
+const LEGACY_TIMEZONES: Record<string, string> = {
+    "Asia/Calcutta": "Asia/Kolkata",
+    "Asia/Katmandu": "Asia/Kathmandu",
+    "Asia/Dacca": "Asia/Dhaka",
+    "Asia/Saigon": "Asia/Ho_Chi_Minh",
+    "Asia/Rangoon": "Asia/Yangon",
+};
 
 function defaultPrefs(): PrefMap {
     const map = {} as PrefMap;
@@ -76,15 +96,16 @@ export default function SettingsPage() {
     const [monthStartDay, setMonthStartDay] = useState(1);
     const [savingStartDay, setSavingStartDay] = useState(false);
 
-    // ── Telegram group ───────────────────────────────────────────────────────────
-    const [linkedGroup, setLinkedGroup] = useState<{ chatId: string; chatName: string } | null>(null);
-    // The easy way to link a group: the admin sends /linkgroup CODE inside it
-    const [groupCode, setGroupCode] = useState<{ code: string; botUsername: string | null; adminTelegramLinked: boolean } | null>(null);
-    const [gettingGroupCode, setGettingGroupCode] = useState(false);
-    const [tgChatId, setTgChatId] = useState("");
-    const [tgChatName, setTgChatName] = useState("");
-    const [tgTimezone, setTgTimezone] = useState("");
-    const [linkingTg, setLinkingTg] = useState(false);
+    // ── Timezone (decides when "today" starts and when cutoffs fall) ───────────
+    const [timezone, setTimezone] = useState("Asia/Dhaka");
+    const [savedTimezone, setSavedTimezone] = useState("Asia/Dhaka");
+    const [savingTz, setSavingTz] = useState(false);
+
+    // ── Broadcast ────────────────────────────────────────────────────────────────
+    const [broadcastText, setBroadcastText] = useState("");
+    const [sendingBroadcast, setSendingBroadcast] = useState(false);
+    const [broadcasts, setBroadcasts] = useState<Announcement[]>([]);
+    const [removingBroadcast, setRemovingBroadcast] = useState<string | null>(null);
 
     // ── Billing rules (served from Redis via /api/mess/settings) ───────────────
     const [guestPolicy, setGuestPolicy] = useState<GuestMealPolicy>("HOST");
@@ -93,12 +114,6 @@ export default function SettingsPage() {
     const [weekendDays, setWeekendDays] = useState<number[]>([0, 6]);
     const [savingWeekend, setSavingWeekend] = useState(false);
     const [savingBilling, setSavingBilling] = useState(false);
-
-    // ── My Telegram account ────────────────────────────────────────────────────
-    const [tgAccountLinked, setTgAccountLinked] = useState(false);
-    const [tgBotUsername, setTgBotUsername] = useState<string | null>(null);
-    const [tgLinkCode, setTgLinkCode] = useState<{ code: string; expiresAt: string } | null>(null);
-    const [tgCodeLoading, setTgCodeLoading] = useState(false);
 
     const isAdminOrManager = user?.role === "ADMIN" || user?.role === "MANAGER";
     const isAdmin = user?.role === "ADMIN";
@@ -115,12 +130,6 @@ export default function SettingsPage() {
                 map[key] = p.enabled;
             }
             setPrefs(map);
-        }).catch(() => {});
-
-        // My Telegram link status (all users)
-        api.telegramLink.status(token).then((data) => {
-            setTgAccountLinked(data.linked);
-            setTgBotUsername(data.botUsername);
         }).catch(() => {});
 
         if (!isAdminOrManager) return;
@@ -143,8 +152,12 @@ export default function SettingsPage() {
             setCarryForward(data.carryForwardBalance);
             setRequireApproval(data.requireJoinApproval ?? true);
             if (data.weekendDays) setWeekendDays(data.weekendDays);
-            setTgTimezone(data.timezone);
+            setTimezone(data.timezone);
+            setSavedTimezone(data.timezone);
         }).catch(() => {});
+
+        // Broadcasts still on show
+        api.announcements.list(token).then((data) => setBroadcasts(data.announcements)).catch(() => {});
 
         // Per-slot cutoff configs
         api.mealConfigs.list(token).then((data) => {
@@ -158,22 +171,6 @@ export default function SettingsPage() {
             setMealServed(served);
         }).catch(() => {});
 
-        // Telegram group (Admin only)
-        if (isAdmin) {
-            fetch("/api/admin/telegram-group", {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-                .then((r) => r.ok ? r.json() : null)
-                .then((data) => {
-                    if (data?.group) {
-                        setLinkedGroup(data.group);
-                        setTgChatId(data.group.chatId ?? "");
-                        setTgChatName(data.group.chatName ?? "");
-                        if (data.group.timezone) setTgTimezone(data.group.timezone);
-                    }
-                })
-                .catch(() => {});
-        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, token]);
 
@@ -293,36 +290,6 @@ export default function SettingsPage() {
         new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(new Date(Date.UTC(2023, 0, 1 + d)))
     );
 
-    // ── My Telegram account ────────────────────────────────────────────────────
-    async function getTelegramCode() {
-        if (!token) return;
-        setTgCodeLoading(true);
-        try {
-            const data = await api.telegramLink.createCode(token);
-            setTgLinkCode({ code: data.code, expiresAt: data.expiresAt });
-            if (data.botUsername) setTgBotUsername(data.botUsername);
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : t("telegramAccount.codeFailed"));
-        } finally {
-            setTgCodeLoading(false);
-        }
-    }
-
-    async function unlinkTelegram() {
-        if (!token) return;
-        setTgCodeLoading(true);
-        try {
-            await api.telegramLink.unlink(token);
-            setTgAccountLinked(false);
-            setTgLinkCode(null);
-            toast.success(t("telegramAccount.unlinked"));
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : t("telegramAccount.unlinkFailed"));
-        } finally {
-            setTgCodeLoading(false);
-        }
-    }
-
     // ── Copy invite ────────────────────────────────────────────────────────────
     async function toggleApproval(next: boolean) {
         if (!token) return;
@@ -359,64 +326,89 @@ export default function SettingsPage() {
         setTimeout(() => setCopied(false), 2000);
     }
 
-    async function getGroupCode() {
+    // ── Timezone ───────────────────────────────────────────────────────────────
+    async function saveTimezone() {
         if (!token) return;
-        setGettingGroupCode(true);
+        setSavingTz(true);
         try {
-            const res = await api.admin.telegramGroupCode(token);
-            setGroupCode({ code: res.code, botUsername: res.botUsername, adminTelegramLinked: res.adminTelegramLinked });
+            await api.admin.updateSettings({ timezone }, token);
+            setSavedTimezone(timezone);
+            toast.success(t("timezone.saved"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : t("errors.linkGroup"));
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
         } finally {
-            setGettingGroupCode(false);
+            setSavingTz(false);
         }
     }
 
-    // While the group is not connected, notice when it gets connected from Telegram (for 3 minutes)
-    useEffect(() => {
-        if (!token || !isAdmin || linkedGroup || activeTab !== "mess") return;
-        let tries = 0;
-        const id = setInterval(() => {
-            if (++tries > 36) return clearInterval(id);
-            api.admin
-                .getTelegramGroup(token)
-                .then((g) => {
-                    if (g.isLinked) {
-                        setLinkedGroup({ chatId: g.chatId ?? "", chatName: g.chatName ?? "" });
-                        setGroupCode(null);
-                        toast.success(t("telegramGroup.linkedFromTelegram"));
-                    }
-                })
-                .catch(() => {});
-        }, 4000);
-        return () => clearInterval(id);
-    }, [token, isAdmin, linkedGroup, activeTab, t]);
-
-    // ── Link Telegram group ───────────────────────────────────────────────────
-    async function handleLinkTelegram(e: React.FormEvent) {
-        e.preventDefault();
-        if (!token || !tgChatId.trim()) return;
-        setLinkingTg(true);
-        try {
-            const res = await fetch("/api/admin/telegram-group", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ chat_id: tgChatId.trim(), chat_name: tgChatName.trim(), timezone: tgTimezone }),
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || t("errors.linkGroup"));
+    // Every zone the browser knows, with its current offset, e.g. "Asia/Dhaka · UTC+6".
+    // Browsers list some zones under their old names (Chrome says Asia/Calcutta, not Asia/Kolkata), so
+    // the names people actually search for are added, and the old alias is hidden when the new one exists.
+    const timezoneOptions = useMemo(() => {
+        const isZone = (z: string) => {
+            try {
+                new Intl.DateTimeFormat("en", { timeZone: z });
+                return true;
+            } catch {
+                return false;
             }
-            setLinkedGroup({ chatId: tgChatId.trim(), chatName: tgChatName.trim() });
-            toast.success(t("telegramGroup.linked"));
+        };
+        let known: string[] = [];
+        try {
+            known = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+        } catch {
+            known = [];
+        }
+        const zones = new Set<string>([...known, ...COMMON_TIMEZONES.filter(isZone)]);
+        for (const [legacy, modern] of Object.entries(LEGACY_TIMEZONES)) {
+            if (zones.has(modern)) zones.delete(legacy);
+        }
+        zones.add(savedTimezone); // whatever is saved must always be selectable
+        const now = new Date();
+        return [...zones].sort().map((zone) => {
+            let hint = "";
+            try {
+                hint = new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: "shortOffset" })
+                    .formatToParts(now)
+                    .find((p) => p.type === "timeZoneName")?.value.replace("GMT", "UTC") ?? "";
+            } catch {
+                hint = "";
+            }
+            return { value: zone, label: zone.replace(/_/g, " "), hint };
+        });
+    }, [savedTimezone]);
+
+    // ── Broadcast ──────────────────────────────────────────────────────────────
+    async function sendBroadcast() {
+        const message = broadcastText.trim();
+        if (!token || !message) return;
+        setSendingBroadcast(true);
+        try {
+            const res = await api.announcements.create(message, token);
+            setBroadcasts((prev) => [res.announcement, ...prev]);
+            setBroadcastText("");
+            toast.success(t("broadcast.sent"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : t("errors.linkGroup"));
+            toast.error(err instanceof Error ? err.message : t("broadcast.failed"));
         } finally {
-            setLinkingTg(false);
+            setSendingBroadcast(false);
         }
     }
 
-    // ── Cutoff label map ──────────────────────────────────────────────────────
+    async function removeBroadcast(id: string) {
+        if (!token || !window.confirm(t("broadcast.removeConfirm"))) return;
+        setRemovingBroadcast(id);
+        try {
+            await api.announcements.remove(id, token);
+            setBroadcasts((prev) => prev.filter((b) => b.id !== id));
+            toast.success(t("broadcast.removed"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("broadcast.failed"));
+        } finally {
+            setRemovingBroadcast(null);
+        }
+    }
+
     const CUTOFF_LABELS: Record<string, string> = {
         BREAKFAST: t("breakfastCutoff"),
         LUNCH:     t("lunchCutoff"),
@@ -509,59 +501,6 @@ export default function SettingsPage() {
                         </div>
                     </Card>
 
-                    {/* My Telegram account */}
-                    <Card>
-                        <div className={styles.prefHeader}>
-                            <div className={styles.sectionTitleRow}>
-                                <h3 className={styles.sectionTitle}>
-                                    <Send size={18} />
-                                    {t("telegramAccount.title")}
-                                </h3>
-                                {tgAccountLinked && (
-                                    <span className={styles.telegramLinkedBadge}>
-                                        <Check size={12} />
-                                        {t("telegramAccount.linked")}
-                                    </span>
-                                )}
-                            </div>
-                            <p className={styles.helpText}>{t("telegramAccount.description")}</p>
-                        </div>
-
-                        {tgLinkCode && (
-                            <div className={styles.linkCodeBox}>
-                                {tgBotUsername && (
-                                    <a
-                                        className={styles.openTgBtn}
-                                        href={`https://t.me/${tgBotUsername}?start=${tgLinkCode.code}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <Send size={16} /> {t("telegramAccount.openInTelegram")}
-                                    </a>
-                                )}
-                                <span className={styles.inviteCodeText}>/link {tgLinkCode.code}</span>
-                                <p className={styles.helpText}>
-                                    {t("telegramAccount.instructions", {
-                                        bot: tgBotUsername ? `@${tgBotUsername}` : t("telegramAccount.theBot"),
-                                        time: new Date(tgLinkCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                                    })}
-                                </p>
-                            </div>
-                        )}
-
-                        <div className={styles.formActions}>
-                            <Button onClick={getTelegramCode} disabled={tgCodeLoading}>
-                                <Link size={16} />
-                                {tgAccountLinked ? t("telegramAccount.relink") : t("telegramAccount.getCode")}
-                            </Button>
-                            {tgAccountLinked && (
-                                <Button variant="secondary" onClick={unlinkTelegram} disabled={tgCodeLoading}>
-                                    <Unlink size={16} />
-                                    {t("telegramAccount.unlink")}
-                                </Button>
-                            )}
-                        </div>
-                    </Card>
                     <AccountSection />
                 </>
             )}
@@ -569,6 +508,62 @@ export default function SettingsPage() {
             {/* ── Mess Settings Tab ─────────────────────────────────────────── */}
             {activeTab === "mess" && isAdminOrManager && (
                 <>
+                    {/* Broadcast */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>
+                            <Megaphone size={18} />
+                            {t("broadcast.title")}
+                        </h3>
+                        <p className={styles.helpText}>{t("broadcast.description", { days: ANNOUNCEMENT_VISIBLE_DAYS })}</p>
+                        <div className={styles.field}>
+                            <textarea
+                                className={styles.textarea}
+                                value={broadcastText}
+                                onChange={(e) => setBroadcastText(e.target.value)}
+                                maxLength={ANNOUNCEMENT_MAX_LENGTH}
+                                rows={3}
+                                placeholder={t("broadcast.placeholder")}
+                                aria-label={t("broadcast.title")}
+                            />
+                            <div className={styles.broadcastFoot}>
+                                <span className={styles.helpText}>{broadcastText.length}/{ANNOUNCEMENT_MAX_LENGTH}</span>
+                                <Button onClick={sendBroadcast} disabled={sendingBroadcast || !broadcastText.trim()}>
+                                    <Megaphone size={16} />
+                                    {sendingBroadcast ? t("broadcast.sending") : t("broadcast.send")}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <h4 className={styles.subTitle}>{t("broadcast.recent")}</h4>
+                        {broadcasts.length === 0 ? (
+                            <p className={styles.helpText}>{t("broadcast.none", { days: ANNOUNCEMENT_VISIBLE_DAYS })}</p>
+                        ) : (
+                            <ul className={styles.broadcastList}>
+                                {broadcasts.map((b) => (
+                                    <li key={b.id} className={styles.broadcastItem}>
+                                        <div className={styles.broadcastBody}>
+                                            <p className={styles.broadcastText}>{b.message}</p>
+                                            <span className={styles.helpText}>
+                                                {t("broadcast.by", { name: b.authorName })} ·{" "}
+                                                {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(b.createdAt))}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className={styles.iconAction}
+                                            onClick={() => void removeBroadcast(b.id)}
+                                            disabled={removingBroadcast === b.id}
+                                            aria-label={t("broadcast.remove")}
+                                            title={t("broadcast.remove")}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
+
                     {/* Billing rules */}
                     <Card>
                         <h3 className={styles.sectionTitle}>
@@ -787,99 +782,32 @@ export default function SettingsPage() {
                         </Card>
                     )}
 
-                    {/* Telegram group (Admin only) */}
-                    {isAdmin && (
-                        <Card>
-                            <div className={styles.prefHeader}>
-                                <div className={styles.sectionTitleRow}>
-                                    <h3 className={styles.sectionTitle}>{t("telegramGroup.title")}</h3>
-                                    {linkedGroup && (
-                                        <span className={styles.telegramLinkedBadge}>
-                                            <Check size={12} />
-                                            {t("telegramGroup.linked")}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className={styles.helpText}>{t("telegramGroup.description")}</p>
-                            </div>
-
-                            <ol className={styles.steps}>
-                                <li>
-                                    {t("telegramGroup.easy1")}
-                                    {tgAccountLinked && <span className={styles.doneTick}> <Check size={14} /></span>}
-                                </li>
-                                <li>{t("telegramGroup.easy2", { bot: tgBotUsername ? `@${tgBotUsername}` : t("telegramGroup.theBot") })}</li>
-                                <li>{t("telegramGroup.easy3")}</li>
-                            </ol>
-                            {!linkedGroup && <p className={styles.helpText}>{t("telegramGroup.watching")}</p>}
-
-                            <details className={styles.advanced}>
-                            <summary>{t("telegramGroup.advanced")}</summary>
-                            <p className={styles.helpText}>{t("telegramGroup.codeWay")}</p>
-                            <div className={styles.stepAction}>
-                                <Button type="button" variant="secondary" size="small" onClick={() => void getGroupCode()} disabled={gettingGroupCode}>
-                                    {gettingGroupCode ? t("saving") : groupCode ? t("telegramGroup.newCode") : t("telegramGroup.getCode")}
-                                </Button>
-                            </div>
-                            {groupCode && (
-                                <div className={styles.groupCodeBox}>
-                                    <code className={styles.groupCode}>/linkgroup {groupCode.code}</code>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="small"
-                                        onClick={() => void navigator.clipboard.writeText(`/linkgroup ${groupCode.code}`).then(() => toast.success(t("inviteCard.copied")))}
-                                    >
-                                        <Copy size={14} /> {t("inviteCard.copy")}
+                    {/* Timezone */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>
+                            <Globe size={18} />
+                            {t("timezone.title")}
+                        </h3>
+                        <p className={styles.helpText}>{t("timezone.help")}</p>
+                        <div className={styles.field}>
+                            <div className={styles.inputRow}>
+                                <Select
+                                    value={timezone}
+                                    onChange={setTimezone}
+                                    options={timezoneOptions}
+                                    disabled={!isAdmin}
+                                    aria-label={t("timezone.title")}
+                                />
+                                {isAdmin && (
+                                    <Button onClick={saveTimezone} disabled={savingTz || timezone === savedTimezone}>
+                                        <Save size={16} />
+                                        {savingTz ? t("saving") : t("saveChanges")}
                                     </Button>
-                                </div>
-                            )}
-                            {groupCode && !groupCode.adminTelegramLinked && (
-                                <p className={styles.warnText}>{t("telegramGroup.needOwnLink")}</p>
-                            )}
-                            <form className={styles.form} onSubmit={handleLinkTelegram}>
-                                <div className={styles.field}>
-                                    <label className={styles.label}>{t("telegramGroup.chatId")}</label>
-                                    <input
-                                        className={styles.input}
-                                        type="text"
-                                        value={tgChatId}
-                                        onChange={(e) => setTgChatId(e.target.value)}
-                                        placeholder="-100123456789"
-                                        required
-                                    />
-                                    <span className={styles.helpText}>{t("telegramGroup.chatIdHelp")}</span>
-                                </div>
-                                <div className={styles.field}>
-                                    <label className={styles.label}>{t("telegramGroup.chatName")}</label>
-                                    <input
-                                        className={styles.input}
-                                        type="text"
-                                        value={tgChatName}
-                                        onChange={(e) => setTgChatName(e.target.value)}
-                                        placeholder={t("telegramGroup.chatNamePlaceholder")}
-                                    />
-                                </div>
-                                <div className={styles.field}>
-                                    <label className={styles.label}>{t("telegramGroup.timezone")}</label>
-                                    <input
-                                        className={styles.input}
-                                        type="text"
-                                        value={tgTimezone}
-                                        onChange={(e) => setTgTimezone(e.target.value)}
-                                        placeholder="Asia/Dhaka"
-                                    />
-                                </div>
-                                <div className={styles.formActions}>
-                                    <Button type="submit" disabled={linkingTg || !tgChatId.trim()}>
-                                        <Link size={16} />
-                                        {linkingTg ? t("telegramGroup.linking") : t("telegramGroup.link")}
-                                    </Button>
-                                </div>
-                            </form>
-                            </details>
-                        </Card>
-                    )}
+                                )}
+                            </div>
+                        </div>
+                        {!isAdmin && <p className={styles.helpText}>{t("timezone.adminOnly")}</p>}
+                    </Card>
 
                     {/* Danger zone (Admin only) */}
                     {isAdmin && savedName && <DeleteMessCard messName={savedName} />}

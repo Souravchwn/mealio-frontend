@@ -93,7 +93,7 @@ Create an admin on the server: `npm run platform-admin -- --email you@example.co
 |------|-----|-------------------|
 | Dashboard | `GET /api/platform/stats` | Counts, 14 day sign-ups, newest messes, alerts |
 | Messes | `GET /api/platform/messes`, `GET/PATCH /api/platform/messes/[id]` | Suspend (with reason), lift, delete, restore, change plan, new invite code, toggle join approval |
-| Users | `GET /api/platform/users`, `GET/PATCH /api/platform/users/[id]` | Deactivate, reactivate, verify email, change email, reset code, unlink Telegram, sign out everywhere |
+| Users | `GET /api/platform/users`, `GET/PATCH /api/platform/users/[id]` | Deactivate, reactivate, verify email, change email, reset code, sign out everywhere |
 | Support | `GET /api/platform/tickets`, `GET/POST/PATCH /api/platform/tickets/[id]` | Reply (emails the person), set status and priority |
 | Security | `GET /api/platform/security-events` | Feed, filters, hot IPs and emails |
 | Audit | `GET /api/platform/audit?source=platform\|mess` | Staff actions, or mess audit logs across all messes |

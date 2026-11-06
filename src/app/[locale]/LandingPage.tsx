@@ -17,7 +17,7 @@ function KhataMark({ size = 22 }: { size?: number }) {
     );
 }
 
-const FEATURES = ["mealToggle", "expense", "headcount", "matrix", "telegram", "finance"] as const;
+const FEATURES = ["mealToggle", "expense", "headcount", "matrix", "finance"] as const;
 const ROLES = ["member", "manager", "admin", "cook"] as const;
 const STEPS = ["one", "two", "three"] as const;
 const FACTS = ["taps", "auto", "lang"] as const;

@@ -43,7 +43,7 @@
 | Problem | Solution |
 |---|---|
 | Manual Excel tracking | Auto-calculated meal matrix from live data |
-| WhatsApp message confusion | Telegram Bot + PWA for meal toggles |
+| WhatsApp message confusion | Web app for meal toggles, with broadcasts from the manager |
 | Monthly bill arguments | ACID transactions — every taka/rupee is traceable |
 | Cook doesn't know headcount | Real-time dashboard with Firebase cache |
 | No expense categorization | Categorized bazaar logging (Protein, Carb, Vegetable, etc.) |
@@ -497,12 +497,13 @@ Development: http://localhost:8080
 | `POST` | `/auth/refresh` | `{ refreshToken }` | `{ accessToken, refreshToken }` |
 | `POST` | `/auth/logout` | — | `204 No Content` |
 
-### Telegram Bot Webhook
+### Broadcasts
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/telegram/webhook` | Receives Telegram Updates |
-| `GET` | `/api/telegram/health` | Liveness check |
+| `GET` | `/api/announcements` | Broadcasts from the last 3 days (any member) |
+| `POST` | `/api/announcements` | Send a broadcast (Admin/Manager) |
+| `DELETE` | `/api/announcements/[id]` | Remove a broadcast (Admin/Manager) |
 
 ### Meal Management
 
@@ -658,7 +659,6 @@ interface Member {
   messId: string;
   name: string;
   phone?: string;
-  telegramUserId?: string;
   role: Role;
   balance: number;           // BigDecimal → number
 }

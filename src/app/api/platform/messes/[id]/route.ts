@@ -28,11 +28,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
         members: {
           select: {
             id: true, name: true, email: true, phone: true, role: true, isActive: true, joinStatus: true,
-            joinedAt: true, lastLoginAt: true, telegramLinked: true, emailVerifiedAt: true, deletedAt: true,
+            joinedAt: true, lastLoginAt: true, emailVerifiedAt: true, deletedAt: true,
           },
           orderBy: { joinedAt: 'asc' },
         },
-        telegramGroups: { where: { isActive: true }, select: { chatName: true, timezone: true } },
       },
     })
     if (!mess) return NextResponse.json({ detail: 'Mess not found' }, { status: 404 })
@@ -71,13 +70,13 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       suspended_at: mess.suspendedAt?.toISOString() ?? null,
       deleted_at: mess.deletedAt?.toISOString() ?? null,
       created_at: mess.createdAt.toISOString(),
-      telegram_group: mess.telegramGroups[0] ?? null,
+      timezone: mess.timezone,
       period: period ? { label: period.yearMonth, start: period.startDate.toISOString().slice(0, 10), end: period.endDate.toISOString().slice(0, 10) } : null,
       money,
       members: mess.members.map((m) => ({
         id: m.id, name: m.name, email: m.email, phone: m.phone, role: m.role,
         is_active: m.isActive, join_status: m.joinStatus, deleted: !!m.deletedAt,
-        telegram_linked: m.telegramLinked, email_verified: !!m.emailVerifiedAt,
+        email_verified: !!m.emailVerifiedAt,
         joined_at: m.joinedAt.toISOString(), last_login_at: m.lastLoginAt?.toISOString() ?? null,
       })),
       recent_activity: audit.map((a) => ({ id: a.id, action: a.action, actor: a.actor?.name ?? 'System', created_at: a.createdAt.toISOString() })),

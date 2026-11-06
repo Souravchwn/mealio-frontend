@@ -2,7 +2,7 @@
 
 ## What This Module Does
 
-Lists all members of the current mess with their role, balance, Telegram link status, and guest info. ADMIN can change roles, deactivate members, and set guest date ranges. ADMIN only page.
+Lists all members of the current mess with their role, balance, and guest info. ADMIN can change roles, deactivate members, and set guest date ranges. ADMIN only page.
 
 ---
 
@@ -21,7 +21,7 @@ Lists all members of the current mess with their role, balance, Telegram link st
 
 ## API: GET `/api/members`
 
-**Roles:** ADMIN or MANAGER. Query `year_month?` (`mess_id` ignored — always the caller's mess). Returns active members with `mealCount` (billable), `guestMeals`, `contributed`, `balance` from `calculatePeriodSummary`, plus `phone`, `role`, `telegramLinked`, guest dates.
+**Roles:** ADMIN or MANAGER. Query `year_month?` (`mess_id` ignored — always the caller's mess). Returns active members with `mealCount` (billable), `guestMeals`, `contributed`, `balance` from `calculatePeriodSummary`, plus `phone`, `role`, guest dates.
 
 ## API: PUT `/api/members/[id]`
 
@@ -97,7 +97,7 @@ Guests brought by a member for a day (`DailyLog.guestCount`) are different — s
 
 `members.*`: `title`, `subtitle`, `name`, `role`, `balance`, `phone`, `status`, `addMember`, `inviteCode`, `roles.ADMIN/MANAGER/MEMBER/GUEST`
 
-`mySummary.*`: `title`, `subtitle`, `mealRate`, `totalMeals`, `contributed`, `mealCost`, `balance`, `mealBreakdown`, `breakfast`, `lunch`, `dinner`, `guestMeals`, `times`, `last7Days`, `financialSummary`, `telegramStatus`, `telegramLinked`, `telegramNotLinked`
+`mySummary.*`: `title`, `subtitle`, `mealRate`, `totalMeals`, `contributed`, `mealCost`, `balance`, `mealBreakdown`, `breakfast`, `lunch`, `dinner`, `guestMeals`, `times`, `last7Days`, `financialSummary`
 
 ---
 

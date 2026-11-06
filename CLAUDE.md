@@ -15,8 +15,7 @@ npm run seed -- --yes   # Seed demo data (dev DB only — public passwords)
 npm run platform-admin -- --email you@x.com --name "Name"   # Create/reset a /console staff admin
 npm run test:isolation  # Tenant isolation test (needs npm run dev running)
 npm run test:closed     # Closed-month integrity test (needs npm run dev running)
-npm run test:telegram   # /link and /linkgroup abuse tests (needs npm run dev running)
-npm run telegram:setup -- https://public-url   # Connect the bot locally; in production use /console, Telegram
+npm run test:broadcasts # Broadcasts + mess timezone + removed Telegram routes (needs npm run dev running)
 npm run env:production  # Create .env.deploy.local with fresh secrets (see DEPLOY.md)
 npm run import:sheet -- scripts/data/<file>.local.json   # Load a mess's real sheet (local DB only)
 npm run reconcile:sheet -- scripts/data/<file>.local.json # Compare the site with that sheet
@@ -24,7 +23,7 @@ npx prisma generate   # Regenerate Prisma client after schema changes
 npx prisma studio     # Open Prisma GUI to inspect database
 ```
 
-There is no unit test suite. `npm run test:isolation` is an integration test against the running dev server: run it, and `npm run test:closed`, after adding or changing any API route.
+There is no unit test suite. `npm run test:isolation` is an integration test against the running dev server: run it, `npm run test:closed` and `npm run test:broadcasts`, after adding or changing any API route.
 
 ## Environment
 
@@ -35,10 +34,7 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 | `DATABASE_URL` | Supabase Postgres via transaction pooler (port 6543) — runtime |
 | `DIRECT_URL` | Supabase Postgres via session pooler (port 5432) — Prisma CLI only |
 | `JWT_SECRET` | 32+ char hex string for signing JWTs |
-| `TELEGRAM_BOT_TOKEN` | From @BotFather |
-| `TELEGRAM_WEBHOOK_SECRET` | **Required** — webhook rejects all updates without it |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis — settings cache, rate limits (optional locally) |
-| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | Bot username shown on the Telegram link screen |
 | `NEXT_PUBLIC_APP_URL` | Public app URL |
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | `en` or `bn` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | `false` in production |
@@ -120,7 +116,7 @@ src/
 │   ├── constants.ts                    # DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, etc.
 │   ├── utils.ts                        # Client: cn(), formatCurrency(), getTimeOfDay(), etc.
 │   ├── rate-limit.ts                   # Simple rate limiter for API routes
-│   └── telegram/                       # Telegram bot (see Module 10)
+│   └── announcements.ts                # Server-only: broadcast list + response shape (Module 14)
 ├── types/index.ts                      # All TypeScript interfaces and enums
 ├── i18n/                               # next-intl config (request.ts, routing.ts)
 └── middleware.ts                       # Locale redirect middleware (deprecated, will become proxy)
@@ -268,7 +264,7 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 4. **Guest section** — increment/decrement guest count
 
 **Server-side logic in `today/route.ts`:**
-- Resolves timezone from mess → telegramGroups
+- Resolves the timezone from `Mess.timezone` (via `getMessSettings()`)
 - If no log exists, auto-creates from `getMemberMealDefaults()`
 - Per-meal cutoff: queries `mealConfig` table, falls back to legacy `cutOffTime`
 
@@ -368,7 +364,7 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 |-------|-------|
 | Page | `src/app/[locale]/(dashboard)/settings/page.tsx` |
 | Styles | `src/app/[locale]/(dashboard)/settings/settings.module.css` |
-| API routes | `src/app/api/mess/settings/route.ts`, `src/app/api/members/meal-preferences/route.ts`, `src/app/api/admin/telegram-group/route.ts`, `src/app/api/mess/meal-configs/route.ts` |
+| API routes | `src/app/api/mess/settings/route.ts`, `src/app/api/members/meal-preferences/route.ts`, `src/app/api/mess/meal-configs/route.ts`, `src/app/api/announcements/` |
 
 **Sections (top to bottom):**
 
@@ -382,11 +378,13 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 3. **Invite Code Card** (Admin only) — large monospace code + copy button
    - Data loaded from `api.mess.list(token)`
 
-4. **Telegram Group** (Admin only) — link a Telegram group with chatId, chatName, timezone
-   - `GET /api/admin/telegram-group` → current linked group
-   - `POST /api/admin/telegram-group` → link/update group
+4. **Timezone** (Admin edits, Manager sees it) — IANA zone that decides when "today" starts and when cutoffs fall
+   - `PUT api.admin.updateSettings({ timezone }, token)` (validated; `settleDailyLogs` runs first so past days never change)
 
-5. **Danger Zone** (Admin/Manager) — delete mess (disabled, contact support)
+5. **Broadcast** (Admin/Manager, top of the Mess tab) — write a message every member sees on Overview for 3 days; list and remove recent ones
+   - `api.announcements.list / create / remove` (Module 14)
+
+6. **Danger Zone** (Admin/Manager) — delete mess (disabled, contact support)
 
 **i18n keys:** `settings.*`
 
@@ -475,33 +473,23 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 
 ---
 
-### MODULE 14: Telegram Bot
+### MODULE 14: Broadcasts
 
-**No frontend page** — this is a server-side webhook handler.
+**Route:** no page of its own. Sent from Settings → Mess tab → Broadcast, read on `/{locale}/overview`.
 
 | Layer | Files |
 |-------|-------|
-| Webhook | `src/app/api/telegram/webhook/route.ts` |
-| Composition root | `src/lib/telegram/index.ts` (`handleWebhookUpdate()`) |
-| Dispatcher | `src/lib/telegram/commands/dispatcher.ts` |
-| Handlers | `src/lib/telegram/commands/handlers/` (one file per command) |
-| Services | `src/lib/telegram/services/` (meal.service.ts, nomeal.service.ts) |
-| Repositories | `src/lib/telegram/repositories/` (meal, preference, member) |
-| DTOs | `src/lib/telegram/dto/` |
-| Infra | `src/lib/telegram/infrastructure/` |
+| API routes | `src/app/api/announcements/route.ts` (GET any member, POST Admin/Manager), `src/app/api/announcements/[id]/route.ts` (DELETE Admin/Manager) |
+| Server lib | `src/lib/announcements.ts` |
+| Limits | `ANNOUNCEMENT_*` in `src/lib/constants.ts` (1000 chars, visible 3 days, 10 per mess per day) |
+| Client API | `api.announcements.list / create / remove` |
+| UI | Settings page (compose + recent list), Overview page (notice panel) |
 
-**Bot commands:** `/mealio` (opens the personal Mini App; connects the group when a linked admin sends it), `/link <code>`, `/start <code>` (one-tap link), `/linkgroup <code>` (older fallback), `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
+**What it does:** an admin or manager writes a message; every member sees it on Overview until it is 3 days old. It replaces the old Telegram `/announce`. Nothing is pushed to phones: apps and widgets read `GET /api/announcements`. `POST /api/admin/no-cook` also posts one automatically.
 
-**Account linking:** the member gets a one-time code in web Settings → My Telegram (`POST /api/members/telegram-link`) and sends `/link <code>` to the bot. Phone-number linking was removed (anyone knowing a phone number could take over the account).
+**Rules:** scope everything by `payload.messId`; another mess's broadcast answers 404. The sender's name is stored on the row so it survives them leaving. Sends and removals are audited (`POST_ANNOUNCEMENT`, `DELETE_ANNOUNCEMENT`). Full reference: `context/18-broadcasts.md`.
 
-**Time-based targeting for `/meal on` / `/meal off`:**
-- Before `lunchCutoffTime` (default 10:00) → targets LUNCH
-- After `lunchCutoffTime`, before `cutOffTime` (default 21:00) → targets DINNER
-- After `cutOffTime` → command rejected
-
-**Self-setup:** when a linked admin adds the bot to a group it connects itself (`my_chat_member`, `services/group-presence.service.ts`). The **Mini App** (`/[locale]/tg`, `GET /api/tg/home`) is read-only and identifies people only by Telegram's signed `initData` (`webapp-auth.ts`). Today's meals and headcount logic live in `src/lib/today.ts`, shared with `/api/meals/today` and `/api/cook/headcount`. Full reference: `context/18-telegram-mini-app.md`.
-
-See `TELEGRAM_SETUP.md` for full documentation.
+Telegram support (bot, Mini App, group linking) was removed. Old Telegram tables and columns are only dropped by the optional section 27 of `MIGRATION.sql`.
 
 ---
 
@@ -517,8 +505,6 @@ A Redis marker (`mealio:mess:<id>:logs-ensured:<date>`) makes repeat calls on th
 Call `invalidateDailyLogsMarker(messId)` after membership changes.
 Before changing anything that affects defaults (preferences, meal configs, weekend days, member status) call `settleDailyLogs(messId)` so the change is never retroactive.
 Full flow and the risk list: `context/12-daily-meal-counting.md`.
-
-The old Telegram cutoff warning and month-end reminder were removed with the crons.
 
 ### MODULE 16: SaaS platform (sign-up, recovery, support, console)
 
@@ -622,15 +608,15 @@ DEFAULT_TIMEZONE = "Asia/Dhaka"
 
 | Model | Key Fields | Notes |
 |-------|-----------|-------|
-| `Mess` | id, name, inviteCode, cutOffTime, mealConfigs[], telegramGroups[] | Central entity |
-| `Member` | id, messId, email, passwordHash, role, telegramUid | One member per mess |
+| `Mess` | id, name, inviteCode, cutOffTime, timezone, mealConfigs[], announcements[] | Central entity |
+| `Member` | id, messId, email, passwordHash, role | One member per mess |
 | `DailyLog` | messId, memberId, logDate, breakfastCount/lunchCount/dinnerCount, guestCount, frozen, isOverride | One per member per day |
 | `MealConfig` | messId, mealType, enabled, cutoffTime, maxCount | 3 rows per mess (B/L/D) |
 | `UserMealPreference` | memberId, messId, mealType, dayType, enabled, defaultCount | 6 rows per member (B/L/D × WD/WE) |
 | `Expense` | messId, addedBy, amount, category, expenseDate, yearMonth | |
 | `MessMonth` | messId, yearMonth, isClosed, mealRate, totalExpense | Created on close |
 | `LedgerEntry` | messId, memberId, entryType, amount | DEDUCTION / CARRY_FORWARD |
-| `TelegramGroup` | chatId, messId, timezone | One active group per mess |
+| `Announcement` | messId, authorId, authorName, message, createdAt | Broadcast shown on Overview for 3 days |
 | `MessMembership` | memberId, messId, role | Multi-mess support |
 | `AuditLog` | actorId, action, targetTable, oldValue, newValue | |
 

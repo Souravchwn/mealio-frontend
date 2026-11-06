@@ -2,7 +2,7 @@
  * /api/platform/users/[id]
  *   GET   — profile, mess, recent security events, tickets
  *   PATCH { action, ... } — deactivate | reactivate | verify_email | change_email
- *                           | reset_code | unlink_telegram | sign_out_everywhere
+ *                           | reset_code | sign_out_everywhere
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       where: { id },
       select: {
         id: true, name: true, email: true, phone: true, role: true, isActive: true, joinStatus: true,
-        deletedAt: true, emailVerifiedAt: true, lastLoginAt: true, joinedAt: true, telegramLinked: true,
+        deletedAt: true, emailVerifiedAt: true, lastLoginAt: true, joinedAt: true,
         passwordChangedAt: true, mess: { select: { id: true, name: true } },
       },
     })
@@ -53,7 +53,6 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       role: user.role,
       status: user.deletedAt ? 'DELETED' : user.joinStatus !== 'APPROVED' ? user.joinStatus : user.isActive ? 'ACTIVE' : 'INACTIVE',
       email_verified: !!user.emailVerifiedAt,
-      telegram_linked: user.telegramLinked,
       mess: user.mess,
       joined_at: user.joinedAt.toISOString(),
       last_login_at: user.lastLoginAt?.toISOString() ?? null,
@@ -116,9 +115,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         result = { ok: true, code, email: user.email, expires_at: expiresAt.toISOString(), minutes: RESET_CODE_TTL_MINUTES }
         break
       }
-      case 'unlink_telegram':
-        await prisma.member.update({ where: { id }, data: { telegramUid: null, telegramLinked: false } })
-        break
       case 'sign_out_everywhere':
         await prisma.member.update({ where: { id }, data: { passwordChangedAt: new Date() } })
         break

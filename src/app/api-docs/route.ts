@@ -86,7 +86,16 @@ const spec = {
           phone: { type: 'string', nullable: true },
           role: { type: 'string', enum: ['ADMIN', 'MANAGER', 'MEMBER'] },
           balance: { type: 'number', description: 'Positive = overpaid, negative = owes' },
-          telegram_linked: { type: 'boolean' },
+        },
+      },
+      Announcement: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          message: { type: 'string' },
+          author_name: { type: 'string' },
+          created_at: { type: 'string', format: 'date-time' },
+          expires_at: { type: 'string', format: 'date-time', description: 'When it stops showing (3 days after it was sent)' },
         },
       },
       MatrixDay: {
@@ -436,61 +445,52 @@ const spec = {
         },
       },
     },
-    '/telegram/webhook': {
-      post: {
-        tags: ['Telegram Bot'],
-        summary: 'Telegram Bot webhook endpoint',
-        description:
-          'Receives Update payloads from the Telegram Bot API. This endpoint is **public**. Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Manager Babu member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest N` — set guest count\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  update_id: { type: 'integer' },
-                  message: {
-                    type: 'object',
-                    properties: {
-                      message_id: { type: 'integer' },
-                      from: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'integer', description: 'Telegram user ID' },
-                          first_name: { type: 'string' },
-                          username: { type: 'string' },
-                        },
-                      },
-                      chat: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'integer' },
-                          type: { type: 'string', example: 'private' },
-                        },
-                      },
-                      text: { type: 'string', example: '/meal lunch' },
-                    },
-                  },
-                },
-                example: {
-                  update_id: 123456789,
-                  message: {
-                    message_id: 42,
-                    from: { id: 987654321, first_name: 'Rahul', username: 'rahuldev' },
-                    chat: { id: 987654321, type: 'private' },
-                    text: '/meal lunch',
-                  },
-                },
-              },
-            },
-          },
-        },
+    '/announcements': {
+      get: {
+        tags: ['Broadcasts'],
+        summary: 'Broadcasts from the last few days, newest first (any member)',
+        description: 'Admins and managers send these from Settings. Each stays visible for 3 days. Nothing is pushed to phones: apps and widgets read this list.',
+        security: [{ bearerAuth: [] }],
         responses: {
           200: {
-            description: 'Always 200 to prevent Telegram retry storms',
-            content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean', example: true } } } } },
+            description: 'Active broadcasts',
+            content: { 'application/json': { schema: { type: 'object', properties: { announcements: { type: 'array', items: { $ref: '#/components/schemas/Announcement' } } } } } },
           },
+          401: { description: 'Unauthorized' },
+        },
+      },
+      post: {
+        tags: ['Broadcasts'],
+        summary: 'Send a broadcast to the whole mess (ADMIN or MANAGER)',
+        description: 'At most 10 per mess per day. Messages are up to 1000 characters.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['message'], properties: { message: { type: 'string', maxLength: 1000 } } } } },
+        },
+        responses: {
+          201: {
+            description: 'Sent',
+            content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, announcement: { $ref: '#/components/schemas/Announcement' } } } } },
+          },
+          400: { description: 'Empty or too long' },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden. ADMIN or MANAGER only.' },
+          429: { description: 'Daily limit reached' },
+        },
+      },
+    },
+    '/announcements/{id}': {
+      delete: {
+        tags: ['Broadcasts'],
+        summary: 'Remove a broadcast early (ADMIN or MANAGER)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          200: { description: 'Removed', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' } } } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden. ADMIN or MANAGER only.' },
+          404: { description: 'Not found' },
         },
       },
     },

@@ -2,7 +2,7 @@
 
 ## What This Module Does
 
-Single page with multiple sections gated by role. All users see meal preferences. ADMIN+MANAGER see mess settings. ADMIN-only sees the invite code card, Telegram linking, and danger zone.
+Single page with multiple sections gated by role. All users see meal preferences. ADMIN+MANAGER see mess settings. ADMIN+MANAGER also see Broadcast. ADMIN-only edits the timezone and sees the invite code card and danger zone.
 
 ---
 
@@ -12,9 +12,9 @@ Single page with multiple sections gated by role. All users see meal preferences
 |------|------|---------|
 | `src/app/[locale]/(dashboard)/settings/page.tsx` | Page (client) | All settings sections |
 | `src/app/[locale]/(dashboard)/settings/settings.module.css` | CSS | Settings styles |
-| `src/app/api/mess/settings/route.ts` | API PUT | Update mess name, cutoff time, budget |
+| `src/app/api/mess/settings/route.ts` | API GET+PUT | Read/update mess name, cutoff time, budget, timezone and billing rules |
 | `src/app/api/members/meal-preferences/route.ts` | API GET+PUT | Per-member meal preferences (see Module 03) |
-| `src/app/api/admin/telegram-group/route.ts` | API GET+POST | Get/link Telegram group (ADMIN only) |
+| `src/app/api/announcements/` | API GET+POST, DELETE `[id]` | Broadcasts (see `18-broadcasts.md`) |
 | `src/app/api/mess/meal-configs/route.ts` | API GET+PUT | Per-meal cutoff configs (Admin/Manager) |
 
 ---
@@ -78,23 +78,17 @@ async function handleCopyInvite() {
 
 ---
 
-### Section 4 — Telegram Group (ADMIN only)
+### Section — Broadcast (ADMIN + MANAGER, top of the Mess tab)
 
-**State:** `linkedGroup`, `tgChatId`, `tgChatName`, `tgTimezone`, `linkingTg`
+**State:** `broadcastText`, `sendingBroadcast`, `broadcasts`, `removingBroadcast`
 
-**On mount:** `GET /api/admin/telegram-group` → `setLinkedGroup(data.group)`
+A textarea (max 1000 characters, with a counter), a send button, and below it the broadcasts from the last 3 days with a remove button each. Members see them on the Overview page. Loaded on mount with `api.announcements.list`; sending uses `api.announcements.create`, removing uses `api.announcements.remove` (asks for confirmation). Full reference: `context/18-broadcasts.md`.
 
-**If linked:** shows green badge with group name.
+### Section — Timezone (ADMIN edits, MANAGER read-only)
 
-**Form fields:** Chat ID (required, e.g. `-100123456789`), Group Name (optional), Timezone (IANA name, validated; default `DEFAULT_TIMEZONE`). The group's timezone IS the mess timezone — saving refreshes settings in Redis. A chat already linked to another mess is rejected (409)
+**State:** `timezone`, `savedTimezone`, `savingTz`
 
-**On submit:** `POST /api/admin/telegram-group` with `{ chat_id, chat_name, timezone }` → updates `linkedGroup` state on success.
-
----
-
-### Section — My Telegram (ALL users, General tab)
-
-`GET /api/members/telegram-link` → linked? · `POST` → one-time code (8 chars, 10 min, single use) · `DELETE` → unlink. The member sends `/link <code>` to the bot in a private chat. Phone-number linking was removed (anyone who knew a phone number could take over the account).
+A searchable `Select` (the shared dropdown, never a native `<select>`) of every zone the browser knows (`Intl.supportedValuesOf('timeZone')`), each with its current UTC offset. The saved value is always in the list. Saving calls `api.admin.updateSettings({ timezone })`. The timezone decides when "today" starts and when meal cutoffs fall. The API validates it and runs `settleDailyLogs` first so days that already happened never change. It used to be set on the linked Telegram group; Telegram has been removed.
 
 ### Section — Billing Rules (ADMIN edits, MANAGER read-only)
 
@@ -130,35 +124,10 @@ GET (any member) is served from Redis. PUT is **ADMIN only**, writes Postgres, t
   bazaar_counts_as_deposit?: boolean
   carry_forward_balance?: boolean
   weekend_days?: number[]          // 0–6, at most 6 days
+  timezone?: string                // IANA name, validated (e.g. 'Asia/Dhaka')
 }
 ```
 Response: `{ ok, name, cut_off_time, estimated_monthly_budget, month_start_day, timezone, guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days }`. Audited as `ADMIN_SETTINGS_UPDATE`.
-
-## API: GET `/api/admin/telegram-group`
-
-**Roles:** ADMIN only.
-
-**Returns:**
-```typescript
-{ group: { chatId: string, chatName: string, timezone: string } | null }
-```
-
-Queries `prisma.telegramGroup.findFirst({ where: { messId, isActive: true } })`.
-
----
-
-## API: POST `/api/admin/telegram-group`
-
-**Roles:** ADMIN only.
-
-**Request body:**
-```typescript
-{ chat_id: string, chat_name?: string, timezone?: string }
-```
-
-Calls `groupRepo.register(chatId, chatName, messId, timezone)` from `GroupRepository`. This creates or updates the `TelegramGroup` row.
-
----
 
 ## API: GET `/api/mess/meal-configs`
 
@@ -195,12 +164,11 @@ Upserts a single `MealConfig` row using `messId_mealType` unique constraint.
 ```typescript
 api.mealPreferences.getAll(token)
 api.mealPreferences.update({ mealType, dayType, enabled, defaultCount? }, token)
-api.admin.updateSettings({ name?, cutOffTime?, estimatedMonthlyBudget? }, token)
+api.admin.updateSettings({ name?, cutOffTime?, estimatedMonthlyBudget?, timezone? }, token)
+api.announcements.list(token) / create(message, token) / remove(id, token)
 api.mealConfigs.list(token)
 api.mealConfigs.update({ mealType, cutoffTime?, enabled?, maxCount? }, token)
 ```
-
-Note: Telegram group linking uses raw `fetch()` directly in the component (not via `api.ts`) because the endpoint is not yet in the API client.
 
 ---
 
@@ -213,7 +181,7 @@ Note: Telegram group linking uses raw `fetch()` directly in the component (not v
 | `.prefOff` | Gray border + bg when disabled |
 | `.inviteCodeDisplay` | Container for monospace code |
 | `.inviteCodeText` | Large monospace code in primary color |
-| `.telegramLinkedBadge` | Green badge showing linked group |
+| `.textarea`, `.broadcastList`, `.broadcastItem`, `.iconAction` | Broadcast composer and recent list |
 | `.codeRow` | Flex row for code input + copy button (used in form) |
 | `.sectionTitle` | Card section heading (lg, weight 700) |
 | `.dangerCard` | Card with red left border |
@@ -228,13 +196,15 @@ Note: Telegram group linking uses raw `fetch()` directly in the component (not v
 
 `settings.inviteCard.*`: `title`, `description`, `copy`, `copied`
 
-`settings.telegramGroup.*`: `title`, `description`, `chatId`, `chatIdHelp`, `chatName`, `timezone`, `link`, `linking`, `linked`, `unlinked`
+`settings.broadcast.*`: `title`, `description`, `placeholder`, `send`, `sending`, `sent`, `failed`, `recent`, `none`, `by`, `remove`, `removed`, `removeConfirm`
+
+`settings.timezone.*`: `title`, `help`, `saved`, `adminOnly`
 
 ---
 
 ## Common Pitfalls
 
-1. **`isAdmin` vs `isOwner`**: `isAdmin = ADMIN || MANAGER` (for mess settings + danger zone). `isOwner = ADMIN only` (for invite code + Telegram). Don't mix them.
+1. **`isAdmin` vs `isOwner`**: `isAdmin = ADMIN || MANAGER` (for mess settings + danger zone). `isOwner = ADMIN only` (for the invite code and timezone). Don't mix them.
 2. **`inviteCode` comes from `api.mess.list()`** — it's loaded in the same `useEffect` as the mess settings. If the mess list call fails, the invite card won't show (it checks `inviteCode && isOwner`).
-3. **Telegram linking uses raw fetch** — not `api.admin.*`. If you add it to `api.ts`, update the component to use it.
+3. **Timezone changes are never retroactive** — the API settles past days first. Don't bypass `PUT /api/mess/settings` to change `Mess.timezone`.
 4. **Preference sync** — when a preference is saved via PUT, the API immediately syncs today's DailyLog. This is server-side only; the frontend doesn't need to reload today's meal state after a preference change.

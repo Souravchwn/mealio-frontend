@@ -24,6 +24,8 @@ model Mess {
   carryForwardBalance    Boolean  @default(true) @map("carry_forward_balance")
   /// Weekend days for meal preferences, comma-separated JS weekday numbers (0=Sun … 6=Sat)
   weekendDays            String   @default("0,6") @map("weekend_days")
+  /// IANA timezone that decides when "today" starts and when meal cutoffs fall
+  timezone               String   @default("Asia/Dhaka")
   isActive               Boolean  @default(true) @map("is_active")
   /// New joiners need an admin's approval before they can use the mess
   requireJoinApproval    Boolean  @default(true) @map("require_join_approval")
@@ -47,7 +49,7 @@ model Mess {
   ledgerEntries   LedgerEntry[]
   auditLogs       AuditLog[]
   memberships     MessMembership[]
-  telegramGroups  TelegramGroup[]
+  announcements   Announcement[]
   mealPreferences UserMealPreference[]
   mealConfigs     MealConfig[]
   cookNotes       DailyCookNote[]
@@ -64,8 +66,6 @@ model Member {
   passwordHash   String    @map("password_hash")
   /// SYSTEM_ADMIN | ADMIN | MANAGER | MEMBER | GUEST
   role           String    @default("MEMBER")
-  telegramUid    BigInt?   @unique @map("telegram_uid")
-  telegramLinked Boolean   @default(false) @map("telegram_linked")
   isActive       Boolean   @default(true) @map("is_active")
   isGuest        Boolean   @default(false) @map("is_guest")
   guestFrom      DateTime? @map("guest_from") @db.Date
@@ -95,7 +95,6 @@ model Member {
   managedPeriods    MessMonth[]        @relation("PeriodManager")
 
   @@index([messId], map: "idx_members_mess")
-  @@index([telegramUid], map: "idx_members_telegram")
   @@map("members")
 }
 
@@ -287,50 +286,21 @@ model AuditLog {
   @@map("audit_log")
 }
 
-model TelegramGroup {
+/// A broadcast from an admin or manager, shown to every member of the mess for a few days
+/// (Overview page and GET /api/announcements). Also posted automatically for "no cook" days.
+model Announcement {
   id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  chatId    String   @unique @map("chat_id")
-  chatName  String?  @map("chat_name")
   messId    String   @map("mess_id") @db.Uuid
-  timezone  String   @default("Asia/Dhaka")
-  isActive  Boolean  @default(true) @map("is_active")
-  /// The bot's latest "Open Manager Babu" reply, deleted when the next /mealio comes in (keeps the chat tidy)
-  lastPromptMessageId Int? @map("last_prompt_message_id")
-  /// The pinned "Open Manager Babu" message, so it is pinned only once
-  pinnedMessageId     Int? @map("pinned_message_id")
+  authorId  String?  @map("author_id") @db.Uuid
+  /// Shown with the message, so it survives the author leaving
+  authorName String  @map("author_name")
+  message   String
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
 
-  @@map("telegram_groups")
-}
-
-/// One-time Telegram link codes. Issued by the web app to a logged-in member
-/// (memberId set); redeemed in the bot with `/link <code>`.
-model TelegramOtp {
-  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  memberId   String?  @map("member_id") @db.Uuid
-  telegramId String?  @map("telegram_id")
-  phone      String?
-  otp        String
-  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
-  used       Boolean  @default(false)
-  /// MEMBER = /link (links a person to their account), GROUP = /linkgroup (links a Telegram group to a mess)
-  purpose    String   @default("MEMBER")
-  /// For GROUP codes: the mess the code was issued for
-  messId     String?  @map("mess_id") @db.Uuid
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@index([telegramId], map: "idx_telegram_otps_uid")
-  @@index([otp], map: "idx_telegram_otps_code")
-  @@map("telegram_otps")
-}
-
-model ProcessedUpdate {
-  updateId    BigInt   @id @map("update_id")
-  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
-
-  @@map("processed_updates")
+  @@index([messId, createdAt(sort: Desc)], map: "idx_announcements_mess_created")
+  @@map("announcements")
 }
 
 model MessMembership {

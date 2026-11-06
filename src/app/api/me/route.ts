@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         where: { id: payload.sub },
         select: {
           id: true, name: true, email: true, phone: true, role: true, joinedAt: true,
-          emailVerifiedAt: true, telegramLinked: true, lastLoginAt: true,
+          emailVerifiedAt: true, lastLoginAt: true,
           mess: { select: { name: true } },
         },
       }),
@@ -122,8 +122,6 @@ export async function DELETE(req: NextRequest) {
         email: `deleted+${me.id}@mealio.invalid`,
         phone: null,
         passwordHash: await bcrypt.hash(randomToken(), 10),
-        telegramUid: null,
-        telegramLinked: false,
         isActive: false,
         deletedAt: new Date(),
         passwordChangedAt: new Date(),

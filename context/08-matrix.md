@@ -59,7 +59,7 @@ After an admin edit the page refetches, because rate and balances change for eve
 - Already closed → 409 (checked inside the transaction)
 - Freeze logs → `DEDUCTION` per member → next period → `CARRY_FORWARD` (full balance incl. deposits) **only if `carryForwardBalance`** → audit
 
-**⚠️ IRREVERSIBLE.** After closing, nothing dated in that period can change: meals, guests, expenses, sessions, deposits, no-cook (web and Telegram).
+**⚠️ IRREVERSIBLE.** After closing, nothing dated in that period can change: meals, guests, expenses, sessions, deposits, no-cook.
 
 ## API: POST `/api/admin/no-cook`
 
@@ -67,8 +67,7 @@ After an admin edit the page refetches, because rate and balances change for eve
 - Closed-month date → 400
 - `off`: every active member's counts → 0 (`overrideType: 'ADMIN'`)
 - `on`: each member back to their own defaults (`isOverride: false`)
-- Audit `NO_COOK`; Telegram broadcast to linked members
-- Same rules for `/nomeal` and `/mealon` in the bot
+- Audit `NO_COOK`; also posts a broadcast for the mess (see `18-broadcasts.md`). Response includes `announced`
 
 ## `matrix/page.tsx` — UI State
 
@@ -132,7 +131,7 @@ interface CloseMonthRequest {
 api.admin.getMatrix(messId, yearMonth?, token?)         → Promise<MonthMatrixResponse>
 api.admin.editMeal({ memberId, date, slot, value }, token) → Promise<{ ok, logId }>
 api.admin.closeMonth({ messId, adminId, yearMonth }, token) → Promise<unknown>
-api.admin.noCook({ action, date?, reason? }, token)    → Promise<{ ok, membersUpdated, telegramNotified }>
+api.admin.noCook({ action, date?, reason? }, token)    → Promise<{ ok, membersUpdated, announced }>
 ```
 
 ---
@@ -148,5 +147,5 @@ api.admin.noCook({ action, date?, reason? }, token)    → Promise<{ ok, members
 1. **`DayEntry.logId`** is the database ID of the DailyLog. Days are filled automatically up to today; a missing day means the member had not joined yet (or is a guest outside their stay). Handle this when editing cells.
 2. **Frozen cells** cannot be edited. Check `DayEntry.frozen` on each cell. `MonthMatrixResponse` does NOT have an `isClosed` field — frozen state is per-log, set by `closeMonth()`. Once a month is closed, every `DayEntry.frozen` in that month will be `true`.
 3. **`closeMonth()` creates LedgerEntries in a transaction** — if any step fails, everything rolls back. Common failure: month already closed (throws `"Month is already closed"`).
-4. **No-cook broadcast** sends Telegram DMs to all members with `telegramLinked: true`. Members who haven't done `/link` won't receive the notification but their meals are still set to 0.
+4. **No-cook broadcast** posts an in-app broadcast (Overview page) for every member. If creating it fails, the meals change still stands and the response says `announced: false`.
 5. **`overrideType`** is set to `'ADMIN'` for no-cook and admin edits. This distinguishes them from `'USER'` (member self-toggle) `null` (auto-filled from defaults) and `'SYSTEM'` (0-meal day while a member was inactive).

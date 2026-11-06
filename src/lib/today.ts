@@ -1,7 +1,6 @@
 /**
  * today.ts — Server-only. "What is happening today" for one member and for the whole mess.
- * Used by the web API (/api/meals/today, /api/cook/headcount) and the Telegram Mini App
- * (/api/tg/home), so all of them always show the same thing.
+ * Used by the web API (/api/meals/today, /api/cook/headcount), so they always show the same thing.
  */
 
 import { prisma } from './prisma'

@@ -17,11 +17,13 @@ import {
     Sparkles,
     Wallet,
     Clock,
+    Megaphone,
 } from "lucide-react";
 import { cn, formatCurrency, getTimeOfDay, getCategoryColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePeriod, formatPeriodDay } from "@/contexts/PeriodContext";
+import type { Announcement } from "@/types";
 import styles from "./overview.module.css";
 
 type Slot = "breakfast" | "lunch" | "dinner";
@@ -61,6 +63,7 @@ export default function OverviewPage() {
     const [todayMeals, setTodayMeals] = useState<Record<Slot, boolean>>({ breakfast: false, lunch: false, dinner: false });
     const [nextCutoff, setNextCutoff] = useState<{ time: string; passed: boolean } | null>(null);
     const [recentExpenses, setRecentExpenses] = useState<RecentExpense[]>([]);
+    const [broadcasts, setBroadcasts] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -71,7 +74,8 @@ export default function OverviewPage() {
             api.expenses.getExpenses({ messId: user.messId, limit: 5 }, token),
             api.cook.getHeadcount(user.messId, token),
             api.meals.getToday(user.id, token),
-        ]).then(([meRes, expensesRes, headcountRes, mealsRes]) => {
+            api.announcements.list(token),
+        ]).then(([meRes, expensesRes, headcountRes, mealsRes, broadcastRes]) => {
             if (meRes.status === "fulfilled") {
                 const me = meRes.value;
                 setStats((s) => ({
@@ -101,6 +105,7 @@ export default function OverviewPage() {
                 setTodayMeals({ breakfast: m.breakfast, lunch: m.lunch, dinner: m.dinner });
                 setNextCutoff({ time: m.cutOffTime, passed: m.cutOffPassed });
             }
+            if (broadcastRes.status === "fulfilled") setBroadcasts(broadcastRes.value.announcements.slice(0, 5));
             setLoading(false);
         });
     }, [user, token]);
@@ -135,6 +140,26 @@ export default function OverviewPage() {
                 )}
                 <h2 className={styles.greeting}>{greeting}</h2>
             </header>
+
+            {/* Broadcasts from the admin or manager */}
+            {broadcasts.length > 0 && (
+                <section className={styles.broadcasts} aria-label={t("broadcast.title")}>
+                    {broadcasts.map((b) => (
+                        <article key={b.id} className={styles.broadcast}>
+                            <span className={styles.broadcastIcon} aria-hidden>
+                                <Megaphone size={18} />
+                            </span>
+                            <div className={styles.broadcastBody}>
+                                <p className={styles.broadcastText}>{b.message}</p>
+                                <p className={styles.broadcastMeta}>
+                                    {t("broadcast.from", { name: b.authorName })} ·{" "}
+                                    {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(b.createdAt))}
+                                </p>
+                            </div>
+                        </article>
+                    ))}
+                </section>
+            )}
 
             {/* ── Bento ─────────────────────────────────────────────────── */}
             <section className={styles.bento}>

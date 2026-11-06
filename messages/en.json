@@ -55,10 +55,6 @@
             "finance": {
                 "title": "Every taka is traceable",
                 "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
-            },
-            "telegram": {
-                "title": "Telegram bot",
-                "description": "Turn meals on or off, check the rate and your balance right from Telegram."
             }
         },
         "roles": {
@@ -316,7 +312,11 @@
         "youOwe": "You owe the mess",
         "myMealsCount": "{n} meals this month",
         "viewAll": "View all",
-        "noExpenses": "No bazaar yet this month"
+        "noExpenses": "No bazaar yet this month",
+        "broadcast": {
+            "title": "Broadcast",
+            "from": "From {name}"
+        }
     },
     "meals": {
         "title": "Today",
@@ -564,7 +564,6 @@
         "deactivated": "{name} was removed from the mess",
         "shareText": "Join {mess} on Manager Babu.",
         "linkCopied": "Invite link copied",
-        "telegramLinked": "Telegram linked",
         "expired": "Stay ended",
         "guestStay": "Guest stay",
         "inactive": "Inactive",
@@ -637,7 +636,9 @@
             "VOID_CONTRIBUTION": "Voided a deposit",
             "NO_COOK": "No-cook day",
             "MEAL_PREFERENCE_UPDATE": "Changed defaults",
-            "AUTO_DEACTIVATE_GUEST": "Guest stay ended"
+            "AUTO_DEACTIVATE_GUEST": "Guest stay ended",
+            "POST_ANNOUNCEMENT": "Sent a broadcast",
+            "DELETE_ANNOUNCEMENT": "Removed a broadcast"
         }
     },
     "mySummary": {
@@ -656,9 +657,6 @@
         "times": "times",
         "last7Days": "Last 7 Days",
         "financialSummary": "Financial Summary",
-        "telegramStatus": "Telegram",
-        "telegramLinked": "Linked",
-        "telegramNotLinked": "Not linked. Use /link in the bot.",
         "myMeals": "My meals",
         "aheadHint": "The mess owes you this. Nice!",
         "oweHint": "Top up with the manager to clear it",
@@ -739,30 +737,6 @@
             "approvalOn": "New members now need your approval",
             "approvalOff": "Anyone with the code can join right away"
         },
-        "telegramGroup": {
-            "title": "Telegram Group",
-            "description": "Link a Telegram group to enable bot commands and meal notifications",
-            "chatId": "Telegram Chat ID",
-            "chatIdHelp": "Run /start in your group with the Manager Babu bot to get the chat ID",
-            "chatName": "Group Name (optional)",
-            "timezone": "Timezone",
-            "link": "Link Group",
-            "linking": "Linking...",
-            "linked": "Linked",
-            "unlinked": "No group linked yet",
-            "chatNamePlaceholder": "e.g. Bashundhara Mess Group",
-            "theBot": "the Manager Babu bot",
-            "getCode": "Get group code",
-            "newCode": "New code",
-            "needOwnLink": "First link your own Telegram under General, My Telegram. The bot only accepts this from a linked admin.",
-            "linkedFromTelegram": "Group linked from Telegram",
-            "advanced": "Enter the Telegram chat id by hand instead",
-            "easy1": "Link your own Telegram first (General tab, My Telegram).",
-            "easy2": "Add {bot} to your house group. It sets itself up and pins an \"Open Manager Babu\" button.",
-            "easy3": "Did not start? Send /mealio in the group. Make the bot a group admin so it can pin and keep the chat tidy.",
-            "watching": "This page updates by itself when the group is connected.",
-            "codeWay": "Other ways: a one-time code, or the chat id by hand."
-        },
         "dangerDesc": "Permanently deletes the mess and all associated data. This cannot be undone.",
         "monthStart": {
             "title": "Billing Period Start Day",
@@ -797,20 +771,6 @@
                 "description": "When a month is closed, each member's leftover balance (credit or due) moves into the next month. Turn off if you settle up in cash at month end and start every month at zero."
             }
         },
-        "telegramAccount": {
-            "title": "My Telegram",
-            "description": "Link your Telegram account to manage meals and check your balance from the Manager Babu bot.",
-            "linked": "Linked",
-            "getCode": "Get link code",
-            "relink": "Link a different account",
-            "unlink": "Unlink",
-            "unlinked": "Telegram unlinked",
-            "unlinkFailed": "Failed to unlink Telegram",
-            "codeFailed": "Failed to create a link code",
-            "theBot": "the Manager Babu bot",
-            "instructions": "Send this message to {bot} in a private chat. The code works once and expires at {time}.",
-            "openInTelegram": "Open in Telegram"
-        },
         "weekend": {
             "title": "Weekend days",
             "help": "Members set separate default meals for weekdays and weekends. Choose which days count as the weekend (for Bangladesh this is usually Friday and Saturday). Changes apply from today; past days are not changed.",
@@ -820,8 +780,7 @@
         "errors": {
             "preference": "Could not update the preference",
             "cutoffs": "Could not save the cutoff times",
-            "save": "Could not save. Please try again.",
-            "linkGroup": "Could not link the group"
+            "save": "Could not save. Please try again."
         },
         "account": {
             "passwordTitle": "Password",
@@ -850,6 +809,27 @@
             "label": "Served",
             "on": "Meal switched on from now",
             "off": "Meal switched off from now. Past days are not changed."
+        },
+        "broadcast": {
+            "title": "Broadcast",
+            "description": "Send a message every member sees on their Overview page for the next {days} days.",
+            "placeholder": "e.g. Bazaar is done, all three meals are confirmed.",
+            "send": "Send broadcast",
+            "sending": "Sending...",
+            "sent": "Broadcast sent",
+            "failed": "Could not send the broadcast. Please try again.",
+            "recent": "Recent broadcasts",
+            "none": "Nothing sent in the last {days} days.",
+            "by": "by {name}",
+            "remove": "Remove",
+            "removed": "Broadcast removed",
+            "removeConfirm": "Remove this broadcast for everyone?"
+        },
+        "timezone": {
+            "title": "Timezone",
+            "help": "Decides when each day starts and when meal cutoffs fall. Days that already happened are not changed.",
+            "saved": "Timezone saved",
+            "adminOnly": "Only the admin can change this."
         }
     },
     "createMess": {
@@ -972,7 +952,6 @@
                     "bullets": [
                         "Account details: your name, email address, optional phone number and a hashed password. We never store the password itself.",
                         "Mess records: meals, guests, bazaar costs, deposits and settings that you or your mess admin enter.",
-                        "Telegram: your Telegram user ID, only if you link the bot.",
                         "Security records: sign-in attempts, the IP address they came from and similar events, so we can spot attacks on accounts.",
                         "Support messages you send us."
                     ]
@@ -1121,46 +1100,6 @@
         "recordedBy": "recorded by {name}",
         "voided": "Cancelled before closing: {reason}",
         "daysNote": "Meals each member had on each day. A small +n is the number of guest meals that day."
-    },
-    "tg": {
-        "error": "Could not load. Pull down to try again.",
-        "tryAgain": "Try again",
-        "outsideTitle": "Open this in Telegram",
-        "outsideBody": "This page is the Manager Babu Mini App. Send /mealio to the Manager Babu bot or tap the button in your house group.",
-        "unlinkedTitle": "Hi {name}!",
-        "unlinkedBody": "Link your Telegram to your Manager Babu account once. It takes one tap on the Manager Babu website: Settings, My Telegram, Open in Telegram.",
-        "linkButton": "Link my Telegram",
-        "unlinkedAfter": "Then come back here and pull down to refresh.",
-        "hi": "Hi {name} 👋",
-        "period": "Billing period {from} – {to}",
-        "refresh": "Refresh",
-        "myBalance": "My balance",
-        "getBack": "You get this back",
-        "owe": "You owe this to the mess",
-        "meals": "Meals",
-        "paid": "Paid",
-        "rate": "Meal rate",
-        "carriedIn": "Includes {amount} carried in from last month",
-        "myToday": "My meals today",
-        "locks": "{meal} locks {time}",
-        "inHoursMinutes": "in {h}h {m}m",
-        "inMinutes": "in {m}m",
-        "slot": {
-            "breakfast": "Breakfast",
-            "lunch": "Lunch",
-            "dinner": "Dinner"
-        },
-        "on": "ON",
-        "off": "OFF",
-        "guests": "{n, plural, one {You have # guest today} other {You have # guests today}}",
-        "changeHint": "To change, use /meal in a private chat with the bot or the Manager Babu website.",
-        "whoEats": "Who is eating today",
-        "plates": "plates",
-        "guestPlates": "{n} for guests",
-        "locksAt": "locks at {time}",
-        "nobody": "Nobody is eating this meal today.",
-        "openFull": "Open full Manager Babu",
-        "readOnly": "Only you can see this. Nothing here can change your meals or money."
     },
     "meta": {
         "homeTitle": "Manager Babu | Smart mess management",

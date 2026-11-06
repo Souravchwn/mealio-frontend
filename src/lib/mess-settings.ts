@@ -2,11 +2,11 @@
  * mess-settings.ts — Server-only. Single source of truth for per-mess settings.
  *
  * Postgres is the durable store; Redis serves every read. All API routes and
- * the Telegram bot should call `getMessSettings()` instead of querying
- * messes / meal_configs / telegram_groups for configuration.
+ * should call `getMessSettings()` instead of querying messes / meal_configs
+ * for configuration.
  *
- * After ANY write that changes a setting (mess row, meal_configs, telegram
- * group timezone), call `refreshMessSettings(messId)` so Redis is updated.
+ * After ANY write that changes a setting (mess row, meal_configs, timezone),
+ * call `refreshMessSettings(messId)` so Redis is updated.
  */
 
 import { prisma } from './prisma'
@@ -84,7 +84,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
       weekendDays: true,
       requireJoinApproval: true,
       plan: true,
-      telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 },
+      timezone: true,
       mealConfigs: { select: { mealType: true, enabled: true, cutoffTime: true, maxCount: true } },
     },
   })
@@ -115,7 +115,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
   return {
     messId: mess.id,
     name: mess.name,
-    timezone: mess.telegramGroups[0]?.timezone ?? DEFAULT_TIMEZONE,
+    timezone: mess.timezone || DEFAULT_TIMEZONE,
     cutOffTime: legacyCutoff,
     monthStartDay: mess.monthStartDay ?? 1,
     estimatedMonthlyBudget: mess.estimatedMonthlyBudget ? Number(mess.estimatedMonthlyBudget) : null,

@@ -40,28 +40,15 @@ const securityHeaders = [
 ];
 
 /**
- * The Telegram Mini App page only: it must load Telegram's script and be shown inside Telegram
- * (Telegram Web opens Mini Apps in an iframe). No X-Frame-Options here; frame-ancestors decides.
- * It holds no web login token, so a wider frame rule exposes nothing.
- */
-const telegramAppHeaders = [
-    {
-        key: "Content-Security-Policy",
-        value: buildCsp({ scripts: "https://telegram.org", frameAncestors: "'self' https://web.telegram.org https://*.telegram.org" }),
-    },
-    ...commonHeaders,
-];
-
-/**
  * Pages that must never appear in search results: the signed-in app, sign-in flows, the staff
- * console, the Telegram Mini App and private support threads. Only the landing page, /support,
+ * console and private support threads. Only the landing page, /support,
  * /privacy and /terms are indexable (src/lib/seo.ts, src/app/sitemap.ts).
  */
 const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 const privatePages = [
     "login", "register", "forgot-password", "reset-password", "verify-email",
     "overview", "meals", "expenses", "headcount", "my-summary", "matrix", "members",
-    "audit", "settings", "mess", "archive", "console", "tg",
+    "audit", "settings", "mess", "archive", "console",
 ].join("|");
 
 const nextConfig: NextConfig = {
@@ -72,10 +59,8 @@ const nextConfig: NextConfig = {
             { source: "/:locale(en|bn)/support/:id", headers: noindex },
             { source: "/api-docs", headers: noindex },
             { source: "/api/:path*", headers: noindex },
-            // Every page except the Mini App keeps the strict rules
             { source: "/", headers: securityHeaders },
-            { source: "/:path((?!en/tg$|bn/tg$).*)", headers: securityHeaders },
-            { source: "/:locale(en|bn)/tg", headers: telegramAppHeaders },
+            { source: "/:path+", headers: securityHeaders },
             // Never cache API answers in shared caches
             { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
         ];

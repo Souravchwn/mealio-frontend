@@ -86,12 +86,8 @@ No timer is needed. When someone tries to change a meal, the server compares "no
 
 ---
 
-## Daily housekeeping (no scheduler)
-
-`purgeOldRecordsOncePerDay()` runs inside the first fill of the day (Redis `SET NX` across all instances; ~1 % of calls without Redis): deletes processed Telegram update ids older than 30 days and used/expired link codes older than a day.
-
 ## Removed with the crons
-- Telegram cutoff warning (hourly) and month-end reminder. Nothing replaces them.
+- The hourly cutoff warning and the month-end reminder (they were sent through Telegram, which has since been removed). Nothing replaces them.
 
 ---
 
@@ -106,8 +102,8 @@ No timer is needed. When someone tries to change a meal, the server compares "no
 | 5 | Weekend hard-coded to Sat + Sun (Bangladesh weekend is Fri + Sat) — wrong defaults on 2 days a week | Fixed — mess setting `weekendDays`, also used by the meals page |
 | 6 | Guest residents never auto-counted → ate free unless they tapped | Fixed — counted inside their stay dates |
 | 7 | Deactivated member's unrecorded days lost; reactivated member charged for days away | Fixed — settle before, `recordInactiveGap` after |
-| 8 | Telegram toggle on a day with no row created ALL meals ON (ignored defaults); `/meal` status said "all ON by default" | Fixed — bot calls `ensureDailyLogs` first |
-| 9 | `/nomeal` / `/mealon` / web no-cook could change closed (frozen) months; bot actions not audited | Fixed — closed-period check + `NO_COOK` audit |
+| 8 | A toggle on a day with no row created ALL meals ON (ignored defaults) | Fixed — `ensureDailyLogs` runs first |
+| 9 | No-cook could change closed (frozen) months; actions not audited | Fixed — closed-period check + `NO_COOK` audit |
 | 10 | Members could change past days (lower old meals to reduce the bill) | Fixed — members: today (before cutoff) and future only |
 | 11 | Future planned meals counted in the current meal rate | Fixed — open period counts up to today only |
 | 12 | Month could be closed before its last day → remaining days never billed | Fixed — close only on/after the end date |

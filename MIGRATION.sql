@@ -85,24 +85,8 @@ INSERT INTO meal_configs (mess_id, meal_type, cutoff_time, enabled, max_count)
 SELECT id, 'DINNER', '21:00:00', true, 10 FROM messes
 ON CONFLICT (mess_id, meal_type) DO NOTHING;
 
--- ── 6. processed_updates table (Telegram idempotency) ────────────────────────
-CREATE TABLE IF NOT EXISTS processed_updates (
-  update_id    BIGINT PRIMARY KEY,
-  processed_at TIMESTAMPTZ DEFAULT now()
-);
-
--- ── 7. telegram_otps table ────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS telegram_otps (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  telegram_id TEXT NOT NULL,
-  phone       TEXT NOT NULL,
-  otp         TEXT NOT NULL,
-  expires_at  TIMESTAMPTZ NOT NULL,
-  used        BOOLEAN NOT NULL DEFAULT false,
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_telegram_otps_uid ON telegram_otps(telegram_id);
+-- ── 6-7. (removed) ───────────────────────────────────────────────────────────
+-- (Telegram support was removed from the app. Its tables are no longer created here; see section 27.)
 
 -- ── 8. bazaar_sessions table ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bazaar_sessions (
@@ -195,16 +179,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at   TIMESTAMPTZ DEFAULT now()
 );
 
--- ── 13. telegram_groups table ─────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS telegram_groups (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  chat_id    TEXT NOT NULL UNIQUE,
-  chat_name  TEXT,
-  mess_id    UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
-  timezone   TEXT NOT NULL DEFAULT 'Asia/Dhaka',
-  is_active  BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- ── 13. (removed) ────────────────────────────────────────────────────────────
+-- (Telegram support was removed from the app. Its tables are no longer created here; see section 27.)
 
 -- ── 14. mess_memberships table (multi-mess support) ───────────────────────────
 CREATE TABLE IF NOT EXISTS mess_memberships (
@@ -294,14 +270,6 @@ ALTER TABLE messes ADD COLUMN IF NOT EXISTS bazaar_counts_as_deposit BOOLEAN NOT
 ALTER TABLE messes ADD COLUMN IF NOT EXISTS carry_forward_balance BOOLEAN NOT NULL DEFAULT TRUE;
 -- Weekend days for meal preferences (0=Sun … 6=Sat). Bangladesh messes usually want '5,6' (Fri, Sat).
 ALTER TABLE messes ADD COLUMN IF NOT EXISTS weekend_days TEXT NOT NULL DEFAULT '0,6';
-
--- Telegram linking now uses a code issued by the web app to a logged-in member
-ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS member_id UUID;
-ALTER TABLE telegram_otps ALTER COLUMN telegram_id DROP NOT NULL;
-ALTER TABLE telegram_otps ALTER COLUMN phone DROP NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_telegram_otps_code ON telegram_otps(otp);
--- Invalidate any phone-based OTPs issued by the old (insecure) flow
-UPDATE telegram_otps SET used = TRUE WHERE member_id IS NULL AND used = FALSE;
 
 -- ── 20. SaaS foundations: sign-up, approval, recovery, support, platform admin ──
 ALTER TABLE messes ADD COLUMN IF NOT EXISTS require_join_approval BOOLEAN NOT NULL DEFAULT TRUE;
@@ -431,15 +399,66 @@ ALTER TABLE bazaar_memos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mess_months ADD COLUMN IF NOT EXISTS snapshot JSONB;
 
 -- ============================================================
--- 23. Telegram group link codes
+-- 23-24. (removed)
 -- ============================================================
--- /linkgroup CODE in the house group links it to a mess without anyone hunting for a chat id.
-ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'MEMBER';
-ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS mess_id UUID;
+-- (Telegram support was removed from the app. Its tables are no longer created here; see section 27.)
 
 -- ============================================================
--- 24. Telegram Mini App prompts in the group
+-- 25. Mess timezone (replaces the Telegram group's timezone)
 -- ============================================================
--- Remember the bot's latest "Open my Mealio" reply (deleted on the next /mealio) and the pinned one.
-ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS last_prompt_message_id INTEGER;
-ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS pinned_message_id INTEGER;
+-- Each mess now owns its timezone: it decides when "today" starts and when meal cutoffs fall.
+-- It used to live on the linked Telegram group, so existing messes keep it: it is copied from the
+-- active group once, when the column is first created. Running this file again never overwrites
+-- a timezone that an admin has set since.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'messes' AND column_name = 'timezone'
+  ) THEN
+    ALTER TABLE messes ADD COLUMN timezone TEXT NOT NULL DEFAULT 'Asia/Dhaka';
+
+    IF to_regclass('telegram_groups') IS NOT NULL THEN
+      UPDATE messes m
+      SET timezone = g.timezone
+      FROM (
+        SELECT DISTINCT ON (mess_id) mess_id, timezone
+        FROM telegram_groups
+        WHERE is_active AND timezone IS NOT NULL AND timezone <> ''
+        ORDER BY mess_id, created_at DESC
+      ) g
+      WHERE g.mess_id = m.id;
+    END IF;
+  END IF;
+END $$;
+
+-- ============================================================
+-- 26. Broadcasts (Settings -> Broadcast; shown on Overview)
+-- ============================================================
+-- Messages from an admin or manager that every member of the mess sees for a few days.
+-- They replace the Telegram /announce command and the automatic "no cook" notice.
+CREATE TABLE IF NOT EXISTS announcements (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id     UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  author_id   UUID,
+  author_name TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_announcements_mess_created ON announcements(mess_id, created_at DESC);
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 27. OPTIONAL, run later: remove the Telegram tables and columns
+-- ============================================================
+-- Telegram support has been removed from the app. Sections 1-26 are safe to run BEFORE deploying
+-- (the old code keeps working with them). Section 27 is NOT: it permanently deletes data,
+-- including every member's linked Telegram id and each mess's linked group. Run it only after the
+-- new version is live and you are sure you will not want any of that back. It is commented out on
+-- purpose: remove the leading "-- " from the lines below to run it.
+--
+-- DROP TABLE IF EXISTS telegram_groups;
+-- DROP TABLE IF EXISTS telegram_otps;
+-- DROP TABLE IF EXISTS processed_updates;
+-- ALTER TABLE members DROP COLUMN IF EXISTS telegram_uid;
+-- ALTER TABLE members DROP COLUMN IF EXISTS telegram_linked;

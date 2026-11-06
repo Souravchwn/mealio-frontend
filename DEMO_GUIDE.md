@@ -106,7 +106,7 @@ This is the core of the system. Every user has personal defaults that drive thei
 ### H. Members Page (Admin)
 
 1. Login as Admin → **Members**
-2. List of all members with role, balance, Telegram link status
+2. List of all members with role and balance
 3. Edit a member: change role, activate/deactivate, set guest dates
 4. Invite code displayed for sharing
 
@@ -138,43 +138,16 @@ This is the core of the system. Every user has personal defaults that drive thei
 1. Login as Member → **My Summary**
 2. Shows: meal rate, meals eaten, contributed, meal cost, balance
 3. Breakdown by slot (Breakfast / Lunch / Dinner count)
-4. Telegram link status
 
 ---
 
-## Telegram Bot Verification
+## Broadcast Verification
 
-See `TELEGRAM_SETUP.md` for full setup. Quick checks:
-
-### Account Linking
-```
-/start                    → Welcome message
-/link +880XXXXXXXXXX      → Sends OTP
-/verify 123456            → Account linked confirmation
-```
-
-### Default-Driven Meal Commands
-```
-/status                   → Shows today's B/L/D from daily log
-/meal off                 → Targets LUNCH (if before 10:00) or DINNER (10:00–21:00)
-/meal on                  → Same time-based targeting, enables the slot
-/meal breakfast           → Explicit toggle for breakfast slot
-/meal lunch               → Explicit toggle for lunch slot
-/meal dinner              → Explicit toggle for dinner slot
-/meal guest 2             → Sets guest count to 2
-```
-
-### Admin Commands
-```
-/nomeal                   → All meals OFF for today, members notified
-/nomeal tomorrow          → Same for tomorrow
-/nomeal Cook is sick      → With reason in broadcast
-/mealon                   → Restores each member to THEIR OWN preferences (not all-ON)
-/mealon tomorrow          → Same for tomorrow
-/announce <msg>           → Broadcast to all linked members
-/rate                     → Current meal rate (৳/meal)
-/balance                  → My contributed vs consumed balance
-```
+1. Login as Admin or Manager → **Settings** → **Mess** tab → **Broadcast**
+2. Write a message and press **Send broadcast**: it appears in **Recent broadcasts**
+3. Login as a Member → **Overview**: the message shows under the greeting for 3 days
+4. As Admin/Manager, remove it with the bin icon: it disappears for everyone
+5. **Matrix** → turn a day's meals off (No-cook): a broadcast about it is posted automatically
 
 ---
 
@@ -202,7 +175,7 @@ See `TELEGRAM_SETUP.md` for full setup. Quick checks:
 |---|---|---|
 | `/api/cron/generate-daily-meals` | 00:05 daily | New `daily_logs` rows created from preferences for each member |
 | `/api/cron/deactivate-guests` | 00:00 daily | Guest members past `guest_until` date become inactive |
-| `/api/cron/cutoff-warning` | Hourly | Telegram reminder message sent before cutoff |
+| `/api/cron/cutoff-warning` | Hourly | Cutoff reminder (no longer sent) |
 | `/api/cron/month-end-reminder` | 20:00 on days 28–31 | Admin receives month-close reminder |
 
 Trigger manually for verification:
@@ -226,8 +199,8 @@ Expected response:
 
 ## Known Constraints
 
-- **Cutoff enforcement** — after the dinner cutoff time, meal toggles are blocked (both web and Telegram). Admins can override via `/nomeal` / `/mealon` at any time.
+- **Cutoff enforcement** — after the dinner cutoff time, meal toggles are blocked on the web. Admins can still use No-cook on the Matrix page at any time.
 - **Frozen months** — closing a month freezes all its `daily_logs`. No further edits are possible.
 - **Preference sync** — changing a preference on the Settings page immediately updates today's log (if the log exists and isn't frozen). Future days are handled by the nightly cron.
-- **Timezone** — all time-based decisions (cutoff, day type, cron) use the mess's Telegram group timezone. Default: `Asia/Dhaka`.
+- **Timezone** — all time-based decisions (cutoff, day type, cron) use the mess's timezone (Settings → Mess tab → Timezone). Default: `Asia/Dhaka`.
 - **Guest members** — guests are auto-deactivated after their `guest_until` date by the daily cron.
