@@ -46,6 +46,16 @@ export function timeAgo(iso: string | null | undefined): string {
     return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** "today", "yesterday", "3 days ago" for a YYYY-MM-DD day in the platform's time zone */
+export function lastActiveLabel(day: string): string {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date());
+    const days = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000);
+    if (days <= 0) return "today";
+    if (days === 1) return "yesterday";
+    if (days < 30) return `${days} days ago`;
+    return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
 export function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (p: number) => void }) {
     if (pages <= 1) return null;
     return (

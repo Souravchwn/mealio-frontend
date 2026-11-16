@@ -14,6 +14,7 @@ import { calculatePeriodSummary } from '@/lib/financial'
 import { resolvePeriod } from '@/lib/period'
 import { getMessSettings } from '@/lib/mess-settings'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { recordActivity } from '@/lib/activity'
 
 const memberRepo = new MemberRepository()
 
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
     if (!member) {
       return NextResponse.json({ linked: false, first_name: auth.user.first_name, link_url: `${site}/en/settings` })
     }
+    recordActivity(member.id, member.messId, 'MINI_APP')
 
     const [settings, period, today, headcount] = await Promise.all([
       getMessSettings(member.messId),

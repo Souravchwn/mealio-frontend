@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { NextRequest } from 'next/server'
 import { prisma } from './prisma'
+import { recordActivity } from './activity'
 
 const getSecret = () => {
   const secret = process.env.JWT_SECRET
@@ -62,6 +63,7 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
     if (!mess || !mess.isActive || mess.suspendedAt || mess.deletedAt) return null
 
     if (member.messId === claims.messId) {
+      recordActivity(claims.sub, claims.messId, 'WEB')
       return { sub: claims.sub, messId: claims.messId, role: member.role }
     }
 
@@ -71,6 +73,7 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
       select: { role: true },
     })
     if (!membership) return null
+    recordActivity(claims.sub, claims.messId, 'WEB')
     return { sub: claims.sub, messId: claims.messId, role: membership.role }
   } catch (err) {
     console.error('[auth] member lookup failed', err)

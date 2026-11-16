@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLocale } from "next-intl";
-import { Building2, LifeBuoy, ShieldAlert, Users } from "lucide-react";
+import { Activity, Building2, CalendarCheck, LifeBuoy, Repeat, ShieldAlert, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useConsoleAuth, useConsoleData } from "./ConsoleAuth";
@@ -18,6 +18,8 @@ export default function ConsoleDashboard() {
     if (error) return <p className={styles.errorBox}>{error}</p>;
 
     const max = Math.max(1, ...(data?.signups ?? []).map((d) => d.members + d.messes));
+    const usage = data?.usage;
+    const maxActive = Math.max(1, ...(usage?.daily ?? []).map((d) => d.people));
 
     return (
         <>
@@ -55,7 +57,58 @@ export default function ConsoleDashboard() {
                 </Link>
             </div>
 
+            <h2 className={styles.sectionTitle}>Usage</h2>
+            <div className={styles.statGrid}>
+                <div className={styles.stat}>
+                    <span className={styles.statLabel}><Activity size={14} /> Active messes</span>
+                    <span className={styles.statValue}>{usage?.activeMessesWeek ?? "–"}</span>
+                    <span className={styles.statHint}>used in the last 7 days</span>
+                </div>
+                <div className={styles.stat}>
+                    <span className={styles.statLabel}><Users size={14} /> Active people</span>
+                    <span className={styles.statValue}>{usage?.activePeopleWeek ?? "–"}</span>
+                    <span className={styles.statHint}>
+                        {usage?.activePeopleToday ?? 0} today · web {usage?.peopleByChannelWeek.web ?? 0},
+                        bot {usage?.peopleByChannelWeek.telegram ?? 0}, mini app {usage?.peopleByChannelWeek.miniApp ?? 0}
+                    </span>
+                </div>
+                <div className={styles.stat}>
+                    <span className={styles.statLabel}><CalendarCheck size={14} /> Closed 2+ months</span>
+                    <span className={styles.statValue}>{usage?.messesClosedTwo ?? "–"}</span>
+                    <span className={styles.statHint}>{usage?.messesClosedOne ?? 0} messes closed at least one</span>
+                </div>
+                <div className={styles.stat}>
+                    <span className={styles.statLabel}><Repeat size={14} /> Second-week return</span>
+                    <span className={styles.statValue}>
+                        {usage && usage.secondWeek.cohort > 0
+                            ? `${Math.round((usage.secondWeek.retained / usage.secondWeek.cohort) * 100)}%`
+                            : "–"}
+                    </span>
+                    <span className={styles.statHint}>
+                        {usage?.secondWeek.retained ?? 0} of {usage?.secondWeek.cohort ?? 0} messes made 8–14 days ago
+                    </span>
+                </div>
+            </div>
+
             <div className={styles.grid2}>
+                <section className={cn(styles.card, styles.wide)}>
+                    <div className={styles.cardHead}>
+                        <h2 className={styles.cardTitle}>People using it each day, last 14 days</h2>
+                    </div>
+                    <div className={styles.chart} role="img" aria-label="People who used ManagerBabu each day for the last 14 days">
+                        {usage?.daily.map((d) => (
+                            <div key={d.date} className={styles.barCol} title={`${d.date}: ${d.people} people in ${d.messes} messes`}>
+                                <div className={styles.bar} style={{ height: `${(d.people / maxActive) * 100}%` }} />
+                            </div>
+                        ))}
+                    </div>
+                    <div className={styles.chartAxis} aria-hidden>
+                        {usage?.daily.map((d, i) => (
+                            <span key={d.date}>{i % 2 === 0 ? Number(d.date.slice(8)) : ""}</span>
+                        ))}
+                    </div>
+                </section>
+
                 <section className={cn(styles.card, styles.wide)}>
                     <div className={styles.cardHead}>
                         <h2 className={styles.cardTitle}>Sign-ups, last 14 days</h2>

@@ -47,6 +47,15 @@ export async function GET(req: NextRequest) {
     const owners = await prisma.member.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, email: true } })
     const ownerMap = new Map(owners.map((o) => [o.id, o]))
 
+    // Usage at a glance: last day anyone in the mess used it, and how many months it has closed
+    const ids = messes.map((m) => m.id)
+    const [lastActive, closed] = await Promise.all([
+      prisma.memberActivity.groupBy({ by: ['messId'], where: { messId: { in: ids } }, _max: { day: true } }),
+      prisma.messMonth.groupBy({ by: ['messId'], where: { messId: { in: ids }, isClosed: true }, _count: { _all: true } }),
+    ])
+    const lastActiveMap = new Map(lastActive.map((r) => [r.messId, r._max.day?.toISOString().slice(0, 10) ?? null]))
+    const closedMap = new Map(closed.map((r) => [r.messId, r._count._all]))
+
     return NextResponse.json({
       total,
       page,
@@ -59,6 +68,8 @@ export async function GET(req: NextRequest) {
         status: m.deletedAt ? 'DELETED' : m.suspendedAt ? 'SUSPENDED' : m.isActive ? 'ACTIVE' : 'INACTIVE',
         owner: m.ownerId ? ownerMap.get(m.ownerId) ?? null : null,
         created_at: m.createdAt.toISOString(),
+        last_active: lastActiveMap.get(m.id) ?? null,
+        months_closed: closedMap.get(m.id) ?? 0,
       })),
     })
   } catch (err) {

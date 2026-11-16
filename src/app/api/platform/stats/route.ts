@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
+import { activityDay } from '@/lib/activity'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -61,7 +62,10 @@ export async function GET(req: NextRequest) {
       }
     })
 
+    const usage = await usageStats(now)
+
     return NextResponse.json({
+      usage,
       messes: { total: messesTotal, active: messesActive, suspended: messesSuspended, deleted: messesDeleted, new_this_week: messesNew7 },
       members: { total: membersTotal, pending: membersPending, new_this_week: membersNew7, active_today: activeToday },
       support: { open: ticketsOpen, high: ticketsHigh },
@@ -77,3 +81,68 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ detail: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
+
+/**
+ * Usage numbers that tell whether messes really use ManagerBabu.
+ * Days are counted in DEFAULT_TIMEZONE, the same days activity is recorded in.
+ */
+async function usageStats(now: number) {
+  const today = activityDay()
+  const dayStart = (daysAgo: number) => new Date(Date.parse(`${today}T00:00:00.000Z`) - daysAgo * DAY)
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+
+  const [rows, closedByMess, cohort] = await Promise.all([
+    prisma.memberActivity.findMany({
+      where: { day: { gte: dayStart(13) } },
+      select: { memberId: true, messId: true, day: true, source: true },
+    }),
+    prisma.messMonth.groupBy({ by: ['messId'], where: { isClosed: true }, _count: { _all: true } }),
+    // Messes created 8 to 14 days ago: did they come back in their second week?
+    prisma.mess.findMany({
+      where: { createdAt: { gte: new Date(now - 14 * DAY), lt: new Date(now - 7 * DAY) }, deletedAt: null },
+      select: { id: true, createdAt: true },
+    }),
+  ])
+
+  const week = iso(dayStart(6))
+  const lastWeek = rows.filter((r) => iso(r.day) >= week)
+  const people7 = new Set(lastWeek.map((r) => r.memberId))
+  const peopleToday = new Set(rows.filter((r) => iso(r.day) === today).map((r) => r.memberId))
+  const messes7 = new Set(lastWeek.map((r) => r.messId))
+  const bySource = { web: new Set<string>(), telegram: new Set<string>(), mini_app: new Set<string>() }
+  for (const r of lastWeek) {
+    if (r.source === 'WEB') bySource.web.add(r.memberId)
+    else if (r.source === 'TELEGRAM') bySource.telegram.add(r.memberId)
+    else if (r.source === 'MINI_APP') bySource.mini_app.add(r.memberId)
+  }
+
+  const daily = Array.from({ length: 14 }, (_, i) => {
+    const d = iso(dayStart(13 - i))
+    return {
+      date: d,
+      people: new Set(rows.filter((r) => iso(r.day) === d).map((r) => r.memberId)).size,
+      messes: new Set(rows.filter((r) => iso(r.day) === d).map((r) => r.messId)).size,
+    }
+  })
+
+  const retained = cohort.filter((m) => {
+    const secondWeek = iso(new Date(m.createdAt.getTime() + 7 * DAY))
+    return rows.some((r) => r.messId === m.id && iso(r.day) >= secondWeek)
+  }).length
+
+  return {
+    active_messes_week: messes7.size,
+    active_people_week: people7.size,
+    active_people_today: peopleToday.size,
+    people_by_channel_week: {
+      web: bySource.web.size,
+      telegram: bySource.telegram.size,
+      mini_app: bySource.mini_app.size,
+    },
+    messes_closed_one: closedByMess.filter((m) => m._count._all >= 1).length,
+    messes_closed_two: closedByMess.filter((m) => m._count._all >= 2).length,
+    second_week: { cohort: cohort.length, retained },
+    daily,
+  }
+}
+

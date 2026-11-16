@@ -16,7 +16,21 @@ export interface PlatformAdmin {
     email: string;
 }
 
+export interface PlatformUsage {
+    activeMessesWeek: number;
+    activePeopleWeek: number;
+    activePeopleToday: number;
+    peopleByChannelWeek: { web: number; telegram: number; miniApp: number };
+    /** Messes that have closed at least one / at least two months */
+    messesClosedOne: number;
+    messesClosedTwo: number;
+    /** Messes created 8–14 days ago, and how many were used again in their second week */
+    secondWeek: { cohort: number; retained: number };
+    daily: Array<{ date: string; people: number; messes: number }>;
+}
+
 export interface PlatformStats {
+    usage: PlatformUsage;
     messes: { total: number; active: number; suspended: number; deleted: number; newThisWeek: number };
     members: { total: number; pending: number; newThisWeek: number; activeToday: number };
     support: { open: number; high: number };
@@ -34,6 +48,9 @@ export interface PlatformMessRow {
     status: MessStatus;
     owner: { id: string; name: string; email: string } | null;
     createdAt: string;
+    /** Last day (YYYY-MM-DD) anyone in the mess used ManagerBabu, null if never tracked */
+    lastActive: string | null;
+    monthsClosed: number;
 }
 
 export interface PlatformMessDetail {

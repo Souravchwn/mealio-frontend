@@ -448,6 +448,43 @@
             "close": "Close",
             "failed": "Could not load",
             "title2": "Memo photos"
+        },
+        "payment": {
+            "method": "Paid by",
+            "methods": {
+                "CASH": "Cash",
+                "BKASH": "bKash",
+                "NAGAD": "Nagad",
+                "BANK": "Bank",
+                "OTHER": "Other",
+                "UNKNOWN": "Not recorded"
+            },
+            "reference": "Transaction ID (optional)",
+            "referencePlaceholder": "e.g. 9F3K2L7Q",
+            "receivedBy": "Received by",
+            "receivedByLine": "received by {name}",
+            "byMethodTitle": "Deposits by payment method"
+        },
+        "cash": {
+            "title": "Cash check",
+            "subtitle": "Count the cash and wallet money you hold for the mess, and compare it with the book.",
+            "bazaarFromPockets": "Members shop with their own money in this mess, so only deposits count toward the fund.",
+            "none": "Not counted yet. The first count sets the starting point.",
+            "expectedNow": "Should be in the fund now",
+            "lastCount": "Last count {amount} on {date}, by {name}",
+            "lastCountNoName": "Last count {amount} on {date}",
+            "matched": "Matched the book",
+            "short": "{amount} short",
+            "extra": "{amount} extra",
+            "opening": "Opening count",
+            "countNow": "Count the fund",
+            "counted": "Amount you counted (৳)",
+            "note": "Note (optional)",
+            "notePlaceholder": "e.g. Paid Rahim back at month end",
+            "saved": "Count saved",
+            "savedOpening": "Opening count saved",
+            "history": "Past counts",
+            "failed": "Could not save the count"
         }
     },
     "headcount": {

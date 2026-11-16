@@ -5,20 +5,23 @@ import { useLocale, useTranslations } from "next-intl";
 import {
     Plus, Search, Trash2, ChevronDown, ChevronUp,
     ShoppingBag, TrendingDown, X, Check,
-    Calculator, Zap, Users, Ban, Sparkles, Camera, ListChecks, Paperclip,
+    Calculator, Zap, Users, Ban, Sparkles, Camera, ListChecks, Paperclip, Wallet,
 } from "lucide-react";
 import { cn, formatCurrency, getCategoryColor, localISODate } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker/DatePicker";
 import { Select } from "@/components/ui/Select/Select";
 import { MemoPicker, type MemoDraft } from "@/components/composed/Memo/MemoPicker";
 import { MemoGallery } from "@/components/composed/Memo/MemoGallery";
-import type { ExpenseCategory, BazaarSessionResponse, BazaarEntryMode, ContributionResponse } from "@/types";
+import type {
+    ExpenseCategory, BazaarSessionResponse, BazaarEntryMode, ContributionResponse, PaymentMethod, CashCheckSummary,
+} from "@/types";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import styles from "./expenses.module.css";
 
 const CATEGORIES: ExpenseCategory[] = ["PROTEIN", "CARB", "VEGETABLE", "SPICE", "OIL", "UTILITY", "OTHER"];
+const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "OTHER"];
 
 interface ItemRow      { category: ExpenseCategory; amount: string; description: string }
 interface MemberOption { id: string; name: string }
@@ -27,6 +30,8 @@ export default function ExpensesPage() {
     const t  = useTranslations("expenses");
     const tc = useTranslations("common");
     const tk = useTranslations("calculator");
+    const tp = useTranslations("expenses.payment");
+    const tcash = useTranslations("expenses.cash");
     const locale = useLocale();
     const { user, token } = useAuth();
 
@@ -81,6 +86,15 @@ export default function ExpensesPage() {
     // Backend-owned aggregates — no frontend arithmetic
     const [totalContrib,         setTotalContrib]         = useState(0);
     const [memberContribSummary, setMemberContribSummary] = useState<Array<{ name: string; total: number; count: number }>>([]);
+    const [contribByMethod,      setContribByMethod]      = useState<Array<{ method: PaymentMethod | "UNKNOWN"; total: number }>>([]);
+
+    /* ─── Cash check (the fund counted against the book) ─── */
+    const [cashCheck,        setCashCheck]        = useState<CashCheckSummary | null>(null);
+    const [showCashForm,     setShowCashForm]     = useState(false);
+    const [cashCounted,      setCashCounted]      = useState("");
+    const [cashNote,         setCashNote]         = useState("");
+    const [cashSubmitting,   setCashSubmitting]   = useState(false);
+    const [cashHistoryOpen,  setCashHistoryOpen]  = useState(false);
 
     /* ─── Add Contribution form ─── */
     const [showContribForm,   setShowContribForm]   = useState(false);
@@ -88,6 +102,10 @@ export default function ExpensesPage() {
     const [contribAmount,     setContribAmount]     = useState("");
     const [contribNote,       setContribNote]       = useState("");
     const [contribDate,       setContribDate]       = useState(localISODate);
+    const [contribMethod,     setContribMethod]     = useState<PaymentMethod>("CASH");
+    const [contribReference,  setContribReference]  = useState("");
+    // Who holds the money now; empty = the person recording it
+    const [contribReceivedBy, setContribReceivedBy] = useState("");
     const [contribSubmitting, setContribSubmitting] = useState(false);
 
     /* ─── Magic Calculator ─── */
@@ -143,10 +161,18 @@ export default function ExpensesPage() {
             setMemberContribSummary(
                 res.memberSummary.map((s) => ({ name: s.memberName, total: s.total, count: s.count }))
             );
+            setContribByMethod(res.byMethod ?? []);
         } catch { /* silent — non-critical */ } finally {
             setContribLoading(false);
         }
     }, [user, token]);
+
+    const loadCashCheck = useCallback(async () => {
+        if (!token) return;
+        try {
+            setCashCheck(await api.cashChecks.get(token));
+        } catch { /* non-critical: the card just stays hidden */ }
+    }, [token]);
 
     const loadMembers = useCallback(async () => {
         if (!user || !token || !canWrite) return;
@@ -160,7 +186,8 @@ export default function ExpensesPage() {
         loadSessions(1);
         loadContributions(1);
         loadMembers();
-    }, [loadSessions, loadContributions, loadMembers]);
+        loadCashCheck();
+    }, [loadSessions, loadContributions, loadMembers, loadCashCheck]);
 
     /* ─── Session handlers ─── */
     const addItem    = () => setItems((p) => [...p, { category: "PROTEIN", amount: "", description: "" }]);
@@ -262,20 +289,55 @@ export default function ExpensesPage() {
         try {
             await api.contributions.add(
                 { memberId: contribMember, amount: Number(contribAmount),
-                  note: contribNote || undefined, date: contribDate }, token
+                  note: contribNote || undefined, date: contribDate,
+                  paymentMethod: contribMethod,
+                  reference: contribMethod !== "CASH" && contribReference.trim() ? contribReference.trim() : undefined,
+                  receivedBy: contribReceivedBy || undefined }, token
             );
             setContribMember(""); setContribAmount("");
             setContribNote(""); setContribDate(localISODate());
+            setContribMethod("CASH"); setContribReference(""); setContribReceivedBy("");
             setShowContribForm(false);
             toast.success("Deposit recorded");
             // Reload page 1 so backend-owned totals (totalContributed, memberSummary) stay accurate
             void loadContributions(1);
+            void loadCashCheck();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to record deposit");
         } finally {
             setContribSubmitting(false);
         }
     }
+
+    /* ─── Cash check handler ─── */
+    async function handleCashCheck(e: React.FormEvent) {
+        e.preventDefault();
+        if (!token || cashCounted === "") return;
+        setCashSubmitting(true);
+        try {
+            const saved = await api.cashChecks.add(
+                { countedAmount: Number(cashCounted), note: cashNote.trim() || undefined }, token
+            );
+            toast.success(saved.expectedAmount === null ? tcash("savedOpening") : tcash("saved"));
+            setCashCounted(""); setCashNote(""); setShowCashForm(false);
+            void loadCashCheck();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : tcash("failed"));
+        } finally {
+            setCashSubmitting(false);
+        }
+    }
+
+    /** "Matched the book", "৳200 short", "৳50 extra" or "Opening count" */
+    const diffLabel = (difference: number | null) => {
+        if (difference === null) return tcash("opening");
+        if (Math.abs(difference) < 0.005) return tcash("matched");
+        return difference < 0
+            ? tcash("short", { amount: formatCurrency(-difference) })
+            : tcash("extra", { amount: formatCurrency(difference) });
+    };
+    const diffTone = (difference: number | null) =>
+        difference === null || Math.abs(difference) < 0.005 ? styles.cashGood : styles.cashBad;
 
     /* ─── Manual calculator logic ─── */
     function calcDigit(d: string) {
@@ -381,7 +443,7 @@ export default function ExpensesPage() {
                 </button>
                 <button
                     className={cn(styles.tab, activeTab === "contributions" && styles.tabActive)}
-                    onClick={() => setActiveTab("contributions")}
+                    onClick={() => { setActiveTab("contributions"); void loadCashCheck(); }}
                 >
                     <TrendingDown size={15} /> {t("contributionsTab")}
                     {contribTotal > 0 && <span className={styles.tabBadge}>{contribTotal}</span>}
@@ -720,6 +782,39 @@ export default function ExpensesPage() {
                                             value={contribNote} onChange={(e) => setContribNote(e.target.value)} />
                                     </div>
                                 </div>
+                                <div className={styles.formRow}>
+                                    <div className={styles.field}>
+                                        <label className={styles.label}>{tp("method")}</label>
+                                        <Select
+                                            className={styles.selectTrigger}
+                                            value={contribMethod}
+                                            onChange={(v) => setContribMethod(v as PaymentMethod)}
+                                            aria-label={tp("method")}
+                                            options={PAYMENT_METHODS.map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label className={styles.label}>{tp("receivedBy")}</label>
+                                        <Select
+                                            className={styles.selectTrigger}
+                                            value={contribReceivedBy || user?.id || ""}
+                                            onChange={setContribReceivedBy}
+                                            placeholder={t("ui.selectMember")}
+                                            aria-label={tp("receivedBy")}
+                                            options={members.map((m) => ({ value: m.id, label: m.name }))}
+                                        />
+                                    </div>
+                                </div>
+                                {contribMethod !== "CASH" && (
+                                    <div className={styles.formRow}>
+                                        <div className={styles.field}>
+                                            <label className={styles.label}>{tp("reference")}</label>
+                                            <input className={styles.input} type="text" maxLength={64}
+                                                placeholder={tp("referencePlaceholder")}
+                                                value={contribReference} onChange={(e) => setContribReference(e.target.value)} />
+                                        </div>
+                                    </div>
+                                )}
                                 <div className={styles.formActions}>
                                     <button type="button" className={styles.cancelBtn}
                                         onClick={() => setShowContribForm(false)}>{tc("cancel")}</button>
@@ -728,6 +823,106 @@ export default function ExpensesPage() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    )}
+
+                    {/* Cash check — the fund counted against the book */}
+                    {cashCheck && (
+                        <div className={styles.summaryCard}>
+                            <div className={styles.cashHead}>
+                                <span className={styles.summaryTitle}>
+                                    <Wallet size={14} /> {tcash("title")}
+                                </span>
+                                {canWrite && !showCashForm && (
+                                    <button className={styles.cashBtn} onClick={() => setShowCashForm(true)}>
+                                        {tcash("countNow")}
+                                    </button>
+                                )}
+                            </div>
+                            <div className={styles.cashBody}>
+                                {cashCheck.lastCheck ? (
+                                    <>
+                                        <span className={styles.cashLabel}>{tcash("expectedNow")}</span>
+                                        <span className={styles.cashBig}>{formatCurrency(cashCheck.expectedNow ?? 0)}</span>
+                                        <span className={styles.cashMeta}>
+                                            {cashCheck.lastCheck.createdByName
+                                                ? tcash("lastCount", {
+                                                      amount: formatCurrency(cashCheck.lastCheck.countedAmount),
+                                                      date: fmtDate(cashCheck.lastCheck.createdAt.slice(0, 10)),
+                                                      name: cashCheck.lastCheck.createdByName,
+                                                  })
+                                                : tcash("lastCountNoName", {
+                                                      amount: formatCurrency(cashCheck.lastCheck.countedAmount),
+                                                      date: fmtDate(cashCheck.lastCheck.createdAt.slice(0, 10)),
+                                                  })}
+                                            {" · "}
+                                            <span className={diffTone(cashCheck.lastCheck.difference)}>
+                                                {diffLabel(cashCheck.lastCheck.difference)}
+                                            </span>
+                                        </span>
+                                    </>
+                                ) : (
+                                    <span className={styles.cashMeta}>{tcash("none")}</span>
+                                )}
+                                <span className={styles.cashHint}>
+                                    {cashCheck.bazaarFromFund ? tcash("subtitle") : tcash("bazaarFromPockets")}
+                                </span>
+                            </div>
+
+                            {showCashForm && canWrite && (
+                                <form className={styles.cashForm} onSubmit={(e) => void handleCashCheck(e)}>
+                                    <div className={styles.formRow}>
+                                        <div className={styles.field}>
+                                            <label className={styles.label}>{tcash("counted")}</label>
+                                            <input className={styles.input} type="number" step="0.01" min="0"
+                                                placeholder="৳ 0.00" value={cashCounted}
+                                                onChange={(e) => setCashCounted(e.target.value)} required />
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label className={styles.label}>{tcash("note")}</label>
+                                            <input className={styles.input} type="text" maxLength={200}
+                                                placeholder={tcash("notePlaceholder")}
+                                                value={cashNote} onChange={(e) => setCashNote(e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className={styles.formActions}>
+                                        <button type="button" className={styles.cancelBtn}
+                                            onClick={() => setShowCashForm(false)}>{tc("cancel")}</button>
+                                        <button type="submit" className={styles.submitBtn} disabled={cashSubmitting}>
+                                            {cashSubmitting ? tc("loading") : tc("save")}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {cashCheck.history.length > 1 && (
+                                <>
+                                    <button className={styles.summaryToggle}
+                                        onClick={() => setCashHistoryOpen(!cashHistoryOpen)}>
+                                        <span className={styles.cashMeta}>{tcash("history")}</span>
+                                        {cashHistoryOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                    </button>
+                                    {cashHistoryOpen && (
+                                        <div className={styles.summaryGrid}>
+                                            {cashCheck.history.map((h) => (
+                                                <div key={h.id} className={styles.summaryRow}>
+                                                    <div className={styles.summaryInfo}>
+                                                        <span className={styles.summaryName}>
+                                                            {fmtDate(h.createdAt.slice(0, 10))}
+                                                            {h.createdByName && ` · ${h.createdByName}`}
+                                                        </span>
+                                                        <span className={styles.summaryCount}>
+                                                            <span className={diffTone(h.difference)}>{diffLabel(h.difference)}</span>
+                                                            {h.note && ` · ${h.note}`}
+                                                        </span>
+                                                    </div>
+                                                    <span className={styles.summaryAmount}>{formatCurrency(h.countedAmount)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
                     )}
 
@@ -741,6 +936,15 @@ export default function ExpensesPage() {
                                 </span>
                                 {contribSummaryOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                             </button>
+                            {contribSummaryOpen && contribByMethod.length > 0 && (
+                                <div className={styles.methodChips} aria-label={tp("byMethodTitle")}>
+                                    {contribByMethod.map((m) => (
+                                        <span key={m.method} className={styles.methodChip}>
+                                            {tp(`methods.${m.method}`)} {formatCurrency(m.total)}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                             {contribSummaryOpen && (
                                 <div className={styles.summaryGrid}>
                                     {memberContribSummary.map((s) => (
@@ -792,6 +996,9 @@ export default function ExpensesPage() {
                                             </span>
                                             <span className={styles.contribMeta}>
                                                 {fmtDate(c.date)}
+                                                {c.paymentMethod && ` · ${tp(`methods.${c.paymentMethod}`)}`}
+                                                {c.reference && ` · ${c.reference}`}
+                                                {c.receivedByName && ` · ${tp("receivedByLine", { name: c.receivedByName })}`}
                                                 {c.note && ` · ${c.note}`}
                                                 {c.recordedByName && (
                                                     <span className={styles.contribBy}> · {t("ui.by", { name: c.recordedByName })}</span>

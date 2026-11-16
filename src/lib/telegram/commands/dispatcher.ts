@@ -15,6 +15,7 @@ import type { MemberRepository } from '../repositories/member.repository'
 import type { GroupRepository } from '../repositories/group.repository'
 import { getMessSettings } from '@/lib/mess-settings'
 import { DEFAULT_TIMEZONE } from '@/lib/constants'
+import { recordActivity } from '@/lib/activity'
 
 export class CommandDispatcher {
   private readonly handlers: CommandHandler[]
@@ -44,6 +45,8 @@ export class CommandDispatcher {
       this.memberRepo.findByTelegramUid(telegramUid),
       this.groupRepo.findByChatId(String(chatId)),
     ])
+
+    if (member) recordActivity(member.id, member.messId, 'TELEGRAM')
 
     const args = text.split(/\s+/).slice(1) // everything after /command
 

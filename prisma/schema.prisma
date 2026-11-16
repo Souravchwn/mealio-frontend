@@ -51,6 +51,8 @@ model Mess {
   mealPreferences UserMealPreference[]
   mealConfigs     MealConfig[]
   cookNotes       DailyCookNote[]
+  activity        MemberActivity[]
+  cashChecks      CashCheck[]
 
   @@map("messes")
 }
@@ -78,6 +80,8 @@ model Member {
   /// Tokens issued before this moment are rejected (password change / reset)
   passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
   lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(6)
+  /// Last time the member used the web app, the bot or the Mini App (updated at most hourly)
+  lastSeenAt     DateTime? @map("last_seen_at") @db.Timestamptz(6)
   /// Account deleted by the user — personal data is anonymised, records kept for the mess's accounts
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
 
@@ -93,6 +97,9 @@ model Member {
   memberships       MessMembership[]
   mealPreferences   UserMealPreference[]
   managedPeriods    MessMonth[]        @relation("PeriodManager")
+  receivedLedgers   LedgerEntry[]      @relation("ReceivedBy")
+  activity          MemberActivity[]
+  cashChecks        CashCheck[]        @relation("CashCheckCreator")
 
   @@index([messId], map: "idx_members_mess")
   @@index([telegramUid], map: "idx_members_telegram")
@@ -260,11 +267,19 @@ model LedgerEntry {
   voidReason  String?   @map("void_reason")
   voidedAt    DateTime? @map("voided_at") @db.Timestamptz(6)
   voidedBy    String?   @map("voided_by") @db.Uuid
+  /// Deposits only: CASH | BKASH | NAGAD | BANK | OTHER. Null = recorded before methods existed.
+  /// ManagerBabu only records how money moved; it never moves money itself.
+  paymentMethod String? @map("payment_method")
+  /// Deposits only: optional transaction ID or other reference
+  reference   String?
+  /// Deposits only: the member who received (now holds) the money
+  receivedBy  String?   @map("received_by") @db.Uuid
 
   mess      Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
   messMonth MessMonth? @relation(fields: [messMonthId], references: [id])
   member    Member     @relation("MemberLedger", fields: [memberId], references: [id], onDelete: Cascade)
   creator   Member?    @relation("CreatedBy", fields: [createdBy], references: [id])
+  receiver  Member?    @relation("ReceivedBy", fields: [receivedBy], references: [id])
 
   @@index([memberId, messMonthId], map: "idx_ledger_member_month")
   @@map("ledger_entries")
@@ -495,4 +510,45 @@ model SupportMessage {
 
   @@index([ticketId, createdAt], map: "idx_support_messages_ticket")
   @@map("support_messages")
+}
+
+/// One row per member, per day, per channel they used. Feeds the usage numbers in /console.
+model MemberActivity {
+  memberId String   @map("member_id") @db.Uuid
+  messId   String   @map("mess_id") @db.Uuid
+  /// Calendar day in DEFAULT_TIMEZONE (Asia/Dhaka)
+  day      DateTime @db.Date
+  /// WEB | TELEGRAM | MINI_APP
+  source   String
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mess   Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, day, source])
+  @@index([messId, day], map: "idx_member_activity_mess_day")
+  @@index([day], map: "idx_member_activity_day")
+  @@map("member_activity")
+}
+
+/// A count of the mess fund (cash box and wallets the manager holds) against the book.
+/// expected = previous count + (book now − book at the previous count). The first count is the opening count.
+model CashCheck {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId         String   @map("mess_id") @db.Uuid
+  countedAmount  Decimal  @map("counted_amount") @db.Decimal(12, 2)
+  /// Deposits minus bazaar paid from the fund, all time, at the moment of the count
+  bookTotal      Decimal  @map("book_total") @db.Decimal(12, 2)
+  /// What the fund should have held. Null for the opening count.
+  expectedAmount Decimal? @map("expected_amount") @db.Decimal(12, 2)
+  /// counted − expected. Null for the opening count.
+  difference     Decimal? @db.Decimal(12, 2)
+  note           String?
+  createdBy      String?  @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess    Mess    @relation(fields: [messId], references: [id], onDelete: Cascade)
+  creator Member? @relation("CashCheckCreator", fields: [createdBy], references: [id])
+
+  @@index([messId, createdAt], map: "idx_cash_checks_mess")
+  @@map("cash_checks")
 }

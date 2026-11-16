@@ -238,6 +238,9 @@ export interface BazaarSessionResponse {
     createdAt: string;
 }
 
+/** How a deposit reached the mess. Recorded only; ManagerBabu never moves money. */
+export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "OTHER";
+
 export interface ContributionResponse {
     id: string;
     memberId: string;
@@ -246,6 +249,11 @@ export interface ContributionResponse {
     note: string | null;
     date: string;
     recordedByName: string | null;
+    /** Null for deposits recorded before methods existed */
+    paymentMethod: PaymentMethod | null;
+    reference: string | null;
+    /** Who received (now holds) the money */
+    receivedByName: string | null;
     createdAt: string;
     isVoided: boolean;
     voidReason: string | null;
@@ -403,6 +411,34 @@ export interface ContributionRequest {
     amount: number;
     note?: string;
     date: string;
+    /** Defaults to CASH */
+    paymentMethod?: PaymentMethod;
+    /** Optional transaction ID or other reference, up to 64 characters */
+    reference?: string;
+    /** Member who received the money; defaults to the person recording it */
+    receivedBy?: string;
+}
+
+/** One count of the mess fund against the book */
+export interface CashCheckEntry {
+    id: string;
+    countedAmount: number;
+    /** Null for the opening count */
+    expectedAmount: number | null;
+    /** counted − expected; null for the opening count */
+    difference: number | null;
+    note: string | null;
+    createdByName: string | null;
+    createdAt: string;
+}
+
+export interface CashCheckSummary {
+    /** What the fund should hold now; null until the opening count exists */
+    expectedNow: number | null;
+    /** Whether bazaar spending is paid from the fund (bazaar_counts_as_deposit is off) */
+    bazaarFromFund: boolean;
+    lastCheck: CashCheckEntry | null;
+    history: CashCheckEntry[];
 }
 
 export interface MealToggleRequest {

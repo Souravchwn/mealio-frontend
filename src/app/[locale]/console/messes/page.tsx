@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useLocale } from "next-intl";
 import { api } from "@/lib/api";
 import { useConsoleData } from "../ConsoleAuth";
-import { Filters, Pager, Pill, SearchBox, timeAgo } from "../ui";
+import { Filters, Pager, Pill, SearchBox, lastActiveLabel, timeAgo } from "../ui";
 import styles from "../console.module.css";
 
 const STATUSES = ["all", "active", "suspended", "deleted"] as const;
@@ -52,6 +52,8 @@ export default function ConsoleMessesPage() {
                             <span className={styles.cellTitle}>{m.name}</span>
                             <span className={styles.cellSub}>
                                 {m.members} members · {m.plan} · created {timeAgo(m.createdAt)}
+                                {" · "}{m.lastActive ? `active ${lastActiveLabel(m.lastActive)}` : "no activity yet"}
+                                {" · "}{m.monthsClosed === 1 ? "1 month closed" : `${m.monthsClosed} months closed`}
                             </span>
                         </span>
                         <span className={styles.cellHideSm}>

@@ -443,3 +443,46 @@ ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS mess_id UUID;
 -- Remember the bot's latest "Open my Mealio" reply (deleted on the next /mealio) and the pinned one.
 ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS last_prompt_message_id INTEGER;
 ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS pinned_message_id INTEGER;
+
+-- ============================================================
+-- 25. Usage tracking (staff console)
+-- ============================================================
+-- One row per member, per day, per channel (WEB, TELEGRAM, MINI_APP). No content is stored,
+-- only that the member used ManagerBabu that day.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS member_activity (
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  mess_id   UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  day       DATE NOT NULL,
+  source    TEXT NOT NULL,
+  PRIMARY KEY (member_id, day, source)
+);
+CREATE INDEX IF NOT EXISTS idx_member_activity_mess_day ON member_activity(mess_id, day);
+CREATE INDEX IF NOT EXISTS idx_member_activity_day ON member_activity(day);
+ALTER TABLE member_activity ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 26. How a deposit was paid, and who holds the money
+-- ============================================================
+-- Recorded only. ManagerBabu never moves money. Old deposits keep NULL (method unknown).
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS reference TEXT;
+ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS received_by UUID REFERENCES members(id) ON DELETE SET NULL;
+
+-- ============================================================
+-- 27. Cash checks: the fund counted against the book
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cash_checks (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id         UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  counted_amount  DECIMAL(12,2) NOT NULL,
+  book_total      DECIMAL(12,2) NOT NULL,
+  expected_amount DECIMAL(12,2),
+  difference      DECIMAL(12,2),
+  note            TEXT,
+  created_by      UUID REFERENCES members(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_cash_checks_mess ON cash_checks(mess_id, created_at);
+ALTER TABLE cash_checks ENABLE ROW LEVEL SECURITY;

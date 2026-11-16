@@ -22,6 +22,7 @@ export type AuditAction =
   | 'VOID_BAZAAR_SESSION'
   | 'ADD_CONTRIBUTION'
   | 'VOID_CONTRIBUTION'
+  | 'CASH_CHECK'
 
 export interface AuditEntry {
   messId: string

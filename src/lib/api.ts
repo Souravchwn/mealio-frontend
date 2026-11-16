@@ -24,6 +24,9 @@ import type {
     BazaarSessionRequest,
     BazaarMemoInfo,
     ContributionResponse,
+    PaymentMethod,
+    CashCheckEntry,
+    CashCheckSummary,
     ContributionRequest,
     GuestMealPolicy,
     MessSettingsResponse,
@@ -397,11 +400,19 @@ export const api = {
                     total: number;
                     count: number;
                 }>;
+                /** Non-voided total per payment method; UNKNOWN = recorded before methods existed */
+                byMethod: Array<{ method: PaymentMethod | "UNKNOWN"; total: number }>;
             }>("/api/contributions", { method: "GET", params, token }),
         add: (data: ContributionRequest, token: string) =>
             fetcher<ContributionResponse>("/api/contributions", { method: "POST", body: data, token }),
         void: (id: string, reason: string, token: string) =>
             fetcher<{ ok: boolean }>(`/api/contributions/${id}`, { method: "DELETE", body: { reason }, token }),
+    },
+
+    cashChecks: {
+        get: (token: string) => fetcher<CashCheckSummary>("/api/cash-checks", { token }),
+        add: (data: { countedAmount: number; note?: string }, token: string) =>
+            fetcher<CashCheckEntry>("/api/cash-checks", { method: "POST", body: data, token }),
     },
 
     meals: {
