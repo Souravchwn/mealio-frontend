@@ -95,7 +95,9 @@ function RegisterForm() {
                 phone,
                 password,
                 locale,
-                ...(mode === "create" ? { messName } : { messInviteCode, ...(claimId ? { claimMemberId: claimId } : {}) }),
+                ...(mode === "create"
+                    ? { messName, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+                    : { messInviteCode, ...(claimId ? { claimMemberId: claimId } : {}) }),
             });
             if (response.pending) {
                 setPendingMess(response.messName);

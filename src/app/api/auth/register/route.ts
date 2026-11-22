@@ -14,7 +14,7 @@ import { signToken, clientIp } from '@/lib/auth-utils'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { invalidateDailyLogsMarker } from '@/lib/daily-logs'
 import { refreshMessSettings } from '@/lib/mess-settings'
-import { createMessRecord } from '@/lib/mess-create'
+import { createMessRecord, startingTimezone } from '@/lib/mess-create'
 import { getPlan } from '@/lib/plans'
 import { logSecurityEvent } from '@/lib/security-events'
 import { sendVerificationEmail } from '@/lib/account-emails'
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ detail: 'Invalid request body' }, { status: 400 })
   }
-  const { name, email, phone, password, mess_invite_code, mess_name, locale } = body
+  const { name, email, phone, password, mess_invite_code, mess_name, locale, timezone } = body
   const mode = body.mode === 'create' ? 'create' : 'join'
 
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 80) {
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       }
 
       const { member, mess } = await prisma.$transaction(async (tx) => {
-        const mess = await createMessRecord(tx, { name: mess_name })
+        const mess = await createMessRecord(tx, { name: mess_name, timezone: startingTimezone(timezone) })
         const member = await tx.member.create({
           data: {
             messId: mess.id,

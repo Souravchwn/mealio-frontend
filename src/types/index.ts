@@ -379,6 +379,8 @@ export interface RegisterRequest {
     messInviteCode?: string;
     messName?: string;
     locale?: string;
+    /** Create mode: the browser's timezone, so a new mess starts on local time */
+    timezone?: string;
     /** Join mode: "I am this person" (a member the admin added by name) */
     claimMemberId?: string;
 }

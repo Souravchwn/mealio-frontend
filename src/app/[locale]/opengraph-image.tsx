@@ -50,7 +50,7 @@ export default function OpengraphImage() {
                     Meals, bazaar and money, sorted for your mess
                 </div>
                 <div style={{ fontSize: 32, marginTop: 24, color: "#aaa398", maxWidth: 900, lineHeight: 1.35 }}>
-                    Meals, bazaar, deposits and a live meal rate for shared living in Bangladesh and India.
+                    Meals, groceries, deposits and a live meal rate for messes, hostels and shared homes, anywhere.
                 </div>
             </div>
         ),

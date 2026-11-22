@@ -13,13 +13,13 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Mealtill", statusBarStyle: "black-translucent" },
   title: "Mealtill | Smart mess management",
   description:
-    "Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.",
+    "Meal tracking, shared grocery costs and a fair monthly settlement for messes, hostels and shared homes, wherever you live.",
   keywords: [
     "mess management",
     "meal tracking",
     "shared living",
-    "Bangladesh",
-    "India",
+    "hostel",
+    "shared home",
     "expense splitting",
     "meal rate calculator",
   ],

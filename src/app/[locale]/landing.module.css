@@ -14,9 +14,9 @@
     --lp-rule-strong: rgba(28, 26, 22, 0.28);
     --lp-ruled: rgba(52, 92, 160, 0.16);
     --lp-margin: #b53c23;
-    --lp-accent: #5b21b6;
-    --lp-accent-hover: #4c1d95;
-    --lp-on-accent: #ffffff;
+    --lp-accent: #1c1a16;
+    --lp-accent-hover: #36302a;
+    --lp-on-accent: #fbf8f1;
     --lp-mark: #c4f04d;
     --lp-mark-text: #1a2e05;
     --lp-shadow: 0 1px 0 rgba(28, 26, 22, 0.06), 0 24px 48px -28px rgba(28, 26, 22, 0.35);
@@ -198,21 +198,21 @@
 }
 
 .eyebrow {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    max-width: 100%;
     margin-bottom: 20px;
     color: var(--lp-ink-2);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
 }
 
 .eyebrow::before {
     content: "";
+    display: inline-block;
     width: 28px;
     height: 2px;
+    margin-right: 12px;
+    vertical-align: middle;
     background: var(--lp-margin);
 }
 
@@ -342,7 +342,6 @@
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.1em;
-    text-transform: uppercase;
 }
 
 .ledgerTitle {

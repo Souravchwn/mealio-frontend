@@ -26,7 +26,7 @@
             "signIn": "Sign in"
         },
         "hero": {
-            "badge": "Made for mess life in Bangladesh",
+            "badge": "Made for shared homes, hostels and messes",
             "title": "Your mess,",
             "titleHighlight": "on autopilot.",
             "subtitle": "Meals count themselves every day. Bazaar and deposits turn into a live meal rate. Everyone sees their balance, and nobody does the math in a group chat again.",
@@ -53,7 +53,7 @@
                 "description": "Every member and every day on one screen, with totals, balances and month closing built in."
             },
             "finance": {
-                "title": "Every taka is traceable",
+                "title": "Every payment is traceable",
                 "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
             },
             "telegram": {
@@ -854,7 +854,7 @@
             "name": "Mess name",
             "nameRequired": "Give the mess a name.",
             "timezone": "Timezone",
-            "timezoneHelp": "Decides when each day starts and when meals lock. Most messes in Bangladesh use Asia/Dhaka."
+            "timezoneHelp": "Decides when each day starts and when meals lock. Set from your phone; change it if the mess is somewhere else."
         },
         "meals": {
             "title": "Meals and lock times",
@@ -1057,7 +1057,7 @@
         },
         "weekend": {
             "title": "Weekend days",
-            "help": "Members set separate default meals for weekdays and weekends. Choose which days count as the weekend (for Bangladesh this is usually Friday and Saturday). Changes apply from today; past days are not changed.",
+            "help": "Members set separate default meals for weekdays and weekends. Choose which days count as the weekend. Changes apply from today; past days are not changed.",
             "saved": "Weekend days saved",
             "saveFailed": "Failed to save weekend days"
         },
@@ -1393,7 +1393,7 @@
     },
     "meta": {
         "homeTitle": "Mealtill | Smart mess management",
-        "description": "Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.",
+        "description": "Meal tracking, shared grocery costs and a fair monthly settlement for messes, hostels and shared homes, wherever you live.",
         "supportTitle": "Support"
     }
 }
