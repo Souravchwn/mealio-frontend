@@ -3,10 +3,12 @@
  * Replaces running setWebhook by hand. Nothing secret is ever returned to the browser.
  */
 
+import { siteUrl } from '@/lib/site-url'
+
 export const BOT_COMMANDS: Array<[string, string]> = [
   ['start', 'Welcome message and command list'],
-  ['link', 'Link your Mealio account: /link CODE from web Settings'],
-  ['mealio', '[Admin] Activate me in this group: just send /mealio'],
+  ['link', 'Link your Mealtill account: /link CODE from web Settings'],
+  ['mealtill', '[Admin] Activate me in this group: just send /mealtill'],
   ['status', "Today's meal status"],
   ['meal', 'Toggle meals: /meal on|off|breakfast|lunch|dinner|guest N'],
   ['rate', 'Current meal rate for this period'],
@@ -36,7 +38,7 @@ async function tg<T = unknown>(method: string, body?: unknown): Promise<TgRespon
 
 /** The public address Telegram must call. Telegram only accepts public HTTPS. */
 export function appBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  return siteUrl()
 }
 
 export function isPublicHttps(url: string): boolean {
@@ -128,14 +130,14 @@ export async function connectWebhook(): Promise<{ ok: true } | { ok: false; deta
   if (!process.env.TELEGRAM_BOT_TOKEN) return { ok: false, detail: 'Set TELEGRAM_BOT_TOKEN first.' }
   if (!secret) return { ok: false, detail: 'Set TELEGRAM_WEBHOOK_SECRET first. The webhook refuses every update without it.' }
   if (!isPublicHttps(appBaseUrl())) {
-    return { ok: false, detail: 'NEXT_PUBLIC_APP_URL must be your public https address. Telegram cannot call localhost.' }
+    return { ok: false, detail: 'The site needs its public https address (APP_URL or NEXT_PUBLIC_APP_URL). Telegram cannot call localhost.' }
   }
   const set = await tg('setWebhook', { url: expectedWebhookUrl(), secret_token: secret, allowed_updates: ALLOWED_UPDATES, drop_pending_updates: true })
   if (!set.ok) return { ok: false, detail: set.description ?? 'Telegram refused the webhook' }
   const cmds = await tg('setMyCommands', { commands: BOT_COMMANDS.map(([command, description]) => ({ command, description })) })
   if (!cmds.ok) return { ok: false, detail: cmds.description ?? 'Webhook set, but the command menu was refused' }
-  // A "Mealio" button next to the message box in every private chat with the bot
-  const menu = await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Mealio', web_app: { url: expectedMiniAppUrl() } } })
+  // A "Mealtill" button next to the message box in every private chat with the bot
+  const menu = await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Mealtill', web_app: { url: expectedMiniAppUrl() } } })
   if (!menu.ok) return { ok: false, detail: menu.description ?? 'Webhook set, but the menu button was refused' }
   return { ok: true }
 }

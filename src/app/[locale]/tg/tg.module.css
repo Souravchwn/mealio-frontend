@@ -1,6 +1,6 @@
 /*
  * Telegram Mini App. Colours come from the person's Telegram theme (Telegram injects --tg-theme-*),
- * with Mealio's violet and lime as accents. Falls back to Mealio tokens outside Telegram.
+ * with Mealtill's violet and lime as accents. Falls back to Mealtill tokens outside Telegram.
  */
 .app {
     --bg: var(--tg-theme-secondary-bg-color, var(--color-bg));

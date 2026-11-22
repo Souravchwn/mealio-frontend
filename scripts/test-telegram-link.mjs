@@ -1,6 +1,6 @@
 /**
  * Telegram test: linking (/link, /start CODE, /linkgroup), the bot setting itself up in groups
- * (my_chat_member, /mealio) and the Mini App's identity check, including the ways they could be abused.
+ * (my_chat_member, /mealtill) and the Mini App's identity check, including the ways they could be abused.
  *
  *   npm run dev            (in another terminal)
  *   npm run test:telegram
@@ -167,7 +167,7 @@ try {
   check("another mess's member sees only their own mess", r.json?.mess?.name === B.mess.name)
 
   // ── The bot sets itself up when added to a group (my_chat_member) ────────────
-  const botUser = { id: 999_000_111, is_bot: true, first_name: 'Mealio' }
+  const botUser = { id: 999_000_111, is_bot: true, first_name: 'Mealtill' }
   async function joined(fromId, chatId, oldStatus, newStatus, { type = 'supergroup', secret = SECRET } = {}) {
     await fetch(BASE + '/api/telegram/webhook', {
       method: 'POST',
@@ -200,13 +200,13 @@ try {
   await joined(adminUid, G3, 'left', 'member')
   check('adding it back connects it again', (await linkedGroup(G3))?.messId === A.mess.id)
 
-  // ── /mealio in a group ───────────────────────────────────────────────────────
+  // ── /mealtill in a group ───────────────────────────────────────────────────────
+  await say(freshUid, G4, '/mealtill')
+  check('/mealtill from a plain member does not connect a new group', !(await linkedGroup(G4)))
+  await say(adminUid, G4, '/mealtill')
+  check('/mealtill from the admin connects the group', (await linkedGroup(G4))?.messId === A.mess.id)
   await say(freshUid, G4, '/mealio')
-  check('/mealio from a plain member does not connect a new group', !(await linkedGroup(G4)))
-  await say(adminUid, G4, '/mealio')
-  check('/mealio from the admin connects the group', (await linkedGroup(G4))?.messId === A.mess.id)
-  await say(freshUid, G4, '/mealio')
-  check('/mealio in a connected group keeps it as it is', (await prisma.telegramGroup.count({ where: { chatId: String(G4), isActive: true, messId: A.mess.id } })) === 1)
+  check('the old /mealio still works in a connected group and keeps it as it is', (await prisma.telegramGroup.count({ where: { chatId: String(G4), isActive: true, messId: A.mess.id } })) === 1)
 
   // ── /start CODE: one-tap linking, private chats only ─────────────────────────
   const third = await A.mk('Third', 'MEMBER', null)

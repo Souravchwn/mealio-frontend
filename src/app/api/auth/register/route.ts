@@ -125,6 +125,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: 'That invite code does not work. Check it with your mess admin.', code: 'INVALID_CODE' }, { status: 400 })
     }
 
+    // "I am <name>": the person is already in the mess by name. Their details wait for the admin,
+    // always, because that name already has meals and money on it.
+    if (typeof body.claim_member_id === 'string' && body.claim_member_id) {
+      const target = await prisma.member.findFirst({
+        where: { id: body.claim_member_id, messId: mess.id, passwordHash: null, isActive: true, deletedAt: null },
+        select: { id: true, name: true },
+      })
+      if (!target) {
+        return NextResponse.json({ detail: 'That name is not available any more. Pick it again or ask your mess admin.', code: 'NAME_UNAVAILABLE' }, { status: 400 })
+      }
+      const open = await prisma.memberClaim.findFirst({
+        where: { status: 'PENDING', OR: [{ memberId: target.id }, { email: normEmail }] },
+        select: { memberId: true },
+      })
+      if (open) {
+        return NextResponse.json(
+          open.memberId === target.id
+            ? { detail: 'Someone already asked to be this person. Your mess admin will sort it out.', code: 'CLAIM_EXISTS' }
+            : { detail: 'This email is already waiting for approval in a mess.', code: 'CLAIM_EXISTS' },
+          { status: 400 },
+        )
+      }
+      await prisma.memberClaim.create({
+        data: { messId: mess.id, memberId: target.id, name: name.trim(), email: normEmail, passwordHash, phone: cleanPhone },
+      })
+      await logSecurityEvent({ type: 'CLAIM_REQUESTED', ip, email: normEmail, memberId: target.id, messId: mess.id })
+      return NextResponse.json({ pending: true, claim: true, mess_name: mess.name, member_name: target.name })
+    }
+
     const activeMembers = await prisma.member.count({ where: { messId: mess.id, isActive: true } })
     if (activeMembers >= getPlan(mess.plan).maxMembers) {
       return NextResponse.json({ detail: 'This mess is full. Ask the admin to make room.', code: 'MESS_FULL' }, { status: 400 })

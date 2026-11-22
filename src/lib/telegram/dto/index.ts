@@ -64,6 +64,8 @@ export enum CommandType {
   START = '/start',
   LINK = '/link',
   LINKGROUP = '/linkgroup',
+  MEALTILL = '/mealtill',
+  /** Old name of /mealtill, still accepted */
   MEALIO = '/mealio',
   STATUS = '/status',
   MEAL = '/meal',

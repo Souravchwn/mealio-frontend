@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { GuestMealPolicy } from "@/types";
+import type { DefaultMealsSetting, GuestMealPolicy } from "@/types";
 import { AccountSection, DeleteMessCard } from "./AccountSection";
 import styles from "./settings.module.css";
 
@@ -93,6 +93,12 @@ export default function SettingsPage() {
     const [weekendDays, setWeekendDays] = useState<number[]>([0, 6]);
     const [savingWeekend, setSavingWeekend] = useState(false);
     const [savingBilling, setSavingBilling] = useState(false);
+    // Meals of members who have not set their own (people added by name, new joiners)
+    const [defaultMeals, setDefaultMeals] = useState<DefaultMealsSetting>({
+        weekday: { breakfast: true, lunch: true, dinner: true },
+        weekend: { breakfast: true, lunch: true, dinner: true },
+    });
+    const [savingDefaults, setSavingDefaults] = useState(false);
 
     // ── My Telegram account ────────────────────────────────────────────────────
     const [tgAccountLinked, setTgAccountLinked] = useState(false);
@@ -143,6 +149,7 @@ export default function SettingsPage() {
             setCarryForward(data.carryForwardBalance);
             setRequireApproval(data.requireJoinApproval ?? true);
             if (data.weekendDays) setWeekendDays(data.weekendDays);
+            if (data.defaultMeals) setDefaultMeals(data.defaultMeals);
             setTgTimezone(data.timezone);
         }).catch(() => {});
 
@@ -285,6 +292,25 @@ export default function SettingsPage() {
             toast.error(err instanceof Error ? err.message : t("weekend.saveFailed"));
         } finally {
             setSavingWeekend(false);
+        }
+    }
+
+    // ── Mess default meals (saved on every tap) ───────────────────────────────
+    async function toggleDefaultMeal(meal: MealType, day: DayType) {
+        if (!token || !isAdmin || savingDefaults) return;
+        const dayKey = day === "WEEKDAY" ? "weekday" : "weekend";
+        const before = defaultMeals;
+        const next = { ...defaultMeals, [dayKey]: { ...defaultMeals[dayKey], [meal]: !defaultMeals[dayKey][meal] } };
+        setDefaultMeals(next);
+        setSavingDefaults(true);
+        try {
+            await api.admin.updateSettings({ defaultMeals: next }, token);
+            toast.success(t("defaultMeals.saved"));
+        } catch (err) {
+            setDefaultMeals(before);
+            toast.error(err instanceof Error ? err.message : t("defaultMeals.saveFailed"));
+        } finally {
+            setSavingDefaults(false);
         }
     }
 
@@ -700,6 +726,53 @@ export default function SettingsPage() {
                                 </Button>
                             </div>
                         )}
+                    </Card>
+
+                    {/* Mess default meals */}
+                    <Card>
+                        <div className={styles.prefHeader}>
+                            <h3 className={styles.sectionTitle}>{t("defaultMeals.title")}</h3>
+                            <p className={styles.helpText}>{t("defaultMeals.help")}</p>
+                        </div>
+                        <div className={styles.prefTable}>
+                            <div className={styles.prefTableHeader}>
+                                <div className={styles.prefTableCell} />
+                                {DAY_TYPES.map((day) => (
+                                    <div key={day} className={cn(styles.prefTableCell, styles.prefDayHeader)}>
+                                        {day === "WEEKDAY" ? t("mealPreferences.weekday") : t("mealPreferences.weekend")}
+                                    </div>
+                                ))}
+                            </div>
+                            {MEAL_TYPES.map((meal) => (
+                                <div key={meal} className={styles.prefTableRow}>
+                                    <div className={cn(styles.prefTableCell, styles.prefMealLabel)}>
+                                        <span className={styles.prefMealIcon}>{MEAL_ICONS[meal]}</span>
+                                        {t(`mealPreferences.${meal}`)}
+                                    </div>
+                                    {DAY_TYPES.map((day) => {
+                                        const enabled = defaultMeals[day === "WEEKDAY" ? "weekday" : "weekend"][meal];
+                                        return (
+                                            <div key={day} className={cn(styles.prefTableCell, styles.prefToggleCell)}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void toggleDefaultMeal(meal, day)}
+                                                    disabled={!isAdmin || savingDefaults}
+                                                    className={cn(styles.prefToggle, enabled ? styles.prefOn : styles.prefOff)}
+                                                    role="switch"
+                                                    aria-checked={enabled}
+                                                    aria-label={`${t(`mealPreferences.${meal}`)} ${day}`}
+                                                >
+                                                    <span className={styles.prefToggleKnob} />
+                                                </button>
+                                                <span className={cn(styles.prefStatusLabel, enabled ? styles.prefStatusOn : styles.prefStatusOff)}>
+                                                    {enabled ? t("mealPreferences.on") : t("mealPreferences.off")}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
                     </Card>
 
                     {/* Month Start Day */}

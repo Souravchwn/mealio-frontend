@@ -1,17 +1,17 @@
 /**
  * GET /api-docs
- * Serves Swagger UI with the full Mealio OpenAPI 3.0 spec.
+ * Serves Swagger UI with the full Mealtill OpenAPI 3.0 spec.
  * No npm packages required — Swagger UI loaded from CDN.
  */
 
 const spec = {
   openapi: '3.0.3',
   info: {
-    title: 'Mealio API',
+    title: 'Mealtill API',
     description:
-      'REST API for the Mealio mess-management platform. All protected routes require a Bearer JWT obtained from `/api/auth/login`.',
+      'REST API for the Mealtill mess-management platform. All protected routes require a Bearer JWT obtained from `/api/auth/login`.',
     version: '1.0.0',
-    contact: { name: 'Mealio' },
+    contact: { name: 'Mealtill' },
   },
   servers: [{ url: '/api', description: 'Next.js API routes' }],
   components: {
@@ -223,7 +223,7 @@ const spec = {
     '/meals/guest': {
       post: {
         tags: ['Meals'],
-        summary: 'Update the guest count for a meal log',
+        summary: 'Set the guests of one meal (lunch only, dinner only, or both)',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -231,9 +231,11 @@ const spec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['log_id', 'guest_count'],
+                required: ['slot', 'guest_count'],
                 properties: {
-                  log_id: { type: 'string', format: 'uuid' },
+                  member_id: { type: 'string', format: 'uuid' },
+                  date: { type: 'string', format: 'date' },
+                  slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner'] },
                   guest_count: { type: 'integer', minimum: 0 },
                 },
               },
@@ -441,7 +443,7 @@ const spec = {
         tags: ['Telegram Bot'],
         summary: 'Telegram Bot webhook endpoint',
         description:
-          'Receives Update payloads from the Telegram Bot API. This endpoint is **public**. Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Mealio member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest N` — set guest count\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
+          'Receives Update payloads from the Telegram Bot API. This endpoint is **public**. Telegram sends no Authorization header. Optionally protected by `TELEGRAM_WEBHOOK_SECRET` verified via `X-Telegram-Bot-Api-Secret-Token` header.\n\n**Supported commands:**\n- `/start` — show help\n- `/link <phone>` — link Telegram account to Mealtill member\n- `/status` — today\'s meal status\n- `/meal on` — all meals ON\n- `/meal off` — all meals OFF\n- `/meal breakfast|lunch|dinner` — toggle a single slot\n- `/meal guest N` — set guest count\n\n**Register webhook:**\n```\ncurl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://your-domain.com/api/telegram/webhook&secret_token={SECRET}"\n```',
         requestBody: {
           required: true,
           content: {
@@ -503,7 +505,7 @@ export async function GET(): Promise<Response> {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mealio API Docs</title>
+  <title>Mealtill API Docs</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
   <style>
     body { margin: 0; background: #fafafa; }

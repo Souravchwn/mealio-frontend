@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       }),
       prisma.dailyLog.findMany({
         where: { messId: payload.messId, logDate: { gte: period.startDate, lte: period.endDate }, memberId: { in: memberIds } },
-        select: { memberId: true, logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+        select: { memberId: true, logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true, guestBreakfast: true, guestLunch: true, guestDinner: true },
       }),
     ])
 

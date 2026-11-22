@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { MealSlot } from "@/types";
+import { Select } from "@/components/ui/Select/Select";
 import { toast } from "sonner";
 import styles from "./meals.module.css";
 
@@ -36,7 +37,12 @@ export default function MealsPage() {
     // Server-computed "today" in the mess timezone — never compute it client-side
     const [serverDate, setServerDate] = useState<string>("");
     const [meals, setMeals] = useState<Record<MealSlotKey, boolean>>({ breakfast: false, lunch: false, dinner: false });
-    const [guestCount, setGuestCount] = useState(0);
+    // Guests per meal: a guest can come for lunch only, dinner only, or both
+    const [guests, setGuests] = useState<Record<MealSlotKey, number>>({ breakfast: 0, lunch: 0, dinner: 0 });
+    // Admins and managers can set anyone's meals and guests (every change is in the audit log)
+    const isPrivileged = user?.role === "ADMIN" || user?.role === "MANAGER";
+    const [targetId, setTargetId] = useState<string>("");
+    const [people, setPeople] = useState<Array<{ id: string; name: string }>>([]);
     const [guestPolicy, setGuestPolicy] = useState<"HOST" | "SHARED">("HOST");
     const [slotLocked, setSlotLocked] = useState<Record<MealSlotKey, boolean>>({ breakfast: false, lunch: false, dinner: false });
     const [slotTimes, setSlotTimes] = useState<Record<MealSlotKey, string>>({ breakfast: "", lunch: "", dinner: "" });
@@ -44,20 +50,32 @@ export default function MealsPage() {
     const [cutoffTime, setCutoffTime] = useState("");
     const [loading, setLoading] = useState(true);
     const [toggling, setToggling] = useState<MealSlotKey | null>(null);
-    const [updatingGuest, setUpdatingGuest] = useState(false);
+    const [updatingGuest, setUpdatingGuest] = useState<MealSlotKey | null>(null);
     const [preferences, setPreferences] = useState<MealPreference[]>([]);
     const [todayDayType, setTodayDayType] = useState<"WEEKDAY" | "WEEKEND">("WEEKDAY");
 
+    const memberId = targetId || user?.id || "";
+    const forSelf = memberId === user?.id;
+
+    // The people a manager can switch to
+    useEffect(() => {
+        if (!user || !token || !isPrivileged) return;
+        api.members
+            .list(user.messId, token)
+            .then((r) => setPeople(r.members.map((m) => ({ id: m.id, name: m.name }))))
+            .catch(() => {});
+    }, [user, token, isPrivileged]);
+
     const loadToday = useCallback(async () => {
-        if (!user || !token) return;
+        if (!user || !token || !memberId) return;
         try {
             const [log, prefResult] = await Promise.all([
-                api.meals.getToday(user.id, token),
-                api.mealPreferences.getAll(token),
+                api.meals.getToday(memberId, token),
+                forSelf ? api.mealPreferences.getAll(token) : api.mealPreferences.getFor(memberId, token),
             ]);
             setServerDate(log.date);
             setMeals({ breakfast: log.breakfastCount > 0, lunch: log.lunchCount > 0, dinner: log.dinnerCount > 0 });
-            setGuestCount(log.guestCount);
+            setGuests(log.guests ?? { breakfast: 0, lunch: 0, dinner: 0 });
             if (log.guestMealPolicy) setGuestPolicy(log.guestMealPolicy);
             if (log.dayType) setTodayDayType(log.dayType);
             setCutoffPassed(log.cutOffPassed);
@@ -80,7 +98,7 @@ export default function MealsPage() {
         } finally {
             setLoading(false);
         }
-    }, [user, token, t]);
+    }, [user, token, t, memberId, forSelf]);
 
     useEffect(() => {
         loadToday();
@@ -88,7 +106,7 @@ export default function MealsPage() {
 
     const getSlotStatus = useCallback(
         (slot: MealSlotKey): "default-off" | "override-on" | "override-off" | null => {
-            const pref = preferences.find((p) => p.mealType === slot.toUpperCase() && p.dayType === todayDayType);
+            const pref = preferences.find((p) => p.mealType.toLowerCase() === slot && p.dayType === todayDayType);
             if (!pref) return null;
             const isOn = meals[slot];
             if (!pref.enabled && !isOn) return "default-off";
@@ -105,7 +123,7 @@ export default function MealsPage() {
         setMeals((prev) => ({ ...prev, [slot]: newStatus }));
         setToggling(slot);
         try {
-            await api.meals.toggleMeal({ memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status: newStatus }, token);
+            await api.meals.toggleMeal({ memberId, date: serverDate, slot: SLOT_MAP[slot], status: newStatus }, token);
         } catch (err) {
             setMeals((prev) => ({ ...prev, [slot]: !newStatus }));
             toast.error(err instanceof Error ? err.message : t("toggleFailed"));
@@ -126,7 +144,7 @@ export default function MealsPage() {
         try {
             await Promise.all(
                 openSlots.map((slot) =>
-                    api.meals.toggleMeal({ memberId: user.id, date: serverDate, slot: SLOT_MAP[slot], status }, token),
+                    api.meals.toggleMeal({ memberId, date: serverDate, slot: SLOT_MAP[slot], status }, token),
                 ),
             );
         } catch (err) {
@@ -135,18 +153,20 @@ export default function MealsPage() {
         }
     }
 
-    async function changeGuest(delta: number) {
-        if (cutoffPassed || updatingGuest || !user || !token || !serverDate) return;
-        const newCount = Math.max(0, guestCount + delta);
-        setGuestCount(newCount);
-        setUpdatingGuest(true);
+    async function changeGuest(slot: MealSlotKey, delta: number) {
+        if (slotLocked[slot] || updatingGuest || !token || !serverDate) return;
+        const before = guests[slot];
+        const newCount = Math.max(0, before + delta);
+        if (newCount === before) return;
+        setGuests((prev) => ({ ...prev, [slot]: newCount }));
+        setUpdatingGuest(slot);
         try {
-            await api.meals.updateGuest({ memberId: user.id, date: serverDate, guestCount: newCount }, token);
+            await api.meals.updateGuest({ memberId, date: serverDate, slot, guestCount: newCount }, token);
         } catch (err) {
-            setGuestCount(guestCount);
+            setGuests((prev) => ({ ...prev, [slot]: before }));
             toast.error(err instanceof Error ? err.message : t("guestFailed"));
         } finally {
-            setUpdatingGuest(false);
+            setUpdatingGuest(null);
         }
     }
 
@@ -195,6 +215,23 @@ export default function MealsPage() {
                                 : "—"}
                 </span>
             </header>
+
+            {/* Admins and managers: change someone else's meals when they ask */}
+            {isPrivileged && people.length > 1 && (
+                <div className={styles.forWho}>
+                    <span className={styles.forWhoLabel}>{t("mealsFor")}</span>
+                    <Select
+                        value={memberId}
+                        onChange={(v) => {
+                            setLoading(true);
+                            setTargetId(v);
+                        }}
+                        options={people.map((p) => ({ value: p.id, label: p.id === user?.id ? t("me", { name: p.name }) : p.name }))}
+                        aria-label={t("mealsFor")}
+                    />
+                    {!forSelf && <p className={styles.forWhoNote}>{t("forOtherNote")}</p>}
+                </div>
+            )}
 
             {/* All on / all off */}
             <div className={styles.segment} role="group" aria-label={t("subtitle")}>
@@ -282,32 +319,46 @@ export default function MealsPage() {
                     </div>
                 </div>
 
-                <div className={styles.stepper}>
-                    <button
-                        type="button"
-                        className={styles.stepBtn}
-                        onClick={() => changeGuest(-1)}
-                        disabled={guestCount === 0 || cutoffPassed || updatingGuest}
-                        aria-label={t("removeGuest")}
-                    >
-                        <Minus size={22} />
-                    </button>
-                    <span className={styles.stepValue} aria-live="polite">
-                        <span className="num">{guestCount}</span>
-                        {guestCount > 0 && onCount > 0 && (
-                            <span className={styles.stepHint}>{t("guestMealsToday", { n: guestCount * onCount })}</span>
-                        )}
-                    </span>
-                    <button
-                        type="button"
-                        className={cn(styles.stepBtn, styles.stepBtnPlus)}
-                        onClick={() => changeGuest(1)}
-                        disabled={cutoffPassed || updatingGuest}
-                        aria-label={t("addGuest")}
-                    >
-                        <Plus size={22} />
-                    </button>
+                {/* One row per meal: a guest can come for lunch only, dinner only, or both */}
+                <div className={styles.guestRows}>
+                    {SLOTS.map((slot) => {
+                        const Icon = SLOT_ICON[slot];
+                        const n = guests[slot];
+                        const locked = slotLocked[slot];
+                        return (
+                            <div key={slot} className={cn(styles.guestRow, locked && styles.guestRowLocked)}>
+                                <span className={styles.guestRowLabel}>
+                                    <Icon size={18} aria-hidden /> {t(slot)}
+                                    {locked && <Lock size={12} aria-label={t("locked")} />}
+                                </span>
+                                <span className={styles.miniStepper}>
+                                    <button
+                                        type="button"
+                                        className={styles.miniStep}
+                                        onClick={() => changeGuest(slot, -1)}
+                                        disabled={n === 0 || locked || updatingGuest !== null || loading}
+                                        aria-label={t("removeGuestFor", { meal: t(slot) })}
+                                    >
+                                        <Minus size={18} />
+                                    </button>
+                                    <span className={cn(styles.miniValue, "num")} aria-live="polite">{n}</span>
+                                    <button
+                                        type="button"
+                                        className={cn(styles.miniStep, styles.miniStepPlus)}
+                                        onClick={() => changeGuest(slot, 1)}
+                                        disabled={locked || updatingGuest !== null || loading}
+                                        aria-label={t("addGuestFor", { meal: t(slot) })}
+                                    >
+                                        <Plus size={18} />
+                                    </button>
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
+                {guests.breakfast + guests.lunch + guests.dinner > 0 && (
+                    <p className={styles.stepHint}>{t("guestMealsToday", { n: guests.breakfast + guests.lunch + guests.dinner })}</p>
+                )}
             </section>
         </div>
     );

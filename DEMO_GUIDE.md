@@ -1,6 +1,6 @@
-# Mealio — Demo & Feature Verification Guide
+# Mealtill — Demo & Feature Verification Guide
 
-This guide walks through every feature of Mealio for verification, testing, and demo purposes.
+This guide walks through every feature of Mealtill for verification, testing, and demo purposes.
 
 ---
 

@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
           isOverride: true,
           overrideType: 'ADMIN',
         },
-        update: { breakfastCount: 0, lunchCount: 0, dinnerCount: 0, isOverride: true, overrideType: 'ADMIN' },
+        // Nobody eats, guests included
+        update: { breakfastCount: 0, lunchCount: 0, dinnerCount: 0, guestBreakfast: 0, guestLunch: 0, guestDinner: 0, isOverride: true, overrideType: 'ADMIN' },
       }),
     ))
   } else {

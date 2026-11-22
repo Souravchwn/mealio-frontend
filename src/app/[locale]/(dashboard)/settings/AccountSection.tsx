@@ -54,7 +54,7 @@ export function AccountSection() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `mealio-my-data-${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = `mealtill-my-data-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {

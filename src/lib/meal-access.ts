@@ -21,19 +21,13 @@ export function isPrivileged(role: string): boolean {
   return role === 'ADMIN' || role === 'MANAGER'
 }
 
-/** True when the member belongs (and is active) in the given mess. */
+/** True when the member belongs (and is active) in the given mess. One person, one mess. */
 export async function isActiveMemberOfMess(memberId: string, messId: string): Promise<boolean> {
   const member = await prisma.member.findFirst({
-    where: { id: memberId, isActive: true },
-    select: { messId: true },
-  })
-  if (!member) return false
-  if (member.messId === messId) return true
-  const membership = await prisma.messMembership.findFirst({
-    where: { memberId, messId, isActive: true },
+    where: { id: memberId, messId, isActive: true, deletedAt: null },
     select: { id: true },
   })
-  return !!membership
+  return !!member
 }
 
 export type AccessResult =

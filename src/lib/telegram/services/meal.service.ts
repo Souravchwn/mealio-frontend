@@ -10,6 +10,7 @@
 import { MAX_GUEST_COUNT, type MealTypeUpper } from '@/lib/constants'
 import { ensureDailyLogs } from '@/lib/daily-logs'
 import { getMessSettings } from '@/lib/mess-settings'
+import { setSlotGuestsData, slotGuests, type GuestSlot } from '@/lib/guests'
 import type { MealRepository } from '../repositories/meal.repository'
 
 export interface MealActionResult {
@@ -82,10 +83,12 @@ export class MealService {
     return { ok: true, message: `${emoji} *${label}* set to *×${count}* ✅` }
   }
 
+  /** Guests for ONE meal (a guest can come for lunch only, dinner only, or both). */
   async setGuestCount(
     memberId: string,
     messId: string,
     date: string,
+    slot: GuestSlot,
     count: number,
   ): Promise<MealActionResult> {
     if (!Number.isInteger(count) || count < 0 || count > MAX_GUEST_COUNT) {
@@ -96,8 +99,9 @@ export class MealService {
     const log = await this.mealRepo.upsertLog(memberId, messId, date, {})
     if (log.frozen) return { ok: false, message: `🔒 Today's meals are frozen.` }
 
-    await this.mealRepo.updateLog(log.id, { guestCount: count })
-    return { ok: true, message: `👥 Guest count set to *${count}*` }
+    await this.mealRepo.updateLog(log.id, setSlotGuestsData(log, slot, count))
+    const label = slot.charAt(0).toUpperCase() + slot.slice(1)
+    return { ok: true, message: `👥 *${label}* guests: *${count}*` }
   }
 
   /** Fetch raw log counts — used by the handler for toggle-without-count logic. */
@@ -131,7 +135,7 @@ export class MealService {
       fmtSlot('🍳', 'Breakfast', log.breakfastCount),
       fmtSlot('🍱', 'Lunch', log.lunchCount),
       fmtSlot('🌙', 'Dinner', log.dinnerCount),
-      `👥 Guests: ${log.guestCount}`,
+      `👥 Guests: breakfast ${slotGuests(log, 'breakfast')}, lunch ${slotGuests(log, 'lunch')}, dinner ${slotGuests(log, 'dinner')}`,
       log.frozen ? '\n🔒 _This day is frozen_' : '',
     ].filter(Boolean).join('\n')
 

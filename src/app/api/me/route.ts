@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.dailyLog.findMany({
         where: { memberId: payload.sub },
-        select: { logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+        select: { logDate: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true, guestBreakfast: true, guestLunch: true, guestDinner: true },
         orderBy: { logDate: 'asc' },
       }),
       prisma.ledgerEntry.findMany({
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(JSON.stringify(data, null, 2), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Content-Disposition': `attachment; filename="mealio-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
+        'Content-Disposition': `attachment; filename="mealtill-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
         'Cache-Control': 'no-store',
       },
     })
@@ -96,7 +96,7 @@ export async function DELETE(req: NextRequest) {
       select: { id: true, passwordHash: true, role: true, messId: true, email: true },
     })
     if (!me) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
-    if (typeof body.password !== 'string' || !(await bcrypt.compare(body.password, me.passwordHash))) {
+    if (typeof body.password !== 'string' || !me.passwordHash || !(await bcrypt.compare(body.password, me.passwordHash))) {
       return NextResponse.json({ detail: 'Your password is not correct.' }, { status: 400 })
     }
 

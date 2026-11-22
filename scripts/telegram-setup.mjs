@@ -35,8 +35,8 @@ console.log(`Bot: @${me.result.username} (${me.result.first_name})`)
 
 const COMMANDS = [
   ['start', 'Welcome message and command list'],
-  ['link', 'Link your Mealio account: /link CODE from web Settings'],
-  ['mealio', '[Admin] Activate me in this group: just send /mealio'],
+  ['link', 'Link your Mealtill account: /link CODE from web Settings'],
+  ['mealtill', '[Admin] Activate me in this group: just send /mealtill'],
   ['status', "Today's meal status"],
   ['meal', 'Toggle meals: /meal on|off|breakfast|lunch|dinner|guest N'],
   ['rate', 'Current meal rate for this period'],
@@ -59,7 +59,7 @@ if (remove) {
   console.log(set.ok ? `Webhook set to ${url}` : `setWebhook failed: ${set.description}`)
   const cmds = await tg('setMyCommands', { commands: COMMANDS.map(([command, description]) => ({ command, description })) })
   console.log(cmds.ok ? 'Command menu set.' : `setMyCommands failed: ${cmds.description}`)
-  const menu = await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Mealio', web_app: { url: `${base.replace(/\/$/, '')}/en/tg` } } })
+  const menu = await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Mealtill', web_app: { url: `${base.replace(/\/$/, '')}/en/tg` } } })
   console.log(menu.ok ? 'Menu button opens the Mini App.' : `setChatMenuButton failed: ${menu.description}`)
   console.log(`
 Last step, once, in @BotFather: Bot Settings, Configure Mini App, URL ${base.replace(/\/$/, '')}/en/tg`)

@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server'
 import { prisma } from './prisma'
-import { extractToken, verifyToken, type TokenPayload } from './auth-utils'
+import { AuthUnavailableError, extractToken, verifyToken, type TokenPayload } from './auth-utils'
 import { sha256 } from './tokens'
 
 export const TICKET_CATEGORIES = ['ACCOUNT', 'BILLING', 'BUG', 'ABUSE', 'OTHER'] as const
@@ -16,7 +16,13 @@ export type TicketCategory = (typeof TICKET_CATEGORIES)[number]
 export async function optionalMember(req: NextRequest): Promise<TokenPayload | null> {
   const token = extractToken(req)
   if (!token) return null
-  return verifyToken(token)
+  try {
+    return await verifyToken(token)
+  } catch (err) {
+    // Database briefly unavailable: treat as anonymous here, the session itself stays valid
+    if (err instanceof AuthUnavailableError) return null
+    throw err
+  }
 }
 
 /**

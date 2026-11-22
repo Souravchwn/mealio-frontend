@@ -20,7 +20,7 @@
 ## Sections (top → bottom)
 
 ### 1. Navbar (fixed)
-- Logo: gradient icon + "Mealio" wordmark. Icon rotates on hover.
+- Logo: gradient icon + "Mealtill" wordmark. Icon rotates on hover.
 - Right actions: `ThemeToggle`, "Sign In" ghost link (`/{locale}/login`), "Get Started" CTA (`/{locale}/register`)
 - **Scroll behavior**: `backdrop-filter: blur(18px)` is **always active** (prevents visual pop). Only `background-color`, `border-color`, and `box-shadow` transition on scroll via `scrolled` state (`window.scrollY > 50`).
 - Dark mode: `rgba(10, 8, 24, 0)` → `rgba(10, 8, 24, 0.88)` on scroll

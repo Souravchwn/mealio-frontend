@@ -49,7 +49,7 @@ export async function linkGroupToMess(input: {
 export type ActivateResult = 'LINKED' | 'ALREADY' | 'TAKEN' | 'NOT_ADMIN'
 
 /**
- * Connect a Telegram group to the mess of the person who asked (sent /mealio, or added the bot).
+ * Connect a Telegram group to the mess of the person who asked (sent /mealtill, or added the bot).
  * Only an ADMIN whose own Telegram is linked can do it; the mess comes from their account, never
  * from anything in the chat. A group already connected to another mess is never taken over.
  */

@@ -9,6 +9,7 @@ import { getMemberMealDefaults, getDayType } from './meal-preferences'
 import { getMessSettings, todayIn, nowHHMMIn, type MessSettings } from './mess-settings'
 import { ensureDailyLogs } from './daily-logs'
 import type { GuestMealPolicy } from './constants'
+import { dayGuestMeals, guestsBySlot, slotGuests, GUEST_SELECT, type GuestSlot } from './guests'
 
 const SLOTS = ['BREAKFAST', 'LUNCH', 'DINNER'] as const
 type Slot = (typeof SLOTS)[number]
@@ -24,7 +25,10 @@ export interface MemberDayMeals {
   breakfastCount: number
   lunchCount: number
   dinnerCount: number
+  /** Guest portions for the whole day */
   guestCount: number
+  /** Guests per meal (lunch only, dinner only, both) */
+  guests: Record<GuestSlot, number>
   frozen: boolean
   isOverride: boolean
   /** Next upcoming cutoff, or the dinner cutoff once all have passed */
@@ -71,6 +75,7 @@ export async function getMemberDayMeals(messId: string, memberId: string, date?:
       // A past or future day with no log means no meals. Never create phantom rows.
       return {
         logId: null, memberId, date: day, breakfastCount: 0, lunchCount: 0, dinnerCount: 0, guestCount: 0,
+        guests: { breakfast: 0, lunch: 0, dinner: 0 },
         frozen: false, isOverride: false, cutOffTime, cutOffPassed: true, slotCutoffs,
         guestMealPolicy: settings.guestMealPolicy, dayType,
       }
@@ -95,7 +100,8 @@ export async function getMemberDayMeals(messId: string, memberId: string, date?:
     breakfastCount: log.breakfastCount,
     lunchCount: log.lunchCount,
     dinnerCount: log.dinnerCount,
-    guestCount: log.guestCount,
+    guestCount: dayGuestMeals(log),
+    guests: guestsBySlot(log),
     frozen: log.frozen,
     isOverride: log.isOverride,
     cutOffTime,
@@ -137,7 +143,7 @@ export async function getTodayHeadcount(messId: string): Promise<TodayHeadcount 
     prisma.member.findMany({ where: { messId, isActive: true }, select: { id: true, name: true, isGuest: true }, orderBy: { name: 'asc' } }),
     prisma.dailyLog.findMany({
       where: { messId, logDate: todayObj },
-      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, guestCount: true },
+      select: { memberId: true, breakfastCount: true, lunchCount: true, dinnerCount: true, ...GUEST_SELECT },
     }),
     prisma.dailyCookNote
       .findMany({ where: { messId, logDate: todayObj }, select: { slot: true, note: true } })
@@ -159,8 +165,8 @@ export async function getTodayHeadcount(messId: string): Promise<TodayHeadcount 
       // No log = default ON (1 portion); ensureDailyLogs normally creates it
       const count = log ? log[field] : 1
       memberPortions += count
-      // Guests only eat this meal if their host is eating it
-      const guests = count > 0 && log ? log.guestCount : 0
+      // Guests of this meal (older days: guests ate every meal their host ate)
+      const guests = log ? slotGuests(log, slot.toLowerCase() as GuestSlot) : 0
       guestPortions += guests
       detail.push({ id: m.id, name: m.name, count, guestCount: guests, hasLog: !!log })
     }

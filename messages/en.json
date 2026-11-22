@@ -1,6 +1,6 @@
 {
     "common": {
-        "appName": "Mealio",
+        "appName": "Mealtill",
         "tagline": "Smart Mess Management",
         "save": "Save",
         "cancel": "Cancel",
@@ -23,128 +23,162 @@
     },
     "landing": {
         "nav": {
-            "signIn": "Sign In"
+            "signIn": "Sign in"
         },
+        "openApp": "Open Mealtill",
         "hero": {
-            "badge": "Made for mess life in Bangladesh",
-            "title": "Your mess,",
-            "titleHighlight": "on autopilot.",
-            "subtitle": "Meals count themselves every day. Bazaar and deposits turn into a live meal rate. Everyone sees their balance, and nobody does the math in a group chat again.",
+            "kicker": "You make the rules. Mealtill does the math.",
+            "title": "Your mess, your rules.",
+            "titleHighlight": "On autopilot.",
+            "subtitle": "Set your own meal times, cutoffs, guest rules and how the money works. Mealtill follows them every day: meals count themselves, the meal rate updates after every bazaar, and everyone can see where they stand. You stay in control. Mealtill just does the work.",
             "cta": "Start for free",
-            "ctaSecondary": "See how it works"
+            "ctaSecondary": "See a day in the mess"
         },
-        "stats": {
-            "messes": "Active Messes",
-            "meals": "Meals Tracked",
-            "saved": "Hours Saved Monthly"
+        "ledger": {
+            "name": "Your meals",
+            "meals": "{count} meals so far",
+            "rate": "Meal rate",
+            "perMeal": "per meal",
+            "balance": "You get back",
+            "ate": "Ate",
+            "skipped": "Skipped",
+            "guest": "Guest",
+            "sticker": "Lunch is on"
+        },
+        "ticker": [
+            "Breakfast is on",
+            "14 meals tonight",
+            "Meal rate ৳62.40",
+            "Arif is off for lunch",
+            "Bazaar added ৳1,850",
+            "2 guests for dinner",
+            "September closed and locked",
+            "৳3,000 deposit received"
+        ],
+        "day": {
+            "title": "A day in the mess",
+            "subtitle": "No notebook, no spreadsheet, no arguments. Here is what happens instead.",
+            "items": {
+                "morning": {
+                    "time": "7:00 am",
+                    "title": "Meals turn on by themselves",
+                    "text": "Everyone's usual meals are counted from their defaults. Nobody has to open the app."
+                },
+                "skip": {
+                    "time": "9:40 am",
+                    "title": "Arif is off for lunch",
+                    "text": "One tap on the phone, or /meal off in the Telegram group, before the 10:00 cutoff."
+                },
+                "cook": {
+                    "time": "12:30 pm",
+                    "title": "The cook knows: 14 meals",
+                    "text": "The count changes the moment anyone changes a meal, guests included."
+                },
+                "bazaar": {
+                    "time": "6:15 pm",
+                    "title": "The bazaar goes in",
+                    "text": "The manager adds the shopping. The meal rate and every balance update straight away."
+                },
+                "close": {
+                    "time": "Month end",
+                    "title": "The month closes and locks",
+                    "text": "Balances carry forward. The closed month moves to the archive, where every member can check it."
+                }
+            }
         },
         "features": {
-            "title": "Everything your mess needs",
-            "subtitle": "From daily meal toggles to monthly settlements, all in one place.",
+            "title": "What it does",
+            "subtitle": "Everything a mess needs, from the first name on the list to the month-end settlement.",
+            "rules": {
+                "title": "Your rules, not ours",
+                "description": "Weekend days, how guests are billed, whether balances carry forward, when the month starts. Every mess runs differently, so you decide and Mealtill follows."
+            },
             "mealToggle": {
                 "title": "Meals count themselves",
-                "description": "Your defaults are counted every day without anyone logging in. Skip a meal or add a guest with one tap, before the cutoff."
+                "description": "Every day starts from those usual meals, even if nobody opens the app. Skip a meal with one tap before its cutoff."
             },
             "expense": {
-                "title": "Smart Expense Tracking",
-                "description": "Log every bazaar trip by category, like protein, vegetables and spices. The meal rate updates live, so everyone knows exactly what they owe."
-            },
-            "headcount": {
-                "title": "Live cook view",
-                "description": "The cook sees how many people are eating each meal, guests included. Less guessing, less waste."
+                "title": "Bazaar, trip by trip",
+                "description": "Log each shopping trip item by item, or snap a photo of the memo and enter the total. The meal rate updates at once."
             },
             "matrix": {
-                "title": "Month matrix",
-                "description": "Every member and every day on one screen, with totals, balances and month closing built in."
-            },
-            "finance": {
-                "title": "Every taka is traceable",
-                "description": "Deposits, bazaar and meal costs add up exactly. Closed months are locked, and every change goes into the audit trail."
-            },
-            "ai": {
-                "title": "AI Insights (Coming Soon)",
-                "description": "Nutrition analysis, commodity price tracking, and predictive shopping. Your mess data becomes a goldmine for health and economic insights."
+                "title": "The whole month on one page",
+                "description": "Every member and every day in one grid. Fix a day, see totals and balances, and close the month when it ends."
             },
             "telegram": {
-                "title": "Telegram bot",
-                "description": "Turn meals on or off, check the rate and your balance right from Telegram."
+                "title": "Right inside Telegram",
+                "description": "Type /mealtill in your mess group and your own Mealtill opens: today’s meals, your money and who is eating. Only you see it."
+            },
+            "finance": {
+                "title": "Every change has a name on it",
+                "description": "Deposits, bazaar and meal costs always add up. When an admin or manager changes someone’s meal or guests, the audit log shows who did it and when."
+            },
+            "cutoffs": {
+                "title": "A cutoff for every meal",
+                "description": "Set breakfast, lunch and dinner to lock at their own times, or switch a meal off for the whole mess. After the cutoff the count is final, so the cook can start."
+            },
+            "preferences": {
+                "title": "Everyone’s usual meals",
+                "description": "Each person sets the meals they normally eat, separately for weekdays and weekends. The admin sets a mess default, and can set it for anyone who never signs in."
+            },
+            "guests": {
+                "title": "Guests, meal by meal",
+                "description": "A guest for lunch only, dinner only, or both. Each meal has its own count and its own cutoff, and the host pays or the mess shares, as you choose."
+            },
+            "names": {
+                "title": "Start with just names",
+                "description": "Add the members the way you would write them in a notebook. Nobody has to sign up. Send each one a personal link later and they see their own numbers."
+            },
+            "headcount": {
+                "title": "A clear count for the cook",
+                "description": "The cook sees how many plates to make for each meal, guests included, with names. Less guessing, less waste."
+            },
+            "archive": {
+                "title": "Closed months, open to all",
+                "description": "When a month closes it is frozen and moved to the archive. Every member can check every figure, any time. Nothing can be quietly changed."
             }
         },
         "roles": {
-            "title": "Built for Everyone in Your Mess",
+            "title": "One mess, four views",
             "member": {
                 "title": "Members",
-                "description": "Toggle meals, add guests and check your balance, all from your phone."
+                "description": "Turn meals on or off, add guests and check your balance from your phone."
             },
             "manager": {
-                "title": "Meal Manager",
-                "description": "Log daily bazaar expenses and track the live meal rate effortlessly."
+                "title": "Meal manager",
+                "description": "Adds the bazaar, and turns anyone’s meals or guests on or off when they ask. Every change is logged."
             },
             "admin": {
                 "title": "Admin",
-                "description": "Full control over the month matrix, settlements, members and the audit trail."
+                "description": "Adds members by name, sets the mess rules and cutoffs, fixes days in the matrix and closes the month."
             },
             "cook": {
                 "title": "Cook",
-                "description": "One big number: today's headcount. No clutter, just clarity."
+                "description": "One number that matters: how many meals to make today."
             }
         },
+        "rolesExtra": {
+            "subtitle": "Everyone sees the number that matters to them.",
+            "member": "your balance",
+            "manager": "today's meal rate",
+            "admin": "members × days",
+            "cook": "meals tonight"
+        },
         "cta": {
-            "title": "Ready to fix your mess?",
-            "subtitle": "Set it up in a few minutes. Free while we grow.",
+            "title": "Ready to make it easy?",
+            "subtitle": "Set up your mess in a few minutes. Free while we grow.",
             "button": "Create your mess"
         },
         "footer": {
             "features": "Features",
-            "roles": "Who It's For",
-            "getStarted": "Get Started",
-            "copyright": "© 2026 Mealio. All rights reserved.",
+            "roles": "Who it's for",
+            "getStarted": "Get started",
+            "copyright": "© 2026 Mealtill",
             "nav": "Footer",
             "support": "Support",
             "privacy": "Privacy",
             "terms": "Terms"
-        },
-        "facts": {
-            "taps": {
-                "value": "0",
-                "label": "taps needed on a normal day"
-            },
-            "auto": {
-                "value": "Live",
-                "label": "meal rate after every bazaar"
-            },
-            "lang": {
-                "value": "EN · বাং",
-                "label": "English and Bangla"
-            }
-        },
-        "mock": {
-            "date": "Wed, 7 Oct",
-            "greeting": "Hey Sohel",
-            "balance": "Your balance",
-            "ahead": "You are ahead",
-            "breakfast": "Breakfast",
-            "lunch": "Lunch",
-            "dinner": "Dinner",
-            "float1": "Lunch is ON",
-            "float2": "14 eating tonight"
-        },
-        "steps": {
-            "title": "How it works",
-            "one": {
-                "title": "Create your mess",
-                "description": "Set meal times and share the invite link with your mess mates."
-            },
-            "two": {
-                "title": "Set your defaults once",
-                "description": "Choose which meals you usually eat on weekdays and weekends. Mealio counts them every day."
-            },
-            "three": {
-                "title": "Log the bazaar",
-                "description": "The manager adds each shopping trip. The meal rate and everyone's balance update on their own."
-            }
-        },
-        "openApp": "Open Mealio"
+        }
     },
     "auth": {
         "login": {
@@ -181,7 +215,7 @@
                 },
                 "MESS_SUSPENDED": {
                     "title": "Mess on hold",
-                    "body": "This mess is on hold by Mealio. Contact support and we will sort it out."
+                    "body": "This mess is on hold by Mealtill. Contact support and we will sort it out."
                 }
             },
             "contactSupport": "Contact support",
@@ -220,7 +254,12 @@
             "pendingTitle": "Request sent",
             "pendingSubtitle": "{mess} needs to approve you first",
             "pendingBody": "Your mess admin will see your request on the Members page. Once they approve it, sign in with the email and password you just chose.",
-            "legal": "By continuing you agree to the <terms>Terms</terms> and <privacy>Privacy Policy</privacy>."
+            "legal": "By continuing you agree to the <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
+            "whoAreYou": "Which one is you?",
+            "whoAreYouHelp": "Your admin may have added you by name already. Pick your name so your meals and money stay together.",
+            "notOnList": "I am not on the list",
+            "claimHelp": "Your admin confirms it is you, then you can sign in.",
+            "pendingClaimBody": "Your admin will confirm that you are {name}. After that, sign in with this email and password."
         },
         "shell": {
             "tagline": "Meals, bazaar and money, sorted for your mess.",
@@ -236,15 +275,17 @@
             "title": "Forgot your password?",
             "subtitle": "No stress. Enter your email and we will help you get back in.",
             "email": "Email address",
-            "submit": "Send reset link",
+            "submit": "Email me a reset code",
             "backToLogin": "Back to sign in",
             "sentTitle": "Check your inbox",
-            "sentSubtitle": "The link works for 30 minutes",
-            "sentBody": "If {email} has a Mealio account, a reset link is on its way. Check spam too.",
+            "sentSubtitle": "The code and the link work for 1 hour",
+            "sentBody": "If {email} has a Mealtill account, an email with a reset code is on its way.",
             "codeTitle": "Ask your mess admin",
             "codeSubtitle": "Email is not set up on this server yet",
             "codeBody": "Your mess admin can make a one-time reset code for you from the Members page. If you are the admin, contact support.",
-            "haveCode": "I have a reset code"
+            "haveCode": "I have the code",
+            "spamTitle": "Not in your inbox?",
+            "spamBody": "Look in Spam or Promotions. We are moving to our official email address, so for now some emails land there. Mark it as \"Not spam\" and the next one will arrive normally."
         },
         "reset": {
             "title": "Set a new password",
@@ -252,7 +293,7 @@
             "subtitleCode": "Enter your email and the code you were given",
             "email": "Email address",
             "code": "Reset code",
-            "codeHelp": "8 characters, from your mess admin or Mealio support. It works once.",
+            "codeHelp": "8 characters, from the reset email or from your mess admin. It works once. No email? Check Spam.",
             "newPassword": "New password",
             "submit": "Save new password",
             "success": "Password changed. Sign in with the new one.",
@@ -266,7 +307,30 @@
             "failedTitle": "Link did not work",
             "failedSubtitle": "It may have expired or been used already",
             "failedBody": "Sign in and ask for a new link from Settings.",
-            "continue": "Continue to Mealio"
+            "continue": "Continue to Mealtill"
+        },
+        "invite": {
+            "loading": "Opening your invite",
+            "title": "Hi {name}",
+            "subtitle": "You are already in {mess}. Join to see everything for yourself.",
+            "previewLabel": "Your numbers this month",
+            "getBack": "You get back",
+            "owe": "You owe",
+            "meals": "meals",
+            "paid": "paid",
+            "rate": "meal rate",
+            "why": "Join to check your meals any time, turn them on or off, and set your own meal times.",
+            "email": "Email",
+            "password": "Password",
+            "passwordHelp": "At least 8 characters.",
+            "join": "Join and see my meals",
+            "joining": "Joining…",
+            "welcome": "Welcome, {name}!",
+            "failed": "Could not join. Please try again.",
+            "haveAccount": "Already joined?",
+            "signIn": "Sign in",
+            "invalidTitle": "This invite does not work any more",
+            "invalidBody": "It was used already or it expired. Ask your mess admin for a new link."
         }
     },
     "nav": {
@@ -328,7 +392,7 @@
         "dinner": "Dinner",
         "on": "ON",
         "off": "OFF",
-        "guestCount": "Guest Count",
+        "guestCount": "Guests",
         "addGuest": "Add Guest",
         "removeGuest": "Remove Guest",
         "cutoffPassed": "Cut-off time has passed",
@@ -347,15 +411,20 @@
             "active": "Active",
             "frozen": "Frozen"
         },
-        "guestHostPays": "Guests eat the meals you eat today and are added to your meal count.",
-        "guestShared": "Guests eat the meals you eat today. Their cost is shared by the whole mess.",
+        "guestHostPays": "Set guests for each meal: lunch only, dinner only, or both. Each guest meal is added to your count.",
+        "guestShared": "Set guests for each meal: lunch only, dinner only, or both. Their cost is shared by the whole mess.",
         "cutoffAt": "Cut-off {time}",
         "locksAt": "Locks at {time}",
         "locked": "Locked for today",
         "guestMealsToday": "{n} guest meals today",
         "loadFailed": "Could not load today's meals",
         "toggleFailed": "Could not change the meal",
-        "guestFailed": "Could not update guests"
+        "guestFailed": "Could not update guests",
+        "mealsFor": "Meals for",
+        "me": "{name} (me)",
+        "forOtherNote": "You are changing someone else's meals. It is recorded in the audit log under your name.",
+        "addGuestFor": "Add a guest for {meal}",
+        "removeGuestFor": "Remove a guest from {meal}"
     },
     "expenses": {
         "title": "Bazaar Expenses",
@@ -601,7 +670,7 @@
         "updateFailed": "Could not update the member",
         "reactivated": "{name} is back in the mess",
         "deactivated": "{name} was removed from the mess",
-        "shareText": "Join {mess} on Mealio.",
+        "shareText": "Join {mess} on Mealtill.",
         "linkCopied": "Invite link copied",
         "telegramLinked": "Telegram linked",
         "expired": "Stay ended",
@@ -626,7 +695,42 @@
         "resetCodeTitle": "One-time reset code",
         "resetCodeHelp": "Works for {minutes} minutes. They enter it with their email on the reset password page. Only share it with them directly.",
         "copy": "Copy",
-        "copied": "Copied"
+        "copied": "Copied",
+        "add": "Add",
+        "addPlaceholder": "Add a member by name",
+        "addHelp": "Just a name works. They count from today with the mess default meals, and can join later.",
+        "added": "{name} added. Their meals count from today.",
+        "notJoined": "Not joined yet",
+        "invited": "Invited",
+        "inviteTitle": "Invite {name}",
+        "inviteHelp": "They get a personal link to see their meals and balance and set their own meal times. Email is optional; you can also share the link in WhatsApp or Telegram.",
+        "inviteEmailPlaceholder": "Their email (optional)",
+        "inviteCreate": "Create invite link",
+        "inviteAgain": "New invite link",
+        "inviteEmailed": "Invite emailed to {name}. Ask them to check Spam if it is not in their inbox.",
+        "inviteNoEmail": "Email is not set up on this site, so share the link instead.",
+        "inviteValid": "Works once, for 14 days. A new link cancels the old one.",
+        "copyLink": "Copy link",
+        "shareLink": "Share",
+        "personalShareText": "Hi {name}, your meals and balance in {mess} are on Mealtill. Join here:",
+        "defaultMeals": "Default meals",
+        "defaultMealsHelp": "The meals {name} eats when nobody changes them. Dashed means it follows the mess default.",
+        "useMessDefault": "Use the mess default again",
+        "prefsReset": "{name} follows the mess default from tomorrow.",
+        "on": "On",
+        "off": "Off",
+        "meal": {
+            "breakfast": "Breakfast",
+            "lunch": "Lunch",
+            "dinner": "Dinner"
+        },
+        "day": {
+            "WEEKDAY": "Weekdays",
+            "WEEKEND": "Weekend"
+        },
+        "claimsTitle": "Says they are someone on the list",
+        "claimSays": "{name} says they are {member}",
+        "claimApproved": "{name} has joined. Everything already recorded stays with them."
     },
     "audit": {
         "title": "Audit Trail",
@@ -782,7 +886,7 @@
             "title": "Telegram Group",
             "description": "Link a Telegram group to enable bot commands and meal notifications",
             "chatId": "Telegram Chat ID",
-            "chatIdHelp": "Run /start in your group with the Mealio bot to get the chat ID",
+            "chatIdHelp": "Run /start in your group with the Mealtill bot to get the chat ID",
             "chatName": "Group Name (optional)",
             "timezone": "Timezone",
             "link": "Link Group",
@@ -790,15 +894,15 @@
             "linked": "Linked",
             "unlinked": "No group linked yet",
             "chatNamePlaceholder": "e.g. Bashundhara Mess Group",
-            "theBot": "the Mealio bot",
+            "theBot": "the Mealtill bot",
             "getCode": "Get group code",
             "newCode": "New code",
             "needOwnLink": "First link your own Telegram under General, My Telegram. The bot only accepts this from a linked admin.",
             "linkedFromTelegram": "Group linked from Telegram",
             "advanced": "Enter the Telegram chat id by hand instead",
             "easy1": "Link your own Telegram first (General tab, My Telegram).",
-            "easy2": "Add {bot} to your house group. It sets itself up and pins an \"Open my Mealio\" button.",
-            "easy3": "Did not start? Send /mealio in the group. Make the bot a group admin so it can pin and keep the chat tidy.",
+            "easy2": "Add {bot} to your house group. It sets itself up and pins an \"Open my Mealtill\" button.",
+            "easy3": "Did not start? Send /mealtill in the group. Make the bot a group admin so it can pin and keep the chat tidy.",
             "watching": "This page updates by itself when the group is connected.",
             "codeWay": "Other ways: a one-time code, or the chat id by hand."
         },
@@ -838,7 +942,7 @@
         },
         "telegramAccount": {
             "title": "My Telegram",
-            "description": "Link your Telegram account to manage meals and check your balance from the Mealio bot.",
+            "description": "Link your Telegram account to manage meals and check your balance from the Mealtill bot.",
             "linked": "Linked",
             "getCode": "Get link code",
             "relink": "Link a different account",
@@ -846,7 +950,7 @@
             "unlinked": "Telegram unlinked",
             "unlinkFailed": "Failed to unlink Telegram",
             "codeFailed": "Failed to create a link code",
-            "theBot": "the Mealio bot",
+            "theBot": "the Mealtill bot",
             "instructions": "Send this message to {bot} in a private chat. The code works once and expires at {time}.",
             "openInTelegram": "Open in Telegram"
         },
@@ -889,28 +993,13 @@
             "label": "Served",
             "on": "Meal switched on from now",
             "off": "Meal switched off from now. Past days are not changed."
+        },
+        "defaultMeals": {
+            "title": "Mess default meals",
+            "help": "Meals that count for anyone who has not set their own, such as people added by name. It starts from tomorrow; days already counted stay the same.",
+            "saved": "Default meals saved. They apply from tomorrow.",
+            "saveFailed": "Could not save the default meals"
         }
-    },
-    "createMess": {
-        "title": "Create New Mess",
-        "subtitle": "Set up a new shared mess for your group",
-        "name": "Mess Name",
-        "namePlaceholder": "e.g. Bashundhara Mess",
-        "budget": "Estimated Monthly Budget (৳)",
-        "budgetPlaceholder": "Optional",
-        "cutoffTime": "Dinner Cut-off Time",
-        "creating": "Creating...",
-        "create": "Create Mess",
-        "inviteReady": "Mess created!",
-        "inviteLabel": "Invite code. Share it with your members:",
-        "goToDashboard": "Go to Dashboard",
-        "createFailed": "Could not create the mess",
-        "copied": "Copied!",
-        "copy": "Copy"
-    },
-    "messSwitcher": {
-        "label": "Switch Mess",
-        "switching": "Switching..."
     },
     "calculator": {
         "title": "Smart Calculator",
@@ -992,7 +1081,7 @@
         "backToSupport": "Support",
         "notFound": "We could not find that ticket. Check the link, or sign in with the account that opened it.",
         "opened": "Opened {date}",
-        "supportTeam": "Mealio Support",
+        "supportTeam": "Mealtill Support",
         "you": "You",
         "closedNote": "This ticket is closed. Open a new one if you need more help.",
         "reply": "Reply",
@@ -1003,7 +1092,7 @@
         "privacy": {
             "eyebrow": "Privacy",
             "title": "Privacy Policy",
-            "lead": "What Mealio keeps about you, why, and how to take it back.",
+            "lead": "What Mealtill keeps about you, why, and how to take it back.",
             "updated": "Last updated October 2026",
             "sections": [
                 {
@@ -1027,7 +1116,7 @@
                     "heading": "Who can see it",
                     "paragraphs": [
                         "People in your mess see your name, meals, deposits and balance. Admins and managers also see your phone number and can manage your membership.",
-                        "A small number of Mealio staff can access accounts to fix problems, handle support and stop abuse. Every staff action is logged."
+                        "A small number of Mealtill staff can access accounts to fix problems, handle support and stop abuse. Every staff action is logged."
                     ]
                 },
                 {
@@ -1061,7 +1150,7 @@
                 {
                     "heading": "The service",
                     "paragraphs": [
-                        "Mealio helps a shared mess keep track of meals, bazaar costs, deposits and balances. It is a record-keeping tool. Mealio never holds or moves money for you."
+                        "Mealtill helps a shared mess keep track of meals, bazaar costs, deposits and balances. It is a record-keeping tool. Mealtill never holds or moves money for you."
                     ]
                 },
                 {
@@ -1075,7 +1164,7 @@
                 {
                     "heading": "Mess admins",
                     "paragraphs": [
-                        "Whoever creates a mess is its admin. Admins decide who joins, set the billing rules and can correct records. The numbers Mealio shows are only as accurate as the records the mess enters, so check them before settling money."
+                        "Whoever creates a mess is its admin. Admins decide who joins, set the billing rules and can correct records. The numbers Mealtill shows are only as accurate as the records the mess enters, so check them before settling money."
                     ]
                 },
                 {
@@ -1089,13 +1178,13 @@
                 {
                     "heading": "Price",
                     "paragraphs": [
-                        "Mealio is free during early access, within fair limits on mess size. If we introduce paid plans later, we will announce them in advance and existing messes will not lose their records."
+                        "Mealtill is free during early access, within fair limits on mess size. If we introduce paid plans later, we will announce them in advance and existing messes will not lose their records."
                     ]
                 },
                 {
                     "heading": "No warranty",
                     "paragraphs": [
-                        "We work hard to keep Mealio running and your data safe, but the service is provided as it is. We are not liable for disagreements between mess members or for losses that come from records being wrong or unavailable."
+                        "We work hard to keep Mealtill running and your data safe, but the service is provided as it is. We are not liable for disagreements between mess members or for losses that come from records being wrong or unavailable."
                     ]
                 },
                 {
@@ -1165,9 +1254,9 @@
         "error": "Could not load. Pull down to try again.",
         "tryAgain": "Try again",
         "outsideTitle": "Open this in Telegram",
-        "outsideBody": "This page is the Mealio Mini App. Send /mealio to the Mealio bot or tap the button in your house group.",
+        "outsideBody": "This page is the Mealtill Mini App. Send /mealtill to the Mealtill bot or tap the button in your house group.",
         "unlinkedTitle": "Hi {name}!",
-        "unlinkedBody": "Link your Telegram to your Mealio account once. It takes one tap on the Mealio website: Settings, My Telegram, Open in Telegram.",
+        "unlinkedBody": "Link your Telegram to your Mealtill account once. It takes one tap on the Mealtill website: Settings, My Telegram, Open in Telegram.",
         "linkButton": "Link my Telegram",
         "unlinkedAfter": "Then come back here and pull down to refresh.",
         "hi": "Hi {name} 👋",
@@ -1192,13 +1281,13 @@
         "on": "ON",
         "off": "OFF",
         "guests": "{n, plural, one {You have # guest today} other {You have # guests today}}",
-        "changeHint": "To change, use /meal in a private chat with the bot or the Mealio website.",
+        "changeHint": "To change, use /meal in a private chat with the bot or the Mealtill website.",
         "whoEats": "Who is eating today",
         "plates": "plates",
         "guestPlates": "{n} for guests",
         "locksAt": "locks at {time}",
         "nobody": "Nobody is eating this meal today.",
-        "openFull": "Open full Mealio",
+        "openFull": "Open full Mealtill",
         "readOnly": "Only you can see this. Nothing here can change your meals or money."
     }
 }

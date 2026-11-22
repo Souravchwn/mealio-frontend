@@ -16,6 +16,7 @@ npm run platform-admin -- --email you@x.com --name "Name"   # Create/reset a /co
 npm run test:isolation  # Tenant isolation test (needs npm run dev running)
 npm run test:closed     # Closed-month integrity test (needs npm run dev running)
 npm run test:telegram   # /link and /linkgroup abuse tests (needs npm run dev running)
+npm run test:roster     # Members by name, invites, claims, default meals, guests per meal (needs npm run dev)
 npm run telegram:setup -- https://public-url   # Connect the bot locally; in production use /console, Telegram
 npm run env:production  # Create .env.deploy.local with fresh secrets (see DEPLOY.md)
 npm run import:sheet -- scripts/data/<file>.local.json   # Load a mess's real sheet (local DB only)
@@ -43,7 +44,10 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | `en` or `bn` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | `false` in production |
 | `PLATFORM_JWT_SECRET` | Optional separate secret for /console sessions (falls back to `JWT_SECRET`) |
-| `RESEND_API_KEY` / `EMAIL_FROM` | Optional email (reset links, verification). Without them, resets use admin or console codes |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Email via Resend (wins when set). Reset codes, invites, verification |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` | Email via SMTP (Gmail app password) while Resend is not set. Without any email, resets use admin or console codes. Mail is never sent to reserved test domains (`.invalid`, `.test`, ...) |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Accepted instead of `UPSTASH_REDIS_REST_*` (Vercel's Upstash integration) |
+| `DATABASE_URL_UNPOOLED` | Accepted instead of `DIRECT_URL` for the Prisma CLI (Vercel's Neon integration) |
 
 ## Database
 
@@ -77,7 +81,7 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 4. **`isOverride` flag:** `false` = auto-generated from preferences; `true` = manually changed.
 5. **Settings via Redis:** read mess settings with `getMessSettings(messId)` (`src/lib/mess-settings.ts`). Postgres is the durable store; Redis serves reads. After ANY settings write call `refreshMessSettings(messId)`.
 6. **One money calculation:** every meal count, meal rate and balance comes from `calculatePeriodSummary()` in `src/lib/financial.ts`. Never re-implement it in a route.
-7. **Never trust a mess id from the request.** Always use `payload.messId` from `verifyToken()`. `verifyToken()` re-checks the member in the DB and returns their CURRENT role.
+7. **Never trust a mess id from the request.** Always use `payload.messId` from `verifyToken()`. `verifyToken()` re-checks the member in the DB and returns their CURRENT role. If the database does not answer (after one retry) it throws `AuthUnavailableError` instead of returning null: a database hiccup must never sign anyone out (null = 401 = the client signs out).
 
 ---
 
@@ -102,8 +106,7 @@ src/
 │   │       ├── matrix/page.tsx         # Admin only
 │   │       ├── members/page.tsx        # Admin only
 │   │       ├── audit/page.tsx          # Admin only
-│   │       ├── settings/page.tsx       # All users (prefs) + Admin (mess config)
-│   │       └── mess/create/page.tsx    # Admin only
+│   │       └── settings/page.tsx       # All users (prefs) + Admin (mess config)
 │   └── api/                            # API routes (see Module details below)
 ├── components/
 │   ├── ui/                             # Primitives: Button, Card
@@ -450,28 +453,12 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 
 ---
 
-### MODULE 13: Mess Management (Create + Switch)
+### MODULE 13: One person, one mess
 
-**Route:** `/{locale}/mess/create` (Admin only)
-
-| Layer | Files |
-|-------|-------|
-| Page | `src/app/[locale]/(dashboard)/mess/create/page.tsx` |
-| Styles | `src/app/[locale]/(dashboard)/mess/create/create.module.css` |
-| Component | `src/components/composed/MessSwitcher/MessSwitcher.tsx` + `.module.css` |
-| API routes | `src/app/api/mess/route.ts`, `src/app/api/mess/[messId]/switch/route.ts` |
-
-**API calls:**
-- `GET api.mess.list(token)` → list all messes for current user
-- `POST api.mess.create({ name, estimatedMonthlyBudget, cutOffTime }, token)` → create new mess
-- `GET api.mess.switchMess(messId, token)` → switch active mess (returns new JWT)
-
-**MessSwitcher behavior:**
-- Renders nothing if user has only 1 mess AND is not ADMIN
-- Dropdown with all messes; active mess has a colored dot
-- ADMIN sees a "+ Create New" option at the bottom
-
-**i18n keys:** `messCreate.*`, `messSwitcher.*`
+**Rule:** every person belongs to exactly one mess (`Member.messId`). There is no mess switching and no second mess.
+A mess is created only at sign-up (`POST /api/auth/register`, mode `create`). `verifyToken()` rejects any token whose
+`messId` is not the member's own mess. `GET /api/mess` returns only that mess (list shape kept for the invite code).
+`MessMembership` rows are no longer used for access.
 
 ---
 
@@ -490,7 +477,7 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 | DTOs | `src/lib/telegram/dto/` |
 | Infra | `src/lib/telegram/infrastructure/` |
 
-**Bot commands:** `/mealio` (opens the personal Mini App; connects the group when a linked admin sends it), `/link <code>`, `/start <code>` (one-tap link), `/linkgroup <code>` (older fallback), `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
+**Bot commands:** `/mealtill` (opens the personal Mini App; connects the group when a linked admin sends it), `/link <code>`, `/start <code>` (one-tap link), `/linkgroup <code>` (older fallback), `/meal`, `/nomeal`, `/mealon`, `/announce`, `/status`, `/rate`, `/balance`, `/start`
 
 **Account linking:** the member gets a one-time code in web Settings → My Telegram (`POST /api/members/telegram-link`) and sends `/link <code>` to the bot. Phone-number linking was removed (anyone knowing a phone number could take over the account).
 
@@ -542,11 +529,20 @@ Full reference: `context/17-periods-and-archive.md`. Rules that must not be brok
 - The archive (`/api/archive`, `/archive`) is open to every member and read-only. It must show only closed months and must never include member names that were anonymised.
 - Real mess data lives in `scripts/data/*.local.*` (git-ignored). Never commit it.
 
+### MODULE 18: Members by name, invites and guests per meal
+
+Full reference: `context/19-members-by-name-and-guests.md`. Rules:
+
+- A member can exist with **only a name** (`email` and `passwordHash` NULL). Never assume a member has an email or a password.
+- Meals without an own preference follow the mess default (`settings.defaultMeals`). Per-member defaults go through `src/lib/member-preferences.ts`.
+- Guests are **per meal**. Read and write them only through `src/lib/guests.ts` (`slotGuests`, `setSlotGuestsData`, `GUEST_SELECT`). Any query that feeds money or headcount must select `GUEST_SELECT`.
+- Admins and managers may change anyone's meals and guests; every change is audited with the actor.
+
 ### Billing rules (mess settings)
 
 | Setting | Values | Effect |
 |---------|--------|--------|
-| `guestMealPolicy` | `HOST` (default) / `SHARED` | Guests eat every meal their host eats. `HOST` adds those meals to the host's count; `SHARED` leaves them out of everyone's count so the cost spreads via the meal rate. |
+| `guestMealPolicy` | `HOST` (default) / `SHARED` | Guests are set per meal (older days: every meal the host ate). `HOST` adds them to the host's count; `SHARED` leaves them out of everyone's count so the cost spreads via the meal rate. |
 | `bazaarCountsAsDeposit` | `false` (default) / `true` | When true, bazaar expenses are credited to the member who recorded them. Leave false when shopping uses deposited money (otherwise it is double counted). |
 | `carryForwardBalance` | `true` (default) / `false` | Whether closing a month carries each member's balance into the next month. |
 | `weekendDays` | `[0, 6]` (default) | Which weekdays use members' WEEKEND defaults (0 = Sun … 6 = Sat). |

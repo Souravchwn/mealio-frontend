@@ -32,13 +32,13 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
     const [events, tickets] = await Promise.all([
       prisma.securityEvent.findMany({
-        where: { OR: [{ memberId: id }, { email: user.email }] },
+        where: { OR: [{ memberId: id }, ...(user.email ? [{ email: user.email }] : [])] },
         orderBy: { createdAt: 'desc' },
         take: 30,
         select: { id: true, type: true, severity: true, ip: true, createdAt: true },
       }),
       prisma.supportTicket.findMany({
-        where: { OR: [{ memberId: id }, { email: user.email }] },
+        where: { OR: [{ memberId: id }, ...(user.email ? [{ email: user.email }] : [])] },
         orderBy: { updatedAt: 'desc' },
         take: 10,
         select: { id: true, subject: true, status: true, updatedAt: true },

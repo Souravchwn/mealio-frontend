@@ -1,7 +1,7 @@
 /**
  * GET /api/tg/home — everything the Telegram Mini App shows, for the person who opened it. Read-only.
  *
- * Identity comes ONLY from Telegram's signed initData (header X-Telegram-Init-Data). Their Mealio
+ * Identity comes ONLY from Telegram's signed initData (header X-Telegram-Init-Data). Their Mealtill
  * account is the one linked to that Telegram id; the mess comes from that account. Nothing else in the
  * request is used. Not linked (or account inactive, mess suspended): `{ linked: false }`.
  */
@@ -15,6 +15,7 @@ import { resolvePeriod } from '@/lib/period'
 import { getMessSettings } from '@/lib/mess-settings'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { recordActivity } from '@/lib/activity'
+import { siteUrl } from '@/lib/site-url'
 
 const memberRepo = new MemberRepository()
 
@@ -22,8 +23,8 @@ const slotJson = (s: HeadcountSlot) => ({
   total: s.total,
   guests: s.guestCount,
   cutoff_time: s.cutoffTime,
-  // Names only, of people eating this meal (count > 0), with their guests
-  people: s.members.filter((m) => m.count > 0).map((m) => ({ name: m.name, count: m.count, guests: m.guestCount })),
+  // Names only, of people eating this meal or bringing guests to it
+  people: s.members.filter((m) => m.count > 0 || m.guestCount > 0).map((m) => ({ name: m.name, count: m.count, guests: m.guestCount })),
 })
 
 export async function GET(req: NextRequest) {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
   const rate = await checkRateLimit('tg-home', String(auth.user.id), 60, 5 * 60 * 1000)
   if (!rate.allowed) return NextResponse.json({ detail: 'Slow down a little.' }, { status: 429 })
 
-  const site = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const site = siteUrl()
   try {
     const member = await memberRepo.findByTelegramUid(auth.user.id)
     if (!member) {

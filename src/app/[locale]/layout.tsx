@@ -3,6 +3,7 @@ import { getMessages, getLocale } from "next-intl/server";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/composed/ThemeProvider/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { bangla } from "@/fonts/bangla";
 
 export default async function LocaleLayout({
     children,
@@ -13,7 +14,7 @@ export default async function LocaleLayout({
     const messages = await getMessages();
 
     return (
-        <html lang={locale} suppressHydrationWarning>
+        <html lang={locale} className={bangla.variable} suppressHydrationWarning>
             <body>
                 <ThemeProvider
                     attribute="data-theme"

@@ -1,16 +1,16 @@
 # Module 18: Telegram, self-setup and the Mini App
 
-The mess group is a normal chat. Anyone types `/mealio` (or taps the pinned button) and gets **their
-own** read-only Mealio inside Telegram: today's meals, their money, who is eating today. Nobody else in
+The mess group is a normal chat. Anyone types `/mealtill` (or taps the pinned button) and gets **their
+own** read-only Mealtill inside Telegram: today's meals, their money, who is eating today. Nobody else in
 the group sees it.
 
 ## How a person gets in
 
 | Step | Who | Once or always |
 |------|-----|----------------|
-| Link Telegram to the Mealio account: website, Settings, My Telegram, **Open in Telegram** (`t.me/<bot>?start=CODE`) | each member | once |
+| Link Telegram to the Mealtill account: website, Settings, My Telegram, **Open in Telegram** (`t.me/<bot>?start=CODE`) | each member | once |
 | Add the bot to the house group | mess admin | once |
-| `/mealio`, the pinned "Open my Mealio" message, or the menu button in a private chat | anyone | any time |
+| `/mealtill`, the pinned "Open my Mealtill" message, or the menu button in a private chat | anyone | any time |
 
 ## The bot sets itself up (`src/lib/telegram/services/group-presence.service.ts`)
 Handles `my_chat_member` (the bot added, removed or promoted), before the normal message dispatch in
@@ -27,9 +27,9 @@ Who added the bot comes from Telegram (`from`) and the webhook secret stops forg
 trusted. The mess always comes from that person's linked account. A group connected to another mess is
 never taken over (`linkGroupToMess` returns `TAKEN`).
 
-## `/mealio` (`src/lib/telegram/commands/handlers/linkgroup.handler.ts`)
+## `/mealtill` (`src/lib/telegram/commands/handlers/linkgroup.handler.ts`)
 - Private chat: a `web_app` button that opens the Mini App right there.
-- Connected group: deletes the `/mealio` message and the previous prompt, posts one new prompt with a
+- Connected group: deletes the `/mealtill` message and the previous prompt, posts one new prompt with a
   link button to `t.me/<bot>?startapp`. The group never holds more than one prompt. (No timers: the
   project has no cron jobs, so "tidy" means "replace", not "delete after a minute".)
 - Group not connected: a linked admin connects it; anyone else gets a short note.
@@ -68,5 +68,5 @@ calls fail quietly.
 
 ## Tests
 `npm run test:telegram` (39 checks): forged and stale `initData`, swapped user ids, strangers, other
-messes, forged "bot added" events, takeover attempts, removal and re-adding, `/mealio`, `/start CODE`
+messes, forged "bot added" events, takeover attempts, removal and re-adding, `/mealtill`, `/start CODE`
 in groups versus private chats, and the older `/linkgroup` and `/link` flows.

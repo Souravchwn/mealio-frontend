@@ -21,7 +21,7 @@ export default function ResetPasswordPage() {
 
 /**
  * Two ways in: a link from the reset email (?token=...), or the email address
- * plus an 8-character code that a mess admin or Mealio support gave out.
+ * plus an 8-character code that a mess admin or Mealtill support gave out.
  */
 function ResetForm() {
     const t = useTranslations("auth.reset");

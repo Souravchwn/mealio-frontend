@@ -47,6 +47,8 @@ export async function GET(req: NextRequest) {
       lunch: day.lunchCount > 0,
       dinner: day.dinnerCount > 0,
       guest_count: day.guestCount,
+      // Guests per meal: { breakfast, lunch, dinner }
+      guests: day.guests,
       frozen: day.frozen,
       // false = auto-generated from preferences; true = manually changed (absent when there is no log)
       ...(day.logId ? { is_override: day.isOverride } : {}),

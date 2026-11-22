@@ -440,15 +440,48 @@ ALTER TABLE telegram_otps ADD COLUMN IF NOT EXISTS mess_id UUID;
 -- ============================================================
 -- 24. Telegram Mini App prompts in the group
 -- ============================================================
--- Remember the bot's latest "Open my Mealio" reply (deleted on the next /mealio) and the pinned one.
+-- Remember the bot's latest "Open my Mealtill" reply (deleted on the next /mealio) and the pinned one.
 ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS last_prompt_message_id INTEGER;
 ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS pinned_message_id INTEGER;
 
 -- ============================================================
--- 25. Usage tracking (staff console)
+-- 25. Members by name first (sign-up optional)
+-- ============================================================
+-- A member added by name has no email and no password until they join.
+ALTER TABLE members ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE members ALTER COLUMN password_hash DROP NOT NULL;
+-- Meals a member eats by default when they have not set their own
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS default_meals TEXT;
+-- "I am <name>" requests made with the mess invite code; credentials wait here for the admin
+CREATE TABLE IF NOT EXISTS member_claims (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  phone TEXT,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  decided_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_member_claims_mess ON member_claims(mess_id, status);
+ALTER TABLE member_claims ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 26. Guests per meal
+-- ============================================================
+-- A guest can come for lunch only, dinner only, or both. guest_count stays for older days
+-- (guests who ate every meal the host ate); new changes write these columns instead.
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS guest_breakfast INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS guest_lunch INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS guest_dinner INTEGER NOT NULL DEFAULT 0;
+
+-- ============================================================
+-- 27. Usage tracking (staff console)
 -- ============================================================
 -- One row per member, per day, per channel (WEB, TELEGRAM, MINI_APP). No content is stored,
--- only that the member used ManagerBabu that day.
+-- only that the member used Mealtill that day.
 ALTER TABLE members ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS member_activity (
@@ -463,15 +496,15 @@ CREATE INDEX IF NOT EXISTS idx_member_activity_day ON member_activity(day);
 ALTER TABLE member_activity ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- 26. How a deposit was paid, and who holds the money
+-- 28. How a deposit was paid, and who holds the money
 -- ============================================================
--- Recorded only. ManagerBabu never moves money. Old deposits keep NULL (method unknown).
+-- Recorded only. Mealtill never moves money. Old deposits keep NULL (method unknown).
 ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS payment_method TEXT;
 ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS reference TEXT;
 ALTER TABLE ledger_entries ADD COLUMN IF NOT EXISTS received_by UUID REFERENCES members(id) ON DELETE SET NULL;
 
 -- ============================================================
--- 27. Cash checks: the fund counted against the book
+-- 29. Cash checks: the fund counted against the book
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cash_checks (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

@@ -47,8 +47,34 @@ function RegisterForm() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [pendingMess, setPendingMess] = useState<string | null>(null);
+    const [pendingClaim, setPendingClaim] = useState<string | null>(null);
+    // People the admin added by name who have not joined: "Which one is you?"
+    const [roster, setRoster] = useState<Array<{ id: string; name: string }>>([]);
+    const [claimId, setClaimId] = useState<string | null>(null);
 
     const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
+    // Load the names once the code looks complete
+    useEffect(() => {
+        if (mode !== "join" || !/^MESS-[A-Z0-9]{4,}$/.test(messInviteCode)) {
+            setRoster([]);
+            setClaimId(null);
+            return;
+        }
+        const timer = setTimeout(() => {
+            api.auth
+                .roster(messInviteCode)
+                .then((r) => setRoster(r.names))
+                .catch(() => setRoster([]));
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [mode, messInviteCode]);
+
+    function pickName(id: string | null) {
+        setClaimId(id);
+        const picked = roster.find((r) => r.id === id);
+        if (picked) setName(picked.name);
+    }
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,10 +91,11 @@ function RegisterForm() {
                 phone,
                 password,
                 locale,
-                ...(mode === "create" ? { messName } : { messInviteCode }),
+                ...(mode === "create" ? { messName } : { messInviteCode, ...(claimId ? { claimMemberId: claimId } : {}) }),
             });
             if (response.pending) {
                 setPendingMess(response.messName);
+                if (response.claim) setPendingClaim(response.memberName ?? name);
                 return;
             }
             login(response.user, response.accessToken);
@@ -94,7 +121,7 @@ function RegisterForm() {
             >
                 <div className={styles.stateCard}>
                     <span className={styles.stateIcon}><Hourglass size={26} /></span>
-                    <p>{t("pendingBody")}</p>
+                    <p>{pendingClaim ? t("pendingClaimBody", { name: pendingClaim }) : t("pendingBody")}</p>
                 </div>
             </AuthShell>
         );
@@ -173,6 +200,34 @@ function RegisterForm() {
                         </span>
                         <span className={styles.help}>{t("messCodeHelp")}</span>
                     </div>
+                )}
+
+                {mode === "join" && roster.length > 0 && (
+                    <fieldset className={styles.field}>
+                        <legend className={styles.label}>{t("whoAreYou")}</legend>
+                        <div className={styles.nameChips}>
+                            {roster.map((r) => (
+                                <button
+                                    key={r.id}
+                                    type="button"
+                                    aria-pressed={claimId === r.id}
+                                    className={styles.nameChip}
+                                    onClick={() => pickName(claimId === r.id ? null : r.id)}
+                                >
+                                    {r.name}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                aria-pressed={claimId === null}
+                                className={styles.nameChip}
+                                onClick={() => pickName(null)}
+                            >
+                                {t("notOnList")}
+                            </button>
+                        </div>
+                        <span className={styles.help}>{claimId ? t("claimHelp") : t("whoAreYouHelp")}</span>
+                    </fieldset>
                 )}
 
                 <div className={styles.row}>

@@ -39,7 +39,7 @@ export default function ConsoleLoginPage() {
         <div className={styles.loginPage}>
             <div className={styles.loginCard}>
                 <span className={styles.brandMark}><ShieldCheck size={20} /></span>
-                <h1 className={styles.title} style={{ marginTop: "var(--space-4)" }}>Mealio Console</h1>
+                <h1 className={styles.title} style={{ marginTop: "var(--space-4)" }}>Mealtill Console</h1>
                 <p className={styles.subtitle}>Platform staff only. Every sign-in is recorded.</p>
                 <form className={styles.loginForm} onSubmit={submit}>
                     <input

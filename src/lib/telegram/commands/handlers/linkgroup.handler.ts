@@ -8,7 +8,7 @@ import { getMessSettings } from '@/lib/mess-settings'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 /**
- *  /mealio              Anyone, anywhere: opens their own Mealio Mini App.
+ *  /mealio              Anyone, anywhere: opens their own Mealtill Mini App.
  *                       In a group that is not connected yet, a linked ADMIN sending it connects the group.
  *  /linkgroup <code>    Older way to connect a group with a code from the website. Still works.
  */
@@ -20,15 +20,16 @@ export class LinkGroupCommandHandler implements CommandHandler {
   ) {}
 
   supports(command: string): boolean {
-    return command === '/mealio' || command === '/linkgroup'
+    // /mealio is the old name of /mealtill and keeps working
+    return command === '/mealtill' || command === '/mealio' || command === '/linkgroup'
   }
 
   async handle(ctx: CommandContext): Promise<void> {
-    if (ctx.command === '/mealio') return this.mealio(ctx)
+    if (ctx.command === '/mealtill' || ctx.command === '/mealio') return this.open(ctx)
     return this.linkWithCode(ctx)
   }
 
-  private async mealio(ctx: CommandContext): Promise<void> {
+  private async open(ctx: CommandContext): Promise<void> {
     if (ctx.message.chat.type === 'private') {
       await this.miniApp.openInPrivate(ctx.chatId)
       return
@@ -56,8 +57,8 @@ export class LinkGroupCommandHandler implements CommandHandler {
     await this.sender.sendMessage(
       ctx.chatId,
       ctx.member
-        ? '🔒 This group is not connected to Mealio yet. Ask your mess *admin* to send `/mealio` here.'
-        : '👋 This group is not connected to Mealio yet. Your mess *admin* can connect it by sending `/mealio` here (after linking their Telegram in the Mealio website).',
+        ? '🔒 This group is not connected to Mealtill yet. Ask your mess *admin* to send `/mealtill` here.'
+        : '👋 This group is not connected to Mealtill yet. Your mess *admin* can connect it by sending `/mealtill` here (after linking their Telegram in the Mealtill website).',
     )
   }
 
@@ -65,11 +66,11 @@ export class LinkGroupCommandHandler implements CommandHandler {
   private async linkWithCode(ctx: CommandContext): Promise<void> {
     const reply = (text: string) => this.sender.sendMessage(ctx.chatId, text)
     if (ctx.message.chat.type === 'private') {
-      await reply('👥 Send this inside your *house group*. Easier: just add me to the group, or send `/mealio` there.')
+      await reply('👥 Send this inside your *house group*. Easier: just add me to the group, or send `/mealtill` there.')
       return
     }
     if (!ctx.args[0]) {
-      await reply('Just send `/mealio` here.')
+      await reply('Just send `/mealtill` here.')
       return
     }
     const rate = await checkRateLimit('tg-linkgroup', String(ctx.telegramUid), 8, 60 * 60 * 1000)
@@ -85,7 +86,7 @@ export class LinkGroupCommandHandler implements CommandHandler {
     // Only this admin's own code, for this admin's mess, is accepted (and used up)
     const accepted = await this.otpRepo.consumeGroupCode(ctx.args[0], ctx.member.id, ctx.member.messId)
     if (!accepted) {
-      await reply('❌ That code is not valid or has expired. Just send `/mealio` instead.')
+      await reply('❌ That code is not valid or has expired. Just send `/mealtill` instead.')
       return
     }
 

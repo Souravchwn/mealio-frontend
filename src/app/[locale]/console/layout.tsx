@@ -4,7 +4,7 @@ import { ConsoleAuthProvider } from "./ConsoleAuth";
 import { ConsoleShell } from "./ConsoleShell";
 
 export const metadata: Metadata = {
-    title: "Mealio Console",
+    title: "Mealtill Console",
     robots: { index: false, follow: false },
 };
 

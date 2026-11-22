@@ -6,7 +6,7 @@
  *   - a meal turned off for the whole mess (meal_configs.enabled = false) is 0
  *   - counts are capped at the meal's max_count
  *   - which days are WEEKEND comes from the mess's weekend_days setting
- * Missing preference rows → meal enabled with count 1.
+ * Missing preference rows → the mess default (settings.defaultMeals), count 1.
  *
  * Key types:
  *  MealDefaults — { breakfastCount, lunchCount, dinnerCount }
@@ -82,7 +82,15 @@ export async function getBulkMealDefaults(
 
   const settings = await getMessSettings(messId)
   const dayType = getDayType(date, settings?.weekendDays)
-  for (const id of memberIds) map.set(id, { ...ALL_ON })
+  // Start from the mess default; a member's own preference rows override it
+  const base: MealDefaults = settings
+    ? {
+        breakfastCount: settings.defaultMeals[dayType].BREAKFAST ? 1 : 0,
+        lunchCount: settings.defaultMeals[dayType].LUNCH ? 1 : 0,
+        dinnerCount: settings.defaultMeals[dayType].DINNER ? 1 : 0,
+      }
+    : ALL_ON
+  for (const id of memberIds) map.set(id, { ...base })
 
   const prefs = await prisma.userMealPreference.findMany({
     where: { memberId: { in: memberIds }, messId, dayType },

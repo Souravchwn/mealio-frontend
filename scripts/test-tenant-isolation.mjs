@@ -156,7 +156,7 @@ try {
   r = await api('/api/meals/toggle', { method: 'POST', token: tokenA, body: { member_id: B.member.id, date: today, slot: 'dinner', status: false } })
   check('toggle B member meal', denied(r.status), `status ${r.status}`)
 
-  r = await api('/api/meals/guest', { method: 'POST', token: tokenA, body: { member_id: B.member.id, date: today, guest_count: 5 } })
+  r = await api('/api/meals/guest', { method: 'POST', token: tokenA, body: { member_id: B.member.id, date: today, slot: 'lunch', guest_count: 5 } })
   check('add guests to B member', denied(r.status), `status ${r.status}`)
 
   r = await api('/api/admin/meals', { method: 'PUT', token: tokenA, body: { member_id: B.member.id, date: today, slot: 'lunch', count: 0 } })

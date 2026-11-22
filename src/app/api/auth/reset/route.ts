@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
         where: { id: tokenRow.memberId },
         data: { passwordHash, passwordChangedAt: new Date() },
       }),
-      prisma.authToken.update({ where: { id: tokenRow.id }, data: { usedAt: new Date() } }),
+      // The emailed code and link are one reset: using either cancels both (and any admin code)
+      prisma.authToken.updateMany({ where: { memberId: tokenRow.memberId, purpose: 'RESET', usedAt: null }, data: { usedAt: new Date() } }),
     ])
     await logSecurityEvent({ type: 'PASSWORD_RESET', ip, memberId: tokenRow.memberId, detail: { ok: true } })
     return NextResponse.json({ ok: true })

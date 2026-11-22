@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowRight, KeyRound, MailCheck } from "lucide-react";
+import { ArrowRight, Info, KeyRound, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { api } from "@/lib/api";
 import { AuthShell } from "../AuthShell";
@@ -48,6 +48,15 @@ export default function ForgotPasswordPage() {
                     <span className={styles.stateIcon}>{emailSent ? <MailCheck size={26} /> : <KeyRound size={26} />}</span>
                     <p>{emailSent ? t("sentBody", { email: email.trim() }) : t("codeBody")}</p>
                 </div>
+                {emailSent && (
+                    <div className={styles.notice} role="note">
+                        <Info size={18} />
+                        <div>
+                            <b>{t("spamTitle")}</b>
+                            <p>{t("spamBody")}</p>
+                        </div>
+                    </div>
+                )}
                 <Link href={resetHref} className={styles.secondaryAction}>
                     {t("haveCode")} <ArrowRight size={16} />
                 </Link>

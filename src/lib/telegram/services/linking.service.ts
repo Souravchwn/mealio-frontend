@@ -1,5 +1,5 @@
 /**
- * AccountLinkingService — Telegram ↔ Mealio account pairing.
+ * AccountLinkingService — Telegram ↔ Mealtill account pairing.
  *
  * Flow:
  *   1. Member opens Settings in the web app → "Link Telegram" → gets a code
@@ -29,7 +29,7 @@ export class AccountLinkingService {
     if (!memberId) {
       return {
         ok: false,
-        message: `❌ Invalid or expired code.\n\nOpen *Settings → Telegram* in the Mealio web app to get a new one.`,
+        message: `❌ Invalid or expired code.\n\nOpen *Settings → Telegram* in the Mealtill web app to get a new one.`,
       }
     }
 
@@ -43,7 +43,7 @@ export class AccountLinkingService {
     return {
       ok: true,
       memberName: member.name,
-      message: `✅ *Linked! Welcome, ${member.name}!*\n\nYour Telegram is now connected to Mealio.\n\n*Available commands:*\n• \`/status\`: today's meal status\n• \`/meal on|off\`: toggle all meals\n• \`/meal breakfast|lunch|dinner\`: toggle a slot\n• \`/meal guest N\`: set guest count\n• \`/rate\`: current meal rate\n• \`/balance\`: your balance`,
+      message: `✅ *Linked! Welcome, ${member.name}!*\n\nYour Telegram is now connected to Mealtill.\n\n*Available commands:*\n• \`/status\`: today's meal status\n• \`/meal on|off\`: toggle all meals\n• \`/meal breakfast|lunch|dinner\`: toggle a slot\n• \`/meal guest N\`: set guest count\n• \`/rate\`: current meal rate\n• \`/balance\`: your balance`,
     }
   }
 }
