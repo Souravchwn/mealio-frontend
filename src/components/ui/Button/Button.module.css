@@ -121,6 +121,15 @@ html[lang="bn"] .root {
     box-shadow: none;
 }
 
+/* Working: full colour, a moving spinner, and a progress cursor */
+.loading {
+    cursor: progress;
+}
+
+.loading:active {
+    transform: none;
+}
+
 .fullWidth {
     width: 100%;
 }
@@ -132,4 +141,11 @@ html[lang="bn"] .root {
     border-right-color: transparent;
     border-radius: var(--radius-full);
     animation: spin 0.6s linear infinite;
+}
+
+/* Defined here: CSS Modules scope animation names to this file */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }

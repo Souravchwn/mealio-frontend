@@ -539,3 +539,10 @@
     font-weight: 600;
     color: var(--color-text-muted);
 }
+
+/* Defined here: CSS Modules scope animation names to this file */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

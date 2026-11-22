@@ -342,6 +342,11 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* A button that is working (Button's loading state) is busy, not forbidden */
+button[aria-busy="true"]:disabled {
+  cursor: progress;
+}
+
 input,
 textarea,
 select {

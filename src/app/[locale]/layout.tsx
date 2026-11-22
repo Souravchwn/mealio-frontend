@@ -5,6 +5,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { Toaster } from "sonner";
 import { ServiceWorkerRegister } from "@/components/composed/ServiceWorker/ServiceWorkerRegister";
+import { ActivityBar } from "@/components/composed/ActivityBar/ActivityBar";
 import { ThemeProvider } from "@/components/composed/ThemeProvider/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { routing } from "@/i18n/routing";
@@ -77,6 +78,7 @@ export default async function LocaleLayout({
                 >
                     <AuthProvider>
                         <ServiceWorkerRegister />
+                        <ActivityBar />
                         <NextIntlClientProvider messages={messages}>
                             {children}
                             {/* Styled in globals.css (Toasts): neutral surface, colour only on the icon.

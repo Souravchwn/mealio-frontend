@@ -7,6 +7,7 @@
  *  - Error message extraction from { detail } field
  */
 
+import { startActivity } from "./activity.client";
 import type {
     LoginRequest,
     RegisterRequest,
@@ -107,7 +108,24 @@ type FetchOptions = Omit<RequestInit, "body"> & {
     body?: unknown;
 };
 
+/**
+ * Every call goes through here. Saves (anything that is not a plain read) are counted as
+ * activity, so the top progress bar shows while the person waits, whichever button sent it.
+ */
 async function fetcher<T>(
+    endpoint: string,
+    options: FetchOptions = {}
+): Promise<T> {
+    const method = (options.method ?? "GET").toUpperCase();
+    const done = method === "GET" || typeof window === "undefined" ? null : startActivity();
+    try {
+        return await request<T>(endpoint, options);
+    } finally {
+        done?.();
+    }
+}
+
+async function request<T>(
     endpoint: string,
     options: FetchOptions = {}
 ): Promise<T> {

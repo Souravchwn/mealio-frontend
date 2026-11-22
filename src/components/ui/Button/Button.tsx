@@ -27,13 +27,15 @@ export function Button({
                 styles[variant],
                 styles[size],
                 fullWidth && styles.fullWidth,
-                (disabled || loading) && styles.disabled,
+                // Busy is not the same as unavailable: a loading button keeps its colour
+                loading ? styles.loading : disabled && styles.disabled,
                 className
             )}
             disabled={disabled || loading}
+            aria-busy={loading || undefined}
             {...props}
         >
-            {loading && <span className={styles.spinner} />}
+            {loading && <span className={styles.spinner} aria-hidden />}
             {children}
         </button>
     );

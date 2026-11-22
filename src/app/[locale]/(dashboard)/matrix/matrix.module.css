@@ -790,3 +790,10 @@
     grid-template-columns: 1fr 1.6fr;
     gap: var(--space-3);
 }
+
+/* Defined here: CSS Modules scope animation names to this file */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
