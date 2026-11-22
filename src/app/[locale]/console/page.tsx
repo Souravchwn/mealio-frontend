@@ -95,7 +95,7 @@ export default function ConsoleDashboard() {
                     <div className={styles.cardHead}>
                         <h2 className={styles.cardTitle}>People using it each day, last 14 days</h2>
                     </div>
-                    <div className={styles.chart} role="img" aria-label="People who used ManagerBabu each day for the last 14 days">
+                    <div className={styles.chart} role="img" aria-label="People who used Mealtill each day for the last 14 days">
                         {usage?.daily.map((d) => (
                             <div key={d.date} className={styles.barCol} title={`${d.date}: ${d.people} people in ${d.messes} messes`}>
                                 <div className={styles.bar} style={{ height: `${(d.people / maxActive) * 100}%` }} />

@@ -48,7 +48,7 @@ export interface PlatformMessRow {
     status: MessStatus;
     owner: { id: string; name: string; email: string } | null;
     createdAt: string;
-    /** Last day (YYYY-MM-DD) anyone in the mess used ManagerBabu, null if never tracked */
+    /** Last day (YYYY-MM-DD) anyone in the mess used Mealtill, null if never tracked */
     lastActive: string | null;
     monthsClosed: number;
 }

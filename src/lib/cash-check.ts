@@ -1,7 +1,7 @@
 /**
  * cash-check.ts — Server-only: count the mess fund against the book.
  *
- * ManagerBabu never holds money. The manager does, as cash or in a bKash/Nagad/bank
+ * Mealtill never holds money. The manager does, as cash or in a bKash/Nagad/bank
  * account. A cash check compares what they really hold with what the book says they
  * should hold, so the whole mess can see the two match.
  *

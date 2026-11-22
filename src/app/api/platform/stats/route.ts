@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Usage numbers that tell whether messes really use ManagerBabu.
+ * Usage numbers that tell whether messes really use Mealtill.
  * Days are counted in DEFAULT_TIMEZONE, the same days activity is recorded in.
  */
 async function usageStats(now: number) {

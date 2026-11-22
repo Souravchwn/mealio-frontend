@@ -1,7 +1,7 @@
 /**
  * activity.ts — Server-only usage tracking for the staff console.
  *
- * Records that a member used ManagerBabu on a given day through a given channel.
+ * Records that a member used Mealtill on a given day through a given channel.
  * It stores no content, only (member, mess, day, source). The console turns these
  * rows into active messes, weekly active people and retention.
  *

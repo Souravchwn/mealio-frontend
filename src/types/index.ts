@@ -238,7 +238,7 @@ export interface BazaarSessionResponse {
     createdAt: string;
 }
 
-/** How a deposit reached the mess. Recorded only; ManagerBabu never moves money. */
+/** How a deposit reached the mess. Recorded only; Mealtill never moves money. */
 export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "OTHER";
 
 export interface ContributionResponse {
