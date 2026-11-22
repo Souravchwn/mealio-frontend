@@ -27,6 +27,7 @@ import type {
     CashCheckEntry,
     CashCheckSummary,
     MemberStatement,
+    Announcement,
     ContributionRequest,
     GuestMealPolicy,
     MessSettingsResponse,
@@ -525,6 +526,20 @@ export const api = {
             fetcher<{ ok: boolean }>("/api/members/telegram-link", { method: "DELETE", token }),
     },
 
+    /** Broadcasts from admins and managers. Everyone can read; only Admin/Manager can send or remove. */
+    announcements: {
+        list: (token: string) =>
+            fetcher<{ announcements: Announcement[] }>("/api/announcements", { method: "GET", token }),
+        create: (message: string, token: string) =>
+            fetcher<{ ok: boolean; announcement: Announcement }>("/api/announcements", {
+                method: "POST",
+                body: { message },
+                token,
+            }),
+        remove: (id: string, token: string) =>
+            fetcher<{ ok: boolean }>(`/api/announcements/${id}`, { method: "DELETE", token }),
+    },
+
     mealConfigs: {
         list: (token: string) =>
             fetcher<{ mealConfigs: MealConfig[] }>("/api/mess/meal-configs", {
@@ -689,7 +704,7 @@ export const api = {
             data: { action: "on" | "off"; date?: string; reason?: string },
             token: string
         ) =>
-            fetcher<{ ok: boolean; membersUpdated: number; telegramNotified: number }>(
+            fetcher<{ ok: boolean; membersUpdated: number; telegramNotified: number; announced: boolean }>(
                 "/api/admin/no-cook",
                 { method: "POST", body: data, token }
             ),
@@ -746,6 +761,7 @@ export const api = {
                 carryForwardBalance?: boolean;
                 weekendDays?: number[];
                 requireJoinApproval?: boolean;
+                timezone?: string;
                 defaultMeals?: DefaultMealsSetting;
             },
             token: string

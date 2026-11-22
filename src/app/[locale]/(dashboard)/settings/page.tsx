@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { TimePicker } from "@/components/ui/TimePicker/TimePicker";
-import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw } from "lucide-react";
+import { Select } from "@/components/ui/Select/Select";
+import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw, Globe, Megaphone, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { DefaultMealsSetting, GuestMealPolicy } from "@/types";
+import { ANNOUNCEMENT_MAX_LENGTH, ANNOUNCEMENT_VISIBLE_DAYS } from "@/lib/constants";
+import type { Announcement, DefaultMealsSetting, GuestMealPolicy } from "@/types";
 import { AccountSection, DeleteMessCard } from "./AccountSection";
 import styles from "./settings.module.css";
 
@@ -30,6 +32,24 @@ const MEAL_ICONS: Record<MealType, React.ReactNode> = {
 };
 
 const SLOT_UPPER = ["BREAKFAST", "LUNCH", "DINNER"] as const;
+
+// Zones people look for first (South Asia, the Gulf, and where members often work abroad)
+const COMMON_TIMEZONES = [
+    "Asia/Dhaka", "Asia/Kolkata", "Asia/Karachi", "Asia/Kathmandu", "Asia/Colombo", "Asia/Thimphu",
+    "Asia/Dubai", "Asia/Riyadh", "Asia/Qatar", "Asia/Kuwait", "Asia/Muscat", "Asia/Bahrain",
+    "Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Bangkok", "Asia/Jakarta", "Asia/Tokyo", "Asia/Seoul", "Asia/Hong_Kong",
+    "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Rome",
+    "America/New_York", "America/Chicago", "America/Los_Angeles", "America/Toronto",
+    "Australia/Sydney", "Australia/Melbourne", "Pacific/Auckland", "Africa/Cairo", "Africa/Johannesburg",
+];
+// Old names some browsers still list, and the current name for each
+const LEGACY_TIMEZONES: Record<string, string> = {
+    "Asia/Calcutta": "Asia/Kolkata",
+    "Asia/Katmandu": "Asia/Kathmandu",
+    "Asia/Dacca": "Asia/Dhaka",
+    "Asia/Saigon": "Asia/Ho_Chi_Minh",
+    "Asia/Rangoon": "Asia/Yangon",
+};
 
 function defaultPrefs(): PrefMap {
     const map = {} as PrefMap;
@@ -74,6 +94,17 @@ export default function SettingsPage() {
 
     // ── Month start day ──────────────────────────────────────────────────────────
     const [monthStartDay, setMonthStartDay] = useState(1);
+    // ── Timezone (decides when "today" starts and when cutoffs fall) ───────────
+    const [timezone, setTimezone] = useState("Asia/Dhaka");
+    const [savedTimezone, setSavedTimezone] = useState("Asia/Dhaka");
+    const [savingTz, setSavingTz] = useState(false);
+
+    // ── Broadcast ────────────────────────────────────────────────────────────────
+    const [broadcastText, setBroadcastText] = useState("");
+    const [sendingBroadcast, setSendingBroadcast] = useState(false);
+    const [broadcasts, setBroadcasts] = useState<Announcement[]>([]);
+    const [removingBroadcast, setRemovingBroadcast] = useState<string | null>(null);
+
     const [savingStartDay, setSavingStartDay] = useState(false);
 
     // ── Telegram group ───────────────────────────────────────────────────────────
@@ -83,7 +114,6 @@ export default function SettingsPage() {
     const [gettingGroupCode, setGettingGroupCode] = useState(false);
     const [tgChatId, setTgChatId] = useState("");
     const [tgChatName, setTgChatName] = useState("");
-    const [tgTimezone, setTgTimezone] = useState("");
     const [linkingTg, setLinkingTg] = useState(false);
 
     // ── Billing rules (served from Redis via /api/mess/settings) ───────────────
@@ -148,10 +178,14 @@ export default function SettingsPage() {
             setBazaarCredit(data.bazaarCountsAsDeposit);
             setCarryForward(data.carryForwardBalance);
             setRequireApproval(data.requireJoinApproval ?? true);
+            setTimezone(data.timezone);
+            setSavedTimezone(data.timezone);
             if (data.weekendDays) setWeekendDays(data.weekendDays);
             if (data.defaultMeals) setDefaultMeals(data.defaultMeals);
-            setTgTimezone(data.timezone);
         }).catch(() => {});
+
+        // Broadcasts still on show
+        api.announcements.list(token).then((data) => setBroadcasts(data.announcements)).catch(() => {});
 
         // Per-slot cutoff configs
         api.mealConfigs.list(token).then((data) => {
@@ -176,7 +210,6 @@ export default function SettingsPage() {
                         setLinkedGroup(data.group);
                         setTgChatId(data.group.chatId ?? "");
                         setTgChatName(data.group.chatName ?? "");
-                        if (data.group.timezone) setTgTimezone(data.group.timezone);
                     }
                 })
                 .catch(() => {});
@@ -427,7 +460,7 @@ export default function SettingsPage() {
             const res = await fetch("/api/admin/telegram-group", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ chat_id: tgChatId.trim(), chat_name: tgChatName.trim(), timezone: tgTimezone }),
+                body: JSON.stringify({ chat_id: tgChatId.trim(), chat_name: tgChatName.trim(), timezone: savedTimezone }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -443,6 +476,89 @@ export default function SettingsPage() {
     }
 
     // ── Cutoff label map ──────────────────────────────────────────────────────
+    // ── Timezone ───────────────────────────────────────────────────────────────
+    async function saveTimezone() {
+        if (!token) return;
+        setSavingTz(true);
+        try {
+            await api.admin.updateSettings({ timezone }, token);
+            setSavedTimezone(timezone);
+            toast.success(t("timezone.saved"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
+        } finally {
+            setSavingTz(false);
+        }
+    }
+
+    // Every zone the browser knows, with its current offset, e.g. "Asia/Dhaka · UTC+6".
+    // Browsers list some zones under their old names (Chrome says Asia/Calcutta, not Asia/Kolkata), so
+    // the names people actually search for are added, and the old alias is hidden when the new one exists.
+    const timezoneOptions = useMemo(() => {
+        const isZone = (z: string) => {
+            try {
+                new Intl.DateTimeFormat("en", { timeZone: z });
+                return true;
+            } catch {
+                return false;
+            }
+        };
+        let known: string[] = [];
+        try {
+            known = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+        } catch {
+            known = [];
+        }
+        const zones = new Set<string>([...known, ...COMMON_TIMEZONES.filter(isZone)]);
+        for (const [legacy, modern] of Object.entries(LEGACY_TIMEZONES)) {
+            if (zones.has(modern)) zones.delete(legacy);
+        }
+        zones.add(savedTimezone); // whatever is saved must always be selectable
+        const now = new Date();
+        return [...zones].sort().map((zone) => {
+            let hint = "";
+            try {
+                hint = new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: "shortOffset" })
+                    .formatToParts(now)
+                    .find((p) => p.type === "timeZoneName")?.value.replace("GMT", "UTC") ?? "";
+            } catch {
+                hint = "";
+            }
+            return { value: zone, label: zone.replace(/_/g, " "), hint };
+        });
+    }, [savedTimezone]);
+
+    // ── Broadcast ──────────────────────────────────────────────────────────────
+    async function sendBroadcast() {
+        const message = broadcastText.trim();
+        if (!token || !message) return;
+        setSendingBroadcast(true);
+        try {
+            const res = await api.announcements.create(message, token);
+            setBroadcasts((prev) => [res.announcement, ...prev]);
+            setBroadcastText("");
+            toast.success(t("broadcast.sent"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("broadcast.failed"));
+        } finally {
+            setSendingBroadcast(false);
+        }
+    }
+
+    async function removeBroadcast(id: string) {
+        if (!token || !window.confirm(t("broadcast.removeConfirm"))) return;
+        setRemovingBroadcast(id);
+        try {
+            await api.announcements.remove(id, token);
+            setBroadcasts((prev) => prev.filter((b) => b.id !== id));
+            toast.success(t("broadcast.removed"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("broadcast.failed"));
+        } finally {
+            setRemovingBroadcast(null);
+        }
+    }
+
     const CUTOFF_LABELS: Record<string, string> = {
         BREAKFAST: t("breakfastCutoff"),
         LUNCH:     t("lunchCutoff"),
@@ -595,6 +711,62 @@ export default function SettingsPage() {
             {/* ── Mess Settings Tab ─────────────────────────────────────────── */}
             {activeTab === "mess" && isAdminOrManager && (
                 <>
+                    {/* Broadcast */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>
+                            <Megaphone size={18} />
+                            {t("broadcast.title")}
+                        </h3>
+                        <p className={styles.helpText}>{t("broadcast.description", { days: ANNOUNCEMENT_VISIBLE_DAYS })}</p>
+                        <div className={styles.field}>
+                            <textarea
+                                className={styles.textarea}
+                                value={broadcastText}
+                                onChange={(e) => setBroadcastText(e.target.value)}
+                                maxLength={ANNOUNCEMENT_MAX_LENGTH}
+                                rows={3}
+                                placeholder={t("broadcast.placeholder")}
+                                aria-label={t("broadcast.title")}
+                            />
+                            <div className={styles.broadcastFoot}>
+                                <span className={styles.helpText}>{broadcastText.length}/{ANNOUNCEMENT_MAX_LENGTH}</span>
+                                <Button onClick={sendBroadcast} disabled={sendingBroadcast || !broadcastText.trim()}>
+                                    <Megaphone size={16} />
+                                    {sendingBroadcast ? t("broadcast.sending") : t("broadcast.send")}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <h4 className={styles.subTitle}>{t("broadcast.recent")}</h4>
+                        {broadcasts.length === 0 ? (
+                            <p className={styles.helpText}>{t("broadcast.none", { days: ANNOUNCEMENT_VISIBLE_DAYS })}</p>
+                        ) : (
+                            <ul className={styles.broadcastList}>
+                                {broadcasts.map((b) => (
+                                    <li key={b.id} className={styles.broadcastItem}>
+                                        <div className={styles.broadcastBody}>
+                                            <p className={styles.broadcastText}>{b.message}</p>
+                                            <span className={styles.helpText}>
+                                                {t("broadcast.by", { name: b.authorName })} ·{" "}
+                                                {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(b.createdAt))}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className={styles.iconAction}
+                                            onClick={() => void removeBroadcast(b.id)}
+                                            disabled={removingBroadcast === b.id}
+                                            aria-label={t("broadcast.remove")}
+                                            title={t("broadcast.remove")}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
+
                     {/* Billing rules */}
                     <Card>
                         <h3 className={styles.sectionTitle}>
@@ -933,16 +1105,6 @@ export default function SettingsPage() {
                                         placeholder={t("telegramGroup.chatNamePlaceholder")}
                                     />
                                 </div>
-                                <div className={styles.field}>
-                                    <label className={styles.label}>{t("telegramGroup.timezone")}</label>
-                                    <input
-                                        className={styles.input}
-                                        type="text"
-                                        value={tgTimezone}
-                                        onChange={(e) => setTgTimezone(e.target.value)}
-                                        placeholder="Asia/Dhaka"
-                                    />
-                                </div>
                                 <div className={styles.formActions}>
                                     <Button type="submit" disabled={linkingTg || !tgChatId.trim()}>
                                         <Link size={16} />
@@ -953,6 +1115,33 @@ export default function SettingsPage() {
                             </details>
                         </Card>
                     )}
+
+                    {/* Timezone */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>
+                            <Globe size={18} />
+                            {t("timezone.title")}
+                        </h3>
+                        <p className={styles.helpText}>{t("timezone.help")}</p>
+                        <div className={styles.field}>
+                            <div className={styles.inputRow}>
+                                <Select
+                                    value={timezone}
+                                    onChange={setTimezone}
+                                    options={timezoneOptions}
+                                    disabled={!isAdmin}
+                                    aria-label={t("timezone.title")}
+                                />
+                                {isAdmin && (
+                                    <Button onClick={saveTimezone} disabled={savingTz || timezone === savedTimezone}>
+                                        <Save size={16} />
+                                        {savingTz ? t("saving") : t("saveChanges")}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                        {!isAdmin && <p className={styles.helpText}>{t("timezone.adminOnly")}</p>}
+                    </Card>
 
                     {/* Danger zone (Admin only) */}
                     {isAdmin && savedName && <DeleteMessCard messName={savedName} />}

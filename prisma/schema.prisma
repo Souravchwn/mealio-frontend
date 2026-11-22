@@ -24,6 +24,9 @@ model Mess {
   carryForwardBalance    Boolean  @default(true) @map("carry_forward_balance")
   /// Weekend days for meal preferences, comma-separated JS weekday numbers (0=Sun … 6=Sat)
   weekendDays            String   @default("0,6") @map("weekend_days")
+  /// IANA timezone that decides when "today" starts and when meal cutoffs fall.
+  /// The source of truth (a linked Telegram group no longer decides it).
+  timezone               String   @default("Asia/Dhaka")
   /// Meals a member eats by default when they have not set their own (JSON: WEEKDAY/WEEKEND -> BREAKFAST/LUNCH/DINNER -> bool)
   defaultMeals           String?  @map("default_meals")
   isActive               Boolean  @default(true) @map("is_active")
@@ -50,6 +53,7 @@ model Mess {
   auditLogs       AuditLog[]
   memberships     MessMembership[]
   telegramGroups  TelegramGroup[]
+  announcements   Announcement[]
   mealPreferences UserMealPreference[]
   mealConfigs     MealConfig[]
   cookNotes       DailyCookNote[]
@@ -588,4 +592,21 @@ model MemberClaim {
 
   @@index([messId, status], map: "idx_member_claims_mess")
   @@map("member_claims")
+}
+
+/// A broadcast from an admin or manager, shown to every member of the mess for a few days
+/// (Overview page and GET /api/announcements). Also posted automatically for "no cook" days.
+model Announcement {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messId     String   @map("mess_id") @db.Uuid
+  authorId   String?  @map("author_id") @db.Uuid
+  /// Shown with the message, so it survives the author leaving
+  authorName String   @map("author_name")
+  message    String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@index([messId, createdAt(sort: Desc)], map: "idx_announcements_mess_created")
+  @@map("announcements")
 }

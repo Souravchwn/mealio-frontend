@@ -136,11 +136,28 @@ export async function POST(req: NextRequest) {
 
   const notified = await broadcastTelegram(messId, broadcastMsg)
 
+  // Also a broadcast members see on their Overview page (the app, not only Telegram).
+  // A failure here must not undo the meals change, so it is logged and swallowed.
+  const notice = action === 'off'
+    ? `No meals on ${date}. All meals are turned off for the day.${reason ? ` Reason: ${reason}` : ''}`
+    : `Meals are back on for ${date}, set to everyone's usual defaults.`
+  let announced = false
+  try {
+    const author = await prisma.member.findUnique({ where: { id: payload.sub }, select: { name: true } })
+    await prisma.announcement.create({
+      data: { messId, authorId: payload.sub, authorName: author?.name ?? 'Admin', message: notice },
+    })
+    announced = true
+  } catch (err) {
+    console.error('[POST /api/admin/no-cook] announcement failed messId=%s', messId, err)
+  }
+
   return NextResponse.json({
     ok: true,
     date,
     action,
     members_updated: members.length,
     telegram_notified: notified,
+    announced,
   })
 }

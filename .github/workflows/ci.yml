@@ -87,6 +87,7 @@ jobs:
           done
           npm run test:isolation
           npm run test:closed
+          npm run test:broadcasts
 
       - name: Server log on failure
         if: failure()

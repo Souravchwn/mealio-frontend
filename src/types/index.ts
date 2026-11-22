@@ -323,6 +323,15 @@ export interface DayEntry {
 /** HOST = guest meals are charged to the member who brought them; SHARED = spread across the mess */
 export type GuestMealPolicy = "HOST" | "SHARED";
 
+/** A broadcast from an admin or manager (Settings → Broadcast; shown on Overview) */
+export interface Announcement {
+    id: string;
+    message: string;
+    authorName: string;
+    createdAt: string;
+    expiresAt: string;
+}
+
 export interface MessSettingsResponse {
     name: string;
     cutOffTime: string;

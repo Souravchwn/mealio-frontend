@@ -325,6 +325,10 @@
         "archive": "Archive"
     },
     "overview": {
+        "broadcast": {
+            "title": "Broadcast",
+            "from": "From {name}"
+        },
         "greeting": "Good {timeOfDay}, {name}!",
         "morning": "morning",
         "afternoon": "afternoon",
@@ -826,6 +830,27 @@
         "active": "Active guest"
     },
     "settings": {
+        "timezone": {
+            "title": "Timezone",
+            "help": "Decides when each day starts and when meal cutoffs fall. Days that already happened are not changed.",
+            "saved": "Timezone saved",
+            "adminOnly": "Only the admin can change this."
+        },
+        "broadcast": {
+            "title": "Broadcast",
+            "description": "Send a message every member sees on their Overview page for the next {days} days.",
+            "placeholder": "e.g. Bazaar is done, all three meals are confirmed.",
+            "send": "Send broadcast",
+            "sending": "Sending...",
+            "sent": "Broadcast sent",
+            "failed": "Could not send the broadcast. Please try again.",
+            "recent": "Recent broadcasts",
+            "none": "Nothing sent in the last {days} days.",
+            "by": "by {name}",
+            "remove": "Remove",
+            "removed": "Broadcast removed",
+            "removeConfirm": "Remove this broadcast for everyone?"
+        },
         "title": "Settings",
         "subtitle": "Configure your mess and personal meal preferences",
         "messName": "Mess Name",

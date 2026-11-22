@@ -17,6 +17,7 @@
     "telegram:setup": "node --env-file=.env.local scripts/telegram-setup.mjs",
     "env:production": "node scripts/make-production-env.mjs",
     "memos:to-blob": "node --env-file=.env.local scripts/memos-to-blob.mjs",
+    "test:broadcasts": "node --env-file=.env.local scripts/test-broadcasts.mjs",
     "test:telegram": "node --env-file=.env.local scripts/test-telegram-link.mjs",
     "test:roster": "node --env-file=.env.local scripts/test-roster.mjs"
   },

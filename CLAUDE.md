@@ -647,3 +647,8 @@ When you receive a task for a specific module:
 7. ✅ After DB schema changes: run `npx prisma generate`
 8. ✅ After code changes: verify with `npm run build` (catches TS errors)
 9. ✅ After adding new API routes: add the client method to `src/lib/api.ts`
+
+### MODULE 18: Broadcasts and the mess timezone
+
+- **Broadcasts:** admins and managers post a message (Settings → Mess tab → Broadcast) that every member sees on Overview for `ANNOUNCEMENT_VISIBLE_DAYS` (3) days. `GET/POST /api/announcements`, `DELETE /api/announcements/[id]`, `src/lib/announcements.ts`. 1000 characters, 10 per mess per day, audited. The "no cook" action posts one automatically, as well as the Telegram message. Full reference: `context/20-broadcasts.md`. Test: `npm run test:broadcasts`.
+- **Timezone:** `messes.timezone` is the source of truth for when "today" starts and when cutoffs fall (Settings → Mess tab → Timezone, admin only). A linked Telegram group no longer decides it; the group is given the mess timezone. Changing it calls `settleDailyLogs()` first so it is never retroactive.

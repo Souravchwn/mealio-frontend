@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAuditTx } from '@/lib/audit'
-import { getMessSettings, refreshMessSettings, type DefaultMeals, type MessSettings } from '@/lib/mess-settings'
+import { getMessSettings, isValidTimezone, refreshMessSettings, type DefaultMeals, type MessSettings } from '@/lib/mess-settings'
 import { GUEST_MEAL_POLICIES, MEAL_TYPES, type GuestMealPolicy } from '@/lib/constants'
 import { settleDailyLogs } from '@/lib/daily-logs'
 
@@ -63,7 +63,7 @@ export async function PUT(req: NextRequest) {
   }
   const {
     name, cut_off_time, estimated_monthly_budget, month_start_day,
-    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval, default_meals,
+    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval, default_meals, timezone,
   } = body
   const updateData: Record<string, unknown> = {}
 
@@ -98,6 +98,14 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ detail: 'month_start_day must be an integer between 1 and 28' }, { status: 400 })
     }
     updateData.monthStartDay = day
+  }
+
+  if (timezone !== undefined) {
+    const tz = typeof timezone === 'string' ? timezone.trim() : ''
+    if (!tz || !isValidTimezone(tz)) {
+      return NextResponse.json({ detail: 'Unknown timezone. Use an IANA name like Asia/Dhaka.' }, { status: 400 })
+    }
+    updateData.timezone = tz
   }
 
   if (guest_meal_policy !== undefined) {
@@ -166,7 +174,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     // A new weekend definition or default must not rewrite days that already happened
-    if (updateData.weekendDays !== undefined || updateData.defaultMeals !== undefined) await settleDailyLogs(payload.messId)
+    if (updateData.weekendDays !== undefined || updateData.defaultMeals !== undefined || updateData.timezone !== undefined) await settleDailyLogs(payload.messId)
     await prisma.$transaction((tx) =>
       Promise.all([
         tx.mess.update({ where: { id: payload.messId }, data: updateData, select: { id: true } }),

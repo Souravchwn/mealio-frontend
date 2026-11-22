@@ -25,6 +25,8 @@ export type AuditAction =
   | 'VOID_BAZAAR_SESSION'
   | 'ADD_CONTRIBUTION'
   | 'VOID_CONTRIBUTION'
+  | 'POST_ANNOUNCEMENT'
+  | 'DELETE_ANNOUNCEMENT'
   | 'CASH_CHECK'
 
 export interface AuditEntry {

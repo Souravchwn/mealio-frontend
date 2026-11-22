@@ -526,3 +526,48 @@ ALTER TABLE cash_checks ENABLE ROW LEVEL SECURITY;
 -- With BLOB_READ_WRITE_TOKEN set, new photos go to Blob and only the URL is kept here.
 ALTER TABLE bazaar_memos ADD COLUMN IF NOT EXISTS blob_url TEXT;
 ALTER TABLE bazaar_memos ALTER COLUMN data DROP NOT NULL;
+
+-- ============================================================
+-- 31. Mess timezone (the source of truth; a linked Telegram group no longer decides it)
+-- ============================================================
+-- Each mess now owns its timezone: it decides when "today" starts and when meal cutoffs fall.
+-- It used to live on the linked Telegram group, so existing messes keep it: it is copied from the
+-- active group once, when the column is first created. Running this file again never overwrites
+-- a timezone that an admin has set since.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'messes' AND column_name = 'timezone'
+  ) THEN
+    ALTER TABLE messes ADD COLUMN timezone TEXT NOT NULL DEFAULT 'Asia/Dhaka';
+
+    IF to_regclass('telegram_groups') IS NOT NULL THEN
+      UPDATE messes m
+      SET timezone = g.timezone
+      FROM (
+        SELECT DISTINCT ON (mess_id) mess_id, timezone
+        FROM telegram_groups
+        WHERE is_active AND timezone IS NOT NULL AND timezone <> ''
+        ORDER BY mess_id, created_at DESC
+      ) g
+      WHERE g.mess_id = m.id;
+    END IF;
+  END IF;
+END $$;
+
+-- ============================================================
+-- 32. Broadcasts (Settings -> Broadcast; shown on Overview)
+-- ============================================================
+-- Messages from an admin or manager that every member of the mess sees for a few days.
+-- The automatic "no cook" notice is posted here too (as well as to Telegram).
+CREATE TABLE IF NOT EXISTS announcements (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mess_id     UUID NOT NULL REFERENCES messes(id) ON DELETE CASCADE,
+  author_id   UUID,
+  author_name TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_announcements_mess_created ON announcements(mess_id, created_at DESC);
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;

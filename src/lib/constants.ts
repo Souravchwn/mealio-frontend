@@ -59,6 +59,13 @@ export const EXPENSE_CATEGORIES = [
 ] as const
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
+/** Broadcasts (Settings → Broadcast): longest message, in characters */
+export const ANNOUNCEMENT_MAX_LENGTH = 1000
+/** How many days a broadcast stays visible to members */
+export const ANNOUNCEMENT_VISIBLE_DAYS = 3
+/** Broadcasts a mess may send per day (automatic "no cook" notices do not count) */
+export const ANNOUNCEMENT_DAILY_LIMIT = 10
+
 /** JWT TTL in seconds (30 days) */
 export const JWT_TTL_SECONDS = 30 * 24 * 60 * 60
 

@@ -114,7 +114,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
       requireJoinApproval: true,
       defaultMeals: true,
       plan: true,
-      telegramGroups: { where: { isActive: true }, select: { timezone: true }, take: 1 },
+      timezone: true,
       mealConfigs: { select: { mealType: true, enabled: true, cutoffTime: true, maxCount: true } },
     },
   })
@@ -145,7 +145,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
   return {
     messId: mess.id,
     name: mess.name,
-    timezone: mess.telegramGroups[0]?.timezone ?? DEFAULT_TIMEZONE,
+    timezone: mess.timezone || DEFAULT_TIMEZONE,
     cutOffTime: legacyCutoff,
     monthStartDay: mess.monthStartDay ?? 1,
     estimatedMonthlyBudget: mess.estimatedMonthlyBudget ? Number(mess.estimatedMonthlyBudget) : null,
