@@ -21,9 +21,8 @@
     width: 56px;
     height: 56px;
     border-radius: var(--radius-xl);
-    background: var(--gradient-brand);
-    color: #fff;
-    box-shadow: var(--shadow-glow);
+    background: var(--color-lime);
+    color: var(--color-on-lime);
     animation: pulse 1.4s ease-in-out infinite;
 }
 
@@ -42,9 +41,8 @@
     height: 36px;
     flex-shrink: 0;
     border-radius: 12px;
-    background: var(--gradient-brand);
-    color: #fff;
-    box-shadow: var(--shadow-glow);
+    background: var(--color-lime);
+    color: var(--color-on-lime);
     transform: rotate(-6deg);
 }
 
@@ -87,8 +85,6 @@
     margin: var(--space-5) var(--space-3) var(--space-2);
     font-size: var(--text-xs);
     font-weight: 600;
-    letter-spacing: var(--tracking-wide);
-    text-transform: uppercase;
     color: var(--color-text-muted);
 }
 
@@ -158,10 +154,10 @@
     place-items: center;
     flex-shrink: 0;
     border-radius: var(--radius-full);
-    background: var(--gradient-brand);
-    color: #fff;
+    background: var(--color-moment);
+    color: var(--color-on-moment);
     font-family: var(--font-display);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .avatar {
@@ -257,7 +253,7 @@
     min-width: 0;
     overflow: hidden;
     font-size: var(--text-lg);
-    font-weight: 700;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -397,15 +393,14 @@
     height: 56px;
     margin-top: -26px;
     border-radius: 20px;
-    background: var(--gradient-brand);
-    color: #fff;
-    box-shadow: var(--shadow-glow), 0 0 0 5px var(--color-bg);
-    transform: rotate(-4deg);
-    transition: transform 220ms var(--ease-spring), box-shadow var(--transition-base);
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+    box-shadow: 0 0 0 5px var(--color-bg);
+    transition: transform 150ms var(--ease-out), background-color var(--transition-fast);
 }
 
 .tabCenter:active .tabCenterBubble {
-    transform: rotate(0deg) scale(0.92);
+    transform: scale(0.97);
 }
 
 .tabCenterActive {
@@ -487,7 +482,7 @@
 .sheetName {
     font-family: var(--font-display);
     font-size: var(--text-lg);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .sheetClose {

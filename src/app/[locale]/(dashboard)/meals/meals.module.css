@@ -23,7 +23,7 @@
 
 .title {
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .titleCount {
@@ -83,9 +83,9 @@
 }
 
 .segmentBtnActive {
-    background: var(--color-primary);
-    color: #fff;
-    box-shadow: var(--shadow-glow);
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    box-shadow: inset 0 0 0 1px var(--color-border), 0 1px 2px rgb(0 0 0 / 0.08);
 }
 
 .segmentBtn:disabled {
@@ -131,8 +131,8 @@
 }
 
 .slot_dinner {
-    --tone: #8b5cf6;
-    --tone-rgb: 139, 92, 246;
+    --tone: #8a9bc4;
+    --tone-rgb: 138, 155, 196;
 }
 
 .mealCard:hover:not(:disabled) {
@@ -174,7 +174,7 @@
 
 .mealCardOn .mealIcon {
     background: var(--tone);
-    color: #fff;
+    color: #1a1712;
     transform: rotate(-8deg);
 }
 
@@ -190,7 +190,7 @@
 .mealName {
     font-family: var(--font-display);
     font-size: var(--text-lg);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--color-text);
 }
 
@@ -207,7 +207,7 @@
     padding: 2px 8px;
     border-radius: var(--radius-full);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .chipMuted {
@@ -292,7 +292,7 @@
 
 .guestTitle {
     font-size: var(--text-lg);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .guestNote {
@@ -333,7 +333,7 @@
 
 .stepBtnPlus {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
     box-shadow: var(--shadow-glow);
 }
 
@@ -342,7 +342,7 @@
     flex-direction: column;
     align-items: center;
     font-size: var(--text-3xl);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.1;
 }
 
@@ -362,7 +362,7 @@
 
 .forWhoLabel {
     font-size: var(--text-sm);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--color-text-secondary);
 }
 
@@ -397,7 +397,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .miniStepper {
@@ -435,5 +435,5 @@
     min-width: 2ch;
     text-align: center;
     font-size: var(--text-xl);
-    font-weight: 700;
+    font-weight: 600;
 }

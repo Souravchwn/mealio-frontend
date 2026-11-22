@@ -22,8 +22,8 @@ export default function OpengraphImage() {
                     flexDirection: "column",
                     justifyContent: "center",
                     padding: "80px",
-                    background: "linear-gradient(135deg, #1e1035 0%, #5b21b6 60%, #7c3aed 100%)",
-                    color: "#ffffff",
+                    background: "#161513",
+                    color: "#efe9de",
                     fontFamily: "sans-serif",
                 }}
             >
@@ -44,12 +44,12 @@ export default function OpengraphImage() {
                     >
                         M
                     </div>
-                    <div style={{ fontSize: 80, fontWeight: 800, letterSpacing: -2 }}>Mealtill</div>
+                    <div style={{ fontSize: 80, fontWeight: 700, letterSpacing: -2 }}>Mealtill</div>
                 </div>
-                <div style={{ fontSize: 52, fontWeight: 700, marginTop: 48, lineHeight: 1.15 }}>
-                    Smart mess management
+                <div style={{ fontSize: 52, fontWeight: 500, marginTop: 48, lineHeight: 1.15 }}>
+                    Meals, bazaar and money, sorted for your mess
                 </div>
-                <div style={{ fontSize: 32, marginTop: 24, color: "#e9e3ff", maxWidth: 900, lineHeight: 1.35 }}>
+                <div style={{ fontSize: 32, marginTop: 24, color: "#aaa398", maxWidth: 900, lineHeight: 1.35 }}>
                     Meals, bazaar, deposits and a live meal rate for shared living in Bangladesh and India.
                 </div>
             </div>

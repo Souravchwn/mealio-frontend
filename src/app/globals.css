@@ -1,7 +1,8 @@
 /* ========================
-   MEALTILL DESIGN SYSTEM — "Mealtill Pop"
-   Bold bento cards, chunky numbers, pill buttons.
-   Violet = brand · Lime = highlight · Green/Rose = money ahead/owed only.
+   MEALTILL DESIGN SYSTEM — "the khata"
+   The mess's notebook of meals and taka: quiet warm-neutral paper and ink for the chrome,
+   lime as the one accent (the primary action, the selection, the figure that matters).
+   Green/rose only mean money ahead/owed. No hue gradients, no coloured glows.
    ======================== */
 
 /* Fonts — Space Grotesk (display/numbers), Inter (body), Hind Siliguri (Bangla), Baloo 2 (the logo).
@@ -12,14 +13,25 @@
 :root {
   color-scheme: light;
 
-  /* Brand — electric violet */
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-primary-light: #ede9fe;
-  --color-primary-lighter: #f5f3ff;
-  --color-primary-dark: #5b21b6;
-  --color-primary-rgb: 124, 58, 237;
+  /* Accent — lime. --color-primary is the text-safe shade (links, icons, focus, selection);
+     the main button uses the --color-fill-* pair (ink on light, lime on dark). */
+  --color-primary: #4d7c0f;
+  --color-primary-hover: #3f6212;
+  --color-primary-light: rgba(77, 124, 15, 0.10);
+  --color-primary-lighter: rgba(77, 124, 15, 0.05);
+  --color-primary-dark: #365314;
+  --color-primary-rgb: 77, 124, 15;
   --color-on-primary: #ffffff;
+  --color-fill-primary: #1f1b16;
+  --color-fill-primary-hover: #36302a;
+  --color-on-fill-primary: #fdfbf7;
+
+  /* The one rich surface per screen (the balance): khata ink, with the figure in
+     lime when the member is ahead and a soft red when they owe */
+  --color-moment: #1f1b16;
+  --color-on-moment: #f7f4ee;
+  --color-moment-ahead: #c4f04d;
+  --color-moment-owe: #ff9a8f;
 
   /* Highlight — zesty lime (always dark text on it) */
   --color-accent: #65a30d;
@@ -29,9 +41,9 @@
   --color-lime: #c4f04d;
   --color-on-lime: #1a2e05;
 
-  /* Pop — hot pink, for gradients and stickers */
-  --color-pop: #ec4899;
-  --color-pop-rgb: 236, 72, 153;
+  /* Formerly a hot pink "pop"; now the accent, so nothing outside it competes */
+  --color-pop: var(--color-primary);
+  --color-pop-rgb: var(--color-primary-rgb);
 
   /* Semantic */
   --color-success: #16a34a;
@@ -46,29 +58,28 @@
   --color-info-light: #dbeafe;
 
   /* Surfaces */
-  --color-bg: #f6f5fb;
-  --color-bg-subtle: #eeecf6;
-  --color-bg-card: #ffffff;
+  --color-bg: #f7f4ee;
+  --color-bg-subtle: #efe9df;
+  --color-bg-card: #fdfbf7;
   --color-bg-elevated: #ffffff;
-  --color-bg-sidebar: #ffffff;
-  --color-bg-sidebar-hover: #f3f0ff;
-  --color-bg-sidebar-active: #ede9fe;
-  --color-text: #15112b;
-  --color-text-secondary: #57536e;
-  --color-text-muted: #7a7692;
-  --color-text-inverse: #ffffff;
-  --color-border: #e6e3f0;
-  --color-border-hover: #cfc9e3;
-  --color-border-focus: #7c3aed;
-  --color-scrim: rgb(11 10 20 / 0.55);
+  --color-bg-sidebar: #fbf9f4;
+  --color-bg-sidebar-hover: #f1ece3;
+  --color-bg-sidebar-active: #ebe5da;
+  --color-text: #1f1b16;
+  --color-text-secondary: #5e554a;
+  --color-text-muted: #7b7266;
+  --color-text-inverse: #fdfbf7;
+  --color-border: #e6e0d5;
+  --color-border-hover: #d4ccbe;
+  --color-border-focus: var(--color-primary);
+  --color-scrim: rgb(22 21 19 / 0.5);
 
-  /* Gradients */
-  --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%);
-  --gradient-brand-soft: linear-gradient(135deg, rgba(124, 58, 237, 0.10), rgba(236, 72, 153, 0.08));
-  --gradient-lime: linear-gradient(135deg, #e2fca0 0%, #b5e83a 100%);
-  --gradient-mesh:
-    radial-gradient(60% 45% at 0% 0%, rgba(124, 58, 237, 0.09), transparent 70%),
-    radial-gradient(45% 35% at 100% 0%, rgba(236, 72, 153, 0.07), transparent 70%);
+  /* Former gradients, kept as names so old rules still resolve, now flat.
+     --gradient-brand is the solid main-button fill; the others are quiet surfaces. */
+  --gradient-brand: linear-gradient(var(--color-fill-primary), var(--color-fill-primary));
+  --gradient-brand-soft: linear-gradient(var(--color-bg-subtle), var(--color-bg-subtle));
+  --gradient-lime: linear-gradient(var(--color-lime), var(--color-lime));
+  --gradient-mesh: none;
 
   /* Typography */
   --font-primary: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -113,12 +124,12 @@
   --space-20: 5rem;
   --space-24: 6rem;
 
-  /* Radius — soft and bubbly */
-  --radius-sm: 0.625rem;
-  --radius-md: 0.875rem;
-  --radius-lg: 1.125rem;
-  --radius-xl: 1.375rem;
-  --radius-2xl: 1.75rem;
+  /* Radius — by size: controls 8-10, cards 14-16, panels 20 */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
   --radius-full: 9999px;
 
   /* Elevation — soft, tinted */
@@ -129,17 +140,19 @@
   --shadow-xl: 0 8px 16px rgb(21 17 43 / 0.06), 0 24px 56px rgb(21 17 43 / 0.12);
   --shadow-2xl: 0 32px 72px rgb(21 17 43 / 0.18);
   --shadow-inner: inset 0 2px 4px rgb(21 17 43 / 0.05);
-  --shadow-glow: 0 8px 28px rgb(124 58 237 / 0.30);
-  --shadow-glow-lg: 0 12px 40px rgb(124 58 237 / 0.38);
-  --shadow-lime: 0 8px 24px rgb(132 204 22 / 0.35);
+  /* Former coloured glows: now neutral and small. Depth comes from surface steps. */
+  --shadow-glow: 0 1px 2px rgb(31 27 22 / 0.06);
+  --shadow-glow-lg: 0 2px 6px rgb(31 27 22 / 0.08);
+  --shadow-lime: none;
 
   /* Motion */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* One easing curve everywhere, no overshoot */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: var(--ease-out);
+  --transition-fast: 150ms var(--ease-out);
+  --transition-base: 200ms var(--ease-out);
+  --transition-slow: 320ms var(--ease-out);
+  --transition-spring: 200ms var(--ease-out);
 
   /* Z-index scale */
   --z-dropdown: 50;
@@ -175,52 +188,56 @@
 /* ===== DARK MODE (default theme) ===== */
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #0b0a14;
-  --color-bg-subtle: #15131f;
-  --color-bg-card: #17151f;
-  --color-bg-elevated: #1f1c2b;
-  --color-bg-sidebar: #0f0e18;
-  --color-bg-sidebar-hover: #1a1826;
-  --color-bg-sidebar-active: #241f38;
-  --color-text: #f4f2fb;
-  --color-text-secondary: #b6b1cc;
-  --color-text-muted: #8a85a2;
-  --color-text-inverse: #0b0a14;
-  --color-border: #272436;
-  --color-border-hover: #3a3550;
-  --color-scrim: rgb(0 0 0 / 0.65);
+  --color-bg: #161513;
+  --color-bg-subtle: #1f1d1a;
+  --color-bg-card: #1c1a18;
+  --color-bg-elevated: #262421;
+  --color-bg-sidebar: #12110f;
+  --color-bg-sidebar-hover: #1f1d1a;
+  --color-bg-sidebar-active: #2a2824;
+  --color-text: #efe9de;
+  --color-text-secondary: #aaa398;
+  --color-text-muted: #8a847a;
+  --color-text-inverse: #161513;
+  --color-border: #2c2a26;
+  --color-border-hover: #3d3a35;
+  --color-scrim: rgb(0 0 0 / 0.6);
 
-  --color-primary: #8b5cf6;
-  --color-primary-hover: #a78bfa;
-  --color-primary-rgb: 139, 92, 246;
-  --color-primary-light: rgba(139, 92, 246, 0.16);
-  --color-primary-lighter: rgba(139, 92, 246, 0.08);
-  --color-primary-dark: #c4b5fd;
+  --color-primary: #c4f04d;
+  --color-primary-hover: #d4f57a;
+  --color-primary-rgb: 196, 240, 77;
+  --color-primary-light: rgba(196, 240, 77, 0.12);
+  --color-primary-lighter: rgba(196, 240, 77, 0.06);
+  --color-primary-dark: #d9f99d;
+  --color-on-primary: #1a2e05;
+  --color-fill-primary: #c4f04d;
+  --color-fill-primary-hover: #d4f57a;
+  --color-on-fill-primary: #1a2e05;
+  --color-moment: #262421;
   --color-accent: #a3e635;
   --color-accent-hover: #bef264;
   --color-accent-light: rgba(163, 230, 53, 0.14);
-  --color-success: #4ade80;
+  --color-success: #4cc38a;
   --color-success-light: rgba(74, 222, 128, 0.14);
   --color-success-dark: #86efac;
   --color-warning: #fbbf24;
   --color-warning-light: rgba(251, 191, 36, 0.14);
-  --color-danger: #fb7185;
+  --color-danger: #e5484d;
   --color-danger-light: rgba(251, 113, 133, 0.14);
   --color-danger-dark: #fda4af;
   --color-info: #60a5fa;
   --color-info-light: rgba(96, 165, 250, 0.14);
 
-  --gradient-brand-soft: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(236, 72, 153, 0.12));
-  --gradient-mesh:
-    radial-gradient(60% 45% at 0% 0%, rgba(139, 92, 246, 0.16), transparent 70%),
-    radial-gradient(45% 35% at 100% 0%, rgba(236, 72, 153, 0.09), transparent 70%);
+  --gradient-brand-soft: linear-gradient(var(--color-bg-subtle), var(--color-bg-subtle));
+  --gradient-mesh: none;
 
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.25);
   --shadow-md: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.35);
   --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 40px rgb(0 0 0 / 0.45);
   --shadow-xl: 0 8px 16px rgb(0 0 0 / 0.45), 0 24px 56px rgb(0 0 0 / 0.55);
-  --shadow-glow: 0 8px 28px rgb(139 92 246 / 0.35);
+  --shadow-glow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --shadow-glow-lg: inset 0 1px 0 rgb(255 255 255 / 0.1);
 }
 
 /* ===== RESET ===== */
@@ -397,11 +414,9 @@ ol {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Kept for old markup: gradient text is gone, it is plain primary text now */
 .gradient-text {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text);
 }
 
 /* Animations */
@@ -561,4 +576,97 @@ ol {
   [data-print-hide] {
     display: none !important;
   }
+}
+
+/* ── Toasts (sonner) ──────────────────────────────────────────────────────
+   A quiet raised surface from the neutral ramp with a hairline. The type's colour lives only on
+   the small icon, so a success reads as a green tick, not a green box. Follows light and dark.
+   Sonner injects its own CSS after this file, so these selectors are deliberately one step more specific. */
+html [data-sonner-toaster][data-sonner-theme] {
+  --width: 380px;
+  --border-radius: 12px;
+  --normal-bg: var(--color-bg-elevated);
+  --normal-border: color-mix(in srgb, var(--color-text) 10%, transparent);
+  --normal-text: var(--color-text);
+  font-family: var(--font-primary);
+}
+
+html[lang="bn"] [data-sonner-toaster][data-sonner-theme] {
+  font-family: var(--font-bangla);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-styled="true"] {
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 40px 12px 16px;
+  border: 1px solid var(--normal-border);
+  background: var(--normal-bg);
+  color: var(--normal-text);
+  box-shadow: var(--shadow-lg);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-title] {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-description] {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-icon] {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  color: var(--color-text-secondary);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-icon] svg {
+  width: 18px;
+  height: 18px;
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type="success"] [data-icon] { color: var(--color-success); }
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type="error"] [data-icon] { color: var(--color-danger); }
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type="warning"] [data-icon] { color: var(--color-warning); }
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast][data-type="info"] [data-icon] { color: var(--color-info); }
+
+/* Close button inside the toast, top right, quiet until hovered */
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-close-button] {
+  top: 10px;
+  right: 8px;
+  left: auto;
+  width: 24px;
+  height: 24px;
+  transform: none;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  opacity: 1;
+  transition: background-color 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-close-button]:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: var(--color-text);
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-close-button]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+html [data-sonner-toaster][data-sonner-theme] [data-sonner-toast] [data-button] {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--color-text);
+  color: var(--color-bg-elevated);
+  font-size: var(--text-xs);
+  font-weight: 500;
 }

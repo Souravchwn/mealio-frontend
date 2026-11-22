@@ -46,7 +46,7 @@
     background: rgba(var(--color-primary-rgb), 0.08);
     color: var(--color-primary);
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     letter-spacing: var(--tracking-tight);
     text-align: center;
@@ -101,7 +101,7 @@
 .optionSelected,
 .optionSelected:hover {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.35);
 }
@@ -113,7 +113,7 @@
     border: none;
     border-radius: var(--radius-md);
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
     font: inherit;
     font-weight: 600;
     cursor: pointer;

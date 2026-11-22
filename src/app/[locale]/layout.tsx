@@ -79,18 +79,14 @@ export default async function LocaleLayout({
                         <ServiceWorkerRegister />
                         <NextIntlClientProvider messages={messages}>
                             {children}
+                            {/* Styled in globals.css (Toasts): neutral surface, colour only on the icon.
+                                Top centre, just below the top bar, so it never covers the menu or avatar. */}
                             <Toaster
-                                position="top-right"
-                                richColors
+                                position="top-center"
                                 closeButton
-                                toastOptions={{
-                                    style: {
-                                        fontFamily:
-                                            locale === "bn"
-                                                ? "var(--font-bangla)"
-                                                : "var(--font-primary)",
-                                    },
-                                }}
+                                gap={8}
+                                offset={{ top: "72px" }}
+                                mobileOffset={{ top: "calc(env(safe-area-inset-top) + 68px)", left: "16px", right: "16px" }}
                             />
                         </NextIntlClientProvider>
                     </AuthProvider>

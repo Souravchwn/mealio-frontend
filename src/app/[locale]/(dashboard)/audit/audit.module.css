@@ -15,7 +15,7 @@
 
 .title {
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .subtitle {
@@ -79,9 +79,9 @@
 
 .filterBtnActive {
     border-color: transparent;
-    background: var(--color-primary);
-    color: #fff;
-    box-shadow: var(--shadow-glow);
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    box-shadow: inset 0 0 0 1px var(--color-border), 0 1px 2px rgb(0 0 0 / 0.08);
 }
 
 /* ── List ────────────────────────────────────────────────────────────────── */
@@ -170,7 +170,7 @@
     background: var(--tone-bg);
     color: var(--tone-fg);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .auditMeta {

@@ -27,12 +27,18 @@
     line-height: 1.1;
 }
 
-.ahead {
-    background: linear-gradient(135deg, #16a34a, #22c55e);
+.ahead,
+.behind {
+    background: var(--color-moment);
+    color: var(--color-on-moment);
 }
 
-.behind {
-    background: var(--gradient-brand);
+.ahead b {
+    color: var(--color-moment-ahead);
+}
+
+.behind b {
+    color: var(--color-moment-owe);
 }
 
 .stat {

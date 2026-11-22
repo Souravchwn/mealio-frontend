@@ -4,18 +4,17 @@
     justify-content: center;
     gap: var(--space-2);
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    border-radius: var(--radius-full);
+    font-weight: 500;
+    letter-spacing: 0;
+    border-radius: var(--radius-md);
     border: 1px solid transparent;
     white-space: nowrap;
     user-select: none;
     position: relative;
     cursor: pointer;
     transition:
-        transform 160ms var(--ease-spring),
-        background var(--transition-fast),
-        box-shadow var(--transition-fast),
+        transform 120ms var(--ease-out),
+        background-color var(--transition-fast),
         border-color var(--transition-fast),
         color var(--transition-fast);
 }
@@ -32,7 +31,7 @@ html[lang="bn"] .root {
 
 /* Squish on press */
 .root:active:not(:disabled) {
-    transform: scale(0.96);
+    transform: scale(0.98);
 }
 
 /* Sizes — every size is at least a 44px touch target on mobile */
@@ -66,14 +65,13 @@ html[lang="bn"] .root {
 
 /* Variants */
 .primary {
-    background: var(--color-primary);
-    color: var(--color-on-primary, #fff);
-    box-shadow: var(--shadow-glow);
+    background: var(--color-fill-primary);
+    color: var(--color-on-fill-primary);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
 
 .primary:hover:not(:disabled) {
-    background: var(--color-primary-hover);
-    box-shadow: var(--shadow-glow-lg);
+    background: var(--color-fill-primary-hover);
 }
 
 .secondary {
@@ -83,8 +81,8 @@ html[lang="bn"] .root {
 }
 
 .secondary:hover:not(:disabled) {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
+    border-color: var(--color-border-hover);
+    background: var(--color-bg-subtle);
 }
 
 .ghost {
@@ -104,19 +102,17 @@ html[lang="bn"] .root {
 }
 
 .danger:hover:not(:disabled) {
-    background: var(--color-danger);
-    color: #fff;
+    background: color-mix(in srgb, var(--color-danger) 22%, transparent);
 }
 
 /* Lime highlight — for the one most-wanted action on a screen */
 .accent {
     background: var(--color-lime);
     color: var(--color-on-lime);
-    box-shadow: var(--shadow-lime);
 }
 
 .accent:hover:not(:disabled) {
-    filter: brightness(1.05);
+    background: #d4f57a;
 }
 
 /* States */

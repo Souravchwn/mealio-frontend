@@ -14,12 +14,11 @@ import {
     Sun,
     CloudSun,
     Moon,
-    Sparkles,
     Wallet,
     Clock,
     Megaphone,
 } from "lucide-react";
-import { cn, formatCurrency, getTimeOfDay, getCategoryColor } from "@/lib/utils";
+import { cn, formatCurrency, getCategoryColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePeriod, formatPeriodDay } from "@/contexts/PeriodContext";
@@ -54,7 +53,6 @@ export default function OverviewPage() {
     const t = useTranslations("overview");
     const tm = useTranslations("meals");
     const locale = useLocale();
-    const timeOfDay = getTimeOfDay();
     const { user, token } = useAuth();
     const { period } = usePeriod();
     const tp = useTranslations("period");
@@ -110,8 +108,6 @@ export default function OverviewPage() {
         });
     }, [user, token]);
 
-    const firstName = user?.name?.split(" ")[0] ?? "";
-    const greeting = t("greeting", { timeOfDay: t(timeOfDay), name: firstName });
     const todayLabel = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }).format(new Date());
     const fmtDate = (d: string) =>
         new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
@@ -130,15 +126,18 @@ export default function OverviewPage() {
 
     return (
         <div className={styles.page}>
-            {/* Greeting */}
+            {/* The mess, today and the billing period */}
             <header className={styles.greetingRow}>
-                <p className={styles.greetingMeta}>{todayLabel}</p>
-                {period && (
-                    <p className={styles.periodLine}>
-                        {tp("label", { range: `${formatPeriodDay(period.startDate, locale)} – ${formatPeriodDay(period.endDate, locale)}` })}
-                    </p>
-                )}
-                <h2 className={styles.greeting}>{greeting}</h2>
+                <h2 className={styles.greeting}>{user?.messName}</h2>
+                <p className={styles.greetingMeta}>
+                    {todayLabel}
+                    {period && (
+                        <>
+                            {" · "}
+                            {tp("label", { range: `${formatPeriodDay(period.startDate, locale)} – ${formatPeriodDay(period.endDate, locale)}` })}
+                        </>
+                    )}
+                </p>
             </header>
 
             {/* Broadcasts from the admin or manager */}
@@ -184,7 +183,6 @@ export default function OverviewPage() {
                             {t("myMealsCount", { n: stats.myMeals })}
                         </span>
                     </div>
-                    <Sparkles className={styles.heroSparkle} size={88} aria-hidden />
                 </Link>
 
                 {/* Today's meals */}

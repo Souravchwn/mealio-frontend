@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
     Plus, Search, Trash2, ChevronDown, ChevronUp,
     ShoppingBag, TrendingDown, X, Check,
-    Calculator, Zap, Users, Ban, Sparkles, Camera, ListChecks, Paperclip, Wallet,
+    Calculator, Zap, Users, Ban, Camera, ListChecks, Paperclip, Wallet,
 } from "lucide-react";
 import { cn, formatCurrency, getCategoryColor, localISODate } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker/DatePicker";
@@ -1212,7 +1212,7 @@ export default function ExpensesPage() {
                     aria-label={t("ui.openCalculator")}
                     aria-expanded={calcOpen}
                 >
-                    <span className={styles.calcFabIcon}>{calcOpen ? <X size={18} /> : <Sparkles size={18} />}</span>
+                    <span className={styles.calcFabIcon}>{calcOpen ? <X size={18} /> : <Calculator size={18} />}</span>
                     <span className={styles.calcFabText}>{t("ui.calculate")}</span>
                 </button>
             </div>

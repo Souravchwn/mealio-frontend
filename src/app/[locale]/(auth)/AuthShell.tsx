@@ -3,13 +3,13 @@
 import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Eye, EyeOff, Utensils, Check, TrendingUp, Users } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Utensils } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/composed/ThemeToggle/ThemeToggle";
 import { LocaleSwitcher } from "@/components/composed/LocaleSwitcher/LocaleSwitcher";
 import styles from "./auth.module.css";
 
-/** Split auth layout: brand panel with floating "sticker" previews + form side. */
+/** Split auth layout: ink brand panel with one page of the khata + form side. */
 export function AuthShell({ title, subtitle, children, footer }: {
     title: string;
     subtitle: string;
@@ -43,29 +43,15 @@ export function AuthShell({ title, subtitle, children, footer }: {
                     <p className={styles.brandTagline}>{ta("tagline")}</p>
                 </div>
 
-                {/* Decorative previews of the app */}
-                <div className={styles.stickers} aria-hidden>
-                    <div className={`${styles.sticker} ${styles.stickerA}`}>
-                        <span className={styles.stickerIcon}><Check size={16} strokeWidth={3} /></span>
-                        <span>
-                            <b>{ta("stickerLunch")}</b>
-                            <small>{ta("stickerLunchSub")}</small>
-                        </span>
+                {/* One page of the month's khata: what Mealtill works out for the mess */}
+                <div className={styles.ledger} aria-hidden>
+                    <p className={styles.ledgerTitle}>{ta("ledgerTitle")}</p>
+                    <div className={styles.ledgerRows}>
+                        <p className={styles.ledgerRow}><span>{ta("ledgerBazaar")}</span><span>৳ 18,420</span></p>
+                        <p className={styles.ledgerRow}><span>{ta("ledgerMeals")}</span><span>432</span></p>
                     </div>
-                    <div className={`${styles.sticker} ${styles.stickerB}`}>
-                        <span className={styles.stickerIcon}><TrendingUp size={16} /></span>
-                        <span>
-                            <b>৳ 42.50</b>
-                            <small>{ta("stickerRate")}</small>
-                        </span>
-                    </div>
-                    <div className={`${styles.sticker} ${styles.stickerC}`}>
-                        <span className={styles.stickerIcon}><Users size={16} /></span>
-                        <span>
-                            <b>{ta("stickerCount")}</b>
-                            <small>{ta("stickerCountSub")}</small>
-                        </span>
-                    </div>
+                    <p className={styles.ledgerRate}><span>{ta("ledgerRate")}</span><span>৳ 42.64</span></p>
+                    <p className={styles.ledgerNote}>{ta("ledgerNote")}</p>
                 </div>
             </aside>
 

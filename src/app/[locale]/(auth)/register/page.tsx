@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowRight, Hourglass, Sparkles, Ticket, Utensils } from "lucide-react";
+import { ArrowRight, Hourglass, Plus, Ticket, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -154,7 +154,7 @@ function RegisterForm() {
                     className={styles.modeTab}
                     onClick={() => setMode("create")}
                 >
-                    <Sparkles size={16} /> {t("modeCreate")}
+                    <Plus size={16} /> {t("modeCreate")}
                 </button>
                 <button
                     type="button"
