@@ -848,12 +848,12 @@ export default function ExpensesPage() {
                                             {cashCheck.lastCheck.createdByName
                                                 ? tcash("lastCount", {
                                                       amount: formatCurrency(cashCheck.lastCheck.countedAmount),
-                                                      date: fmtDate(cashCheck.lastCheck.createdAt.slice(0, 10)),
+                                                      date: fmtDate(localISODate(new Date(cashCheck.lastCheck.createdAt))),
                                                       name: cashCheck.lastCheck.createdByName,
                                                   })
                                                 : tcash("lastCountNoName", {
                                                       amount: formatCurrency(cashCheck.lastCheck.countedAmount),
-                                                      date: fmtDate(cashCheck.lastCheck.createdAt.slice(0, 10)),
+                                                      date: fmtDate(localISODate(new Date(cashCheck.lastCheck.createdAt))),
                                                   })}
                                             {" · "}
                                             <span className={diffTone(cashCheck.lastCheck.difference)}>
@@ -908,7 +908,7 @@ export default function ExpensesPage() {
                                                 <div key={h.id} className={styles.summaryRow}>
                                                     <div className={styles.summaryInfo}>
                                                         <span className={styles.summaryName}>
-                                                            {fmtDate(h.createdAt.slice(0, 10))}
+                                                            {fmtDate(localISODate(new Date(h.createdAt)))}
                                                             {h.createdByName && ` · ${h.createdByName}`}
                                                         </span>
                                                         <span className={styles.summaryCount}>

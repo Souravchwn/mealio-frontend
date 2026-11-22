@@ -17,7 +17,7 @@ import { prisma } from './prisma'
 import { getRedis, redisDel, redisGet, redisSet } from './redis'
 import { getBulkMealDefaults, getDayType, type MealDefaults, type DayType } from './meal-preferences'
 import { getCurrentPeriod } from './period'
-import { requireMessSettings, todayIn } from './mess-settings'
+import { requireMessSettings, todayIn, dateIn } from './mess-settings'
 
 const markerKey = (messId: string, date: string) => `mealio:mess:${messId}:logs-ensured:${date}`
 const MARKER_TTL_SECONDS = 26 * 60 * 60
@@ -121,7 +121,7 @@ export async function ensureDailyLogs(messId: string): Promise<void> {
             const day = new Date(t)
             const date = isoDate(day)
             for (const m of members) {
-              if (isoDate(m.joinedAt) > date) continue // not a member yet that day
+              if (dateIn(m.joinedAt, settings.timezone) > date) continue // not a member yet that day
               if (m.isGuest) {
                 if (m.guestFrom && isoDate(m.guestFrom) > date) continue // stay not started
                 if (m.guestUntil && isoDate(m.guestUntil) < date) continue // stay over
@@ -188,7 +188,7 @@ export async function recordInactiveGap(messId: string, memberId: string): Promi
   if (!period || !member) return
 
   const todayObj = new Date(`${today}T00:00:00.000Z`)
-  const joined = new Date(`${isoDate(member.joinedAt)}T00:00:00.000Z`)
+  const joined = new Date(`${dateIn(member.joinedAt, settings.timezone)}T00:00:00.000Z`)
   const from = period.startDate > joined ? period.startDate : joined
   const to = new Date(Math.min(period.endDate.getTime(), todayObj.getTime() - DAY_MS)) // up to yesterday
 

@@ -12,7 +12,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CURRENCY_SYMBOL, DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, type GuestMealPolicy } from './constants'
 import { resolvePeriod, calculateNextPeriod, type Period, type PeriodRange } from './period'
-import { requireMessSettings, todayIn } from './mess-settings'
+import { requireMessSettings, todayIn, dateIn } from './mess-settings'
 import { ensureDailyLogs } from './daily-logs'
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ export async function calculatePeriodSummary(
 
   // Ignore logs dated before the member joined (phantom rows) — for the member
   // AND the mess total, so charges still add up to the total expense.
-  const joinedDate = new Map(members.map((m) => [m.id, m.joinedAt.toISOString().slice(0, 10)]))
+  const joinedDate = new Map(members.map((m) => [m.id, dateIn(m.joinedAt, settings.timezone)]))
   const validLogs = logs.filter((l) => {
     const joined = joinedDate.get(l.memberId)
     return !joined || l.logDate.toISOString().slice(0, 10) >= joined

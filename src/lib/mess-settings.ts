@@ -157,6 +157,11 @@ export function todayIn(timezone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date())
 }
 
+/** The calendar date (YYYY-MM-DD) of a moment in the given timezone (not UTC). */
+export function dateIn(moment: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(moment)
+}
+
 /** Current time (HH:MM, 24h) in the given timezone. */
 export function nowHHMMIn(timezone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
