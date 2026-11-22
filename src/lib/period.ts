@@ -6,7 +6,9 @@
  * The admin/manager manually closes periods — no automatic month change.
  */
 
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { DEFAULT_TIMEZONE } from '@/lib/constants'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,8 +100,9 @@ export async function resolvePeriod(
     }
   }
 
-  // Fallback: no MessMonth exists yet — create one using calendar-month boundaries
-  const ym = yearMonth || new Date().toISOString().slice(0, 7)
+  // Fallback: no MessMonth exists yet — create one using calendar-month boundaries.
+  // The month is the mess's local month (Dhaka), not UTC: on the 1st before 6 AM UTC is still last month.
+  const ym = yearMonth || new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIMEZONE }).format(new Date()).slice(0, 7)
   const mess = await prisma.mess.findUnique({
     where: { id: messId },
     select: { monthStartDay: true },
@@ -107,26 +110,32 @@ export async function resolvePeriod(
   const monthStartDay = mess?.monthStartDay ?? 1
   const { startDate, endDate } = calculatePeriodDates(ym, monthStartDay)
 
-  const created = await prisma.messMonth.upsert({
-    where: { messId_yearMonth: { messId, yearMonth: ym } },
-    create: {
-      messId,
-      yearMonth: ym,
-      startDate,
-      endDate,
-      isClosed: false,
-    },
-    update: {},
-    select: {
-      id: true,
-      messId: true,
-      yearMonth: true,
-      startDate: true,
-      endDate: true,
-      isClosed: true,
-      managerId: true,
-    },
-  })
+  const select = {
+    id: true,
+    messId: true,
+    yearMonth: true,
+    startDate: true,
+    endDate: true,
+    isClosed: true,
+    managerId: true,
+  } as const
+  let created
+  try {
+    created = await prisma.messMonth.upsert({
+      where: { messId_yearMonth: { messId, yearMonth: ym } },
+      create: { messId, yearMonth: ym, startDate, endDate, isClosed: false },
+      update: {},
+      select,
+    })
+  } catch (err) {
+    // Two requests for a brand-new mess can race to create the same first period
+    // (the dashboard loads several things at once). The loser just reads the winner's row.
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err
+    created = await prisma.messMonth.findUniqueOrThrow({
+      where: { messId_yearMonth: { messId, yearMonth: ym } },
+      select,
+    })
+  }
 
   return { ...created, start: created.startDate, end: created.endDate }
 }

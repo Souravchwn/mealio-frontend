@@ -1,0 +1,93 @@
+# Every push and pull request: typecheck, lint and a production build, then the
+# integration tests (tenant isolation and closed months) against a throwaway Postgres.
+# Nothing here touches the real database or needs any secret.
+name: CI
+
+on:
+  push:
+    branches: [main, features/mvp-mess]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Throwaway values for CI only
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mealtill
+  DIRECT_URL: postgresql://postgres:postgres@localhost:5432/mealtill
+  JWT_SECRET: ci-only-jwt-secret-0123456789abcdef0123456789abcdef
+  PLATFORM_JWT_SECRET: ci-only-platform-secret-0123456789abcdef01234567
+  TELEGRAM_WEBHOOK_SECRET: ci-only-webhook-secret
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  NEXT_PUBLIC_DEFAULT_LOCALE: en
+  NEXT_PUBLIC_USE_MOCK_DATA: "false"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  check:
+    name: Typecheck, lint, build and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mealtill
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Database schema
+        run: |
+          # The schema's ids use uuid_generate_v4(), which Supabase enables by default
+          psql "$DIRECT_URL" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+          npx prisma db push
+
+      - name: Build
+        run: npx next build
+
+      - name: Integration tests
+        run: |
+          # The test scripts read .env.local
+          env | grep -E '^(DATABASE_URL|DIRECT_URL|JWT_SECRET|PLATFORM_JWT_SECRET|TELEGRAM_WEBHOOK_SECRET|NEXT_PUBLIC_[A-Z_]+)=' > .env.local
+          npx next start -p 3000 > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000/en && break
+            sleep 2
+          done
+          npm run test:isolation
+          npm run test:closed
+
+      - name: Server log on failure
+        if: failure()
+        run: tail -n 200 server.log || true

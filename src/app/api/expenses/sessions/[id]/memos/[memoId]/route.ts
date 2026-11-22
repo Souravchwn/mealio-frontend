@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, extractToken } from '@/lib/auth-utils'
+import { readMemoBytes } from '@/lib/memo-storage'
 
 type Ctx = { params: Promise<{ id: string; memoId: string }> }
 
@@ -21,10 +22,12 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     const memo = await prisma.bazaarMemo.findFirst({
       // The mess id comes from the token, never from the request
       where: { id: memoId, sessionId: id, messId: payload.messId },
-      select: { data: true, mimeType: true },
+      select: { data: true, blobUrl: true, mimeType: true },
     })
     if (!memo) return NextResponse.json({ detail: 'Photo not found' }, { status: 404 })
-    return new NextResponse(new Uint8Array(memo.data), {
+    const bytes = await readMemoBytes(memo)
+    if (!bytes) return NextResponse.json({ detail: 'Photo not found' }, { status: 404 })
+    return new NextResponse(new Uint8Array(bytes), {
       headers: {
         'Content-Type': memo.mimeType,
         'Content-Disposition': 'inline',

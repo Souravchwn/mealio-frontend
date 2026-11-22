@@ -137,6 +137,14 @@ try {
   r = await api(`/api/meals/today?member_id=${B.member.id}`, { token: tokenA })
   check('read B member meals', denied(r.status), `status ${r.status}`)
 
+  // Monthly statement: an admin sees members of their own mess only, a plain member only themselves
+  r = await api(`/api/members/me/statement?member_id=${B.member.id}`, { token: tokenA })
+  check('read B member statement', denied(r.status) && !JSON.stringify(r.json ?? {}).includes(B.member.id), `status ${r.status}`)
+  r = await api(`/api/members/me/statement?member_id=${A.member.id}`, { token: tokenA })
+  check('admin reads own member statement', r.status === 200 && r.json?.member_id === A.member.id, `status ${r.status}`)
+  r = await api(`/api/members/me/statement?member_id=${A.admin.id}`, { token: await login(A.member.email) })
+  check('plain member cannot read another statement', denied(r.status), `status ${r.status}`)
+
   r = await api(`/api/support/tickets/${ticketBId}`, { token: tokenA })
   check('read B support ticket', denied(r.status), `status ${r.status}`)
 

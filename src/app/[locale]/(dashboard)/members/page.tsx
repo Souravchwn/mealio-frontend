@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Share2, Send, ChevronDown, UserX, UserCheck, Phone, Search, KeyRound, Check, X, Copy, UserPlus, Link2, Mail, UtensilsCrossed } from "lucide-react";
+import Link from "next/link";
+import { Share2, Send, ChevronDown, UserX, UserCheck, Phone, Search, KeyRound, Check, X, Copy, UserPlus, Link2, Mail, UtensilsCrossed, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button/Button";
 import { cn, formatCurrency, getInitials, localISODate } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -357,6 +358,9 @@ export default function MembersPage() {
                                 <Phone size={16} /> {member.phone}
                             </a>
                         )}
+                        <Link className={styles.callLink} href={`/${locale}/my-summary/statement?member=${member.id}`}>
+                            <FileText size={16} /> {t("statement")}
+                        </Link>
                         <label className={styles.adminLabel} htmlFor={`role-${member.id}`}>{t("role")}</label>
                         <div className={styles.roleChips} role="radiogroup" id={`role-${member.id}`}>
                             {ROLES.map((r) => (

@@ -1,7 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f5fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0a14" },
+  ],
+};
+
 export const metadata: Metadata = {
+  applicationName: "Mealtill",
+  appleWebApp: { capable: true, title: "Mealtill", statusBarStyle: "black-translucent" },
   title: "Mealtill | Smart mess management",
   description:
     "Automate meal tracking, expense splitting, and monthly settlements for shared living. Built for the mess culture of Bangladesh & India.",

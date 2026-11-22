@@ -237,6 +237,16 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
+  /* Anything scrolled into view (focus, scrollIntoView) stops clear of the sticky top bar
+     and, on phones, of the fixed bottom tab bar */
+  scroll-padding-top: calc(var(--topbar-height) + var(--safe-top) + var(--space-2));
+  scroll-padding-bottom: calc(var(--mobile-nav-height) + var(--safe-bottom) + var(--space-4));
+}
+
+@media (min-width: 1024px) {
+  html {
+    scroll-padding-bottom: var(--space-4);
+  }
 }
 
 body {
@@ -520,3 +530,34 @@ ol {
   lg:      ≥ 1024px  laptops (sidebar appears)
   xl:      ≥ 1280px  wide
 */
+
+/* ── Printing ─────────────────────────────────────────────────────────────
+   A page that marks part of itself [data-print-root] (the member statement) prints only that
+   part: no sidebar, top bar or tab bar. Everything else prints as it is. */
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+
+  html:has([data-print-root]) body {
+    background: #fff !important;
+  }
+
+  body:has([data-print-root]) * {
+    visibility: hidden;
+  }
+
+  body:has([data-print-root]) [data-print-root],
+  body:has([data-print-root]) [data-print-root] * {
+    visibility: visible;
+  }
+
+  body:has([data-print-root]) [data-print-root] {
+    position: absolute;
+    inset: 0 0 auto 0;
+  }
+
+  [data-print-hide] {
+    display: none !important;
+  }
+}

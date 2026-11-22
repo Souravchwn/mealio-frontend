@@ -26,6 +26,7 @@ import type {
     PaymentMethod,
     CashCheckEntry,
     CashCheckSummary,
+    MemberStatement,
     ContributionRequest,
     GuestMealPolicy,
     MessSettingsResponse,
@@ -616,6 +617,16 @@ export const api = {
             }>("/api/members/me", {
                 method: "GET",
                 params: yearMonth ? { yearMonth } : {},
+                token,
+            }),
+        /** A member's printable statement. Admin/Manager may pass another member's id. */
+        statement: (token: string, opts: { yearMonth?: string; memberId?: string } = {}) =>
+            fetcher<MemberStatement>("/api/members/me/statement", {
+                method: "GET",
+                params: {
+                    ...(opts.yearMonth ? { yearMonth: opts.yearMonth } : {}),
+                    ...(opts.memberId ? { memberId: opts.memberId } : {}),
+                },
                 token,
             }),
     },

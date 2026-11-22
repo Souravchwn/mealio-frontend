@@ -485,3 +485,29 @@ export interface CloseMonthRequest {
     nextManagerId?: string;
 }
 
+
+/** GET /api/members/me/statement — one member's bill for a period, with the days and deposits behind it */
+export interface MemberStatement {
+    messName: string;
+    memberId: string;
+    memberName: string;
+    yearMonth: string;
+    startDate: string;
+    endDate: string;
+    isClosed: boolean;
+    generatedAt: string;
+    mealRate: number;
+    totalExpense: number;
+    guestMealPolicy: GuestMealPolicy;
+    ownMealCount: number;
+    guestMealCount: number;
+    myMealCount: number;
+    deposited: number;
+    bazaarCredit: number;
+    carriedForward: number;
+    contributed: number;
+    mealCost: number;
+    balance: number;
+    days: Array<{ date: string; breakfast: number; lunch: number; dinner: number; guests: number }>;
+    deposits: Array<{ date: string; amount: number; method: PaymentMethod | null; reference: string | null }>;
+}

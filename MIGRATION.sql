@@ -519,3 +519,10 @@ CREATE TABLE IF NOT EXISTS cash_checks (
 );
 CREATE INDEX IF NOT EXISTS idx_cash_checks_mess ON cash_checks(mess_id, created_at);
 ALTER TABLE cash_checks ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 30. Memo photos in Vercel Blob
+-- ============================================================
+-- With BLOB_READ_WRITE_TOKEN set, new photos go to Blob and only the URL is kept here.
+ALTER TABLE bazaar_memos ADD COLUMN IF NOT EXISTS blob_url TEXT;
+ALTER TABLE bazaar_memos ALTER COLUMN data DROP NOT NULL;

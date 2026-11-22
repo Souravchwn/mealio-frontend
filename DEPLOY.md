@@ -6,7 +6,8 @@ A checklist from empty to live. Takes about 30 minutes the first time.
 
 | For | Service | Needed? |
 |-----|---------|---------|
-| Database | Neon Postgres (Vercel integration) | Yes |
+| Database | Supabase Postgres | Yes |
+| Bazaar memo photos | Vercel Blob (Vercel integration) | Strongly recommended |
 | Hosting | Vercel | Yes |
 | Shared cache and rate limits | Upstash Redis (Vercel integration) | Strongly recommended |
 | Telegram bot | @BotFather in Telegram | If you want the bot |
@@ -22,16 +23,27 @@ This writes `.env.deploy.local` (git-ignored) with fresh `JWT_SECRET`, `PLATFORM
 
 On Vercel paste the values into Project, Settings, Environment Variables (Production). The file is only a convenient list.
 
-## 3. Database (Neon) and cache (Upstash)
+## 3. Database (Supabase), photos (Vercel Blob) and cache (Upstash)
 
-1. In Vercel, Integrations, add **Neon** and connect it to this project. It sets `DATABASE_URL` (pooled, used by the app) and `DATABASE_URL_UNPOOLED` (used by the Prisma CLI). Nothing to copy by hand.
-2. Add **Upstash** (Redis) the same way. It sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`; the app reads those as well as the `UPSTASH_REDIS_REST_*` names.
-3. Create the tables once from the schema, on your machine, with the unpooled Neon string in `DIRECT_URL`:
+1. Create a Supabase project (region: Singapore is closest to Bangladesh). In Project Settings, Database, Connection string, copy:
+   - **Transaction pooler** (port 6543) into `DATABASE_URL`. The app uses this.
+   - **Session pooler** (port 5432, host `aws-0-…pooler.supabase.com`) into `DIRECT_URL`. The Prisma CLI uses this.
+     Do not use the "Direct connection" host `db.<ref>.supabase.co`: it is IPv6 only and fails on most networks.
+   - Replace `[YOUR-PASSWORD]` (brackets included) with the database password. URL-encode special characters (`@` is `%40`).
+2. Create the tables from the schema, on your machine, with those two values in `.env.local`:
    ```bash
    npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script   # preview
    npx prisma db push                                                                          # apply
    ```
-   Do not run `MIGRATION.sql` on a new database: it upgrades an old Supabase database and uses Supabase-only roles.
+   Use the same command after pulling new code that changes `prisma/schema.prisma`; it only adds what is missing.
+   Do not run `MIGRATION.sql` on a new database: it only upgrades the very old Supabase schema.
+3. In Vercel, Storage, create a **Blob** store and connect it to this project. It sets `BLOB_READ_WRITE_TOKEN`.
+   Bazaar memo photos then go to Blob instead of the database (without it they are stored in Postgres, which fills
+   the free 500 MB in months). Move existing photos once with `npm run memos:to-blob`.
+4. Add **Upstash** (Redis) from Vercel Integrations. It sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`; the app reads
+   those as well as the `UPSTASH_REDIS_REST_*` names.
+5. Backups: the Supabase free plan keeps no restorable backups. Before real money is in it, either upgrade to Pro
+   (daily backups) or export regularly (Database, Backups, or `pg_dump` with `DIRECT_URL`).
 
 ## 3b. Email
 
@@ -61,6 +73,6 @@ Then sign in at `https://your-domain/en/console`.
 
 ## 7. Before you invite people
 
-- Run the checks against a staging copy: `npm run test:isolation`, `npm run test:closed`, `npm run test:telegram`.
+- Run the checks against a staging copy, never the real database: `npm run test:isolation`, `npm run test:closed`, `npm run test:telegram` (needs `npm run dev` running; the Telegram one needs a test bot token).
 - Open `/en/console` and make sure Security shows no surprises.
 - Read `context/17-periods-and-archive.md` so you know how closing a month works. Closing is the admin's job and cannot be undone.

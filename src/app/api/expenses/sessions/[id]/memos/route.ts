@@ -10,6 +10,7 @@ import { verifyToken, extractToken } from '@/lib/auth-utils'
 import { createAudit } from '@/lib/audit'
 import { isDateInClosedPeriod } from '@/lib/period'
 import { MAX_MEMOS_PER_SESSION, MEMO_SELECT, parseMemoUploads, serializeMemo } from '@/lib/memos'
+import { prepareMemoRows } from '@/lib/memo-storage'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -47,15 +48,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       return NextResponse.json({ detail: `A bazaar trip can have up to ${MAX_MEMOS_PER_SESSION} memo photos.` }, { status: 400 })
     }
 
+    const rows = await prepareMemoRows(payload.messId, id, parsed.memos)
     await prisma.bazaarMemo.createMany({
-      data: parsed.memos.map((m) => ({
-        sessionId: id,
-        messId: payload.messId,
-        mimeType: m.mimeType,
-        sizeBytes: m.bytes.length,
-        data: m.bytes,
-        uploadedBy: payload.sub,
-      })),
+      data: rows.map((m) => ({ ...m, sessionId: id, messId: payload.messId, uploadedBy: payload.sub })),
     })
     await createAudit({
       messId: payload.messId,

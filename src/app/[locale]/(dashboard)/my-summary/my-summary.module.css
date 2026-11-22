@@ -320,3 +320,36 @@
     width: 55%;
     height: 48px;
 }
+
+/* ── Header with the statement link ──────────────────────────────────────── */
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.statementLink {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-card);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.statementLink:hover {
+    border-color: var(--color-primary);
+}
+
+.statementLink:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}

@@ -44,6 +44,7 @@ Copy `.env.local.example` to `.env.local` and fill in the values. Key variables:
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | `en` or `bn` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | `false` in production |
 | `PLATFORM_JWT_SECRET` | Optional separate secret for /console sessions (falls back to `JWT_SECRET`) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob — memo photos (`src/lib/memo-storage.ts`). Without it photos stay in Postgres |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Email via Resend (wins when set). Reset codes, invites, verification |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` | Email via SMTP (Gmail app password) while Resend is not set. Without any email, resets use admin or console codes. Mail is never sent to reserved test domains (`.invalid`, `.test`, ...) |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Accepted instead of `UPSTASH_REDIS_REST_*` (Vercel's Upstash integration) |
@@ -109,8 +110,8 @@ src/
 │   │       └── settings/page.tsx       # All users (prefs) + Admin (mess config)
 │   └── api/                            # API routes (see Module details below)
 ├── components/
-│   ├── ui/                             # Primitives: Button, Card
-│   └── composed/                       # Complex: ThemeToggle, LocaleSwitcher, MessSwitcher
+│   ├── ui/                             # Primitives: Button, Card, Select, DatePicker, TimePicker, Popover
+│   └── composed/                       # Complex: ThemeToggle, LocaleSwitcher, Memo, PeriodNotice
 ├── contexts/
 │   └── AuthContext.tsx                 # user, token, login(), logout(), isAuthenticated
 ├── lib/
@@ -190,11 +191,11 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 |-------|-------|
 | Layout | `src/app/[locale]/(dashboard)/layout.tsx` |
 | Styles | `src/app/[locale]/(dashboard)/dashboard.module.css` |
-| Components | `MessSwitcher`, `ThemeToggle`, `LocaleSwitcher` in `src/components/composed/` |
+| Components | `ThemeToggle`, `LocaleSwitcher`, `PeriodNotice` in `src/components/composed/` |
 
 **What it does:**
 - **Sidebar** (desktop): Logo, mess name, nav items filtered by role, user card with logout
-- **Topbar:** Hamburger menu, page title, MessSwitcher, ThemeToggle, notification bell
+- **Topbar:** Hamburger menu, page title, ThemeToggle
 - **Bottom nav** (mobile): First 5 nav items from filtered main list
 - **Auth guard:** Redirects to `/{locale}/login` if `!isAuthenticated`
 
@@ -204,10 +205,9 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 |------|-------|-------|---------|--------|
 | Overview | `/overview` | ✅ | ✅ | ✅ |
 | Meals | `/meals` | ✅ | ✅ | ✅ |
-| Expenses | `/expenses` | ✅ | ✅ | ✅ |
+| Expenses (bazaar, deposits, cash check) | `/expenses` | ✅ | ✅ | ✅ |
 | Headcount | `/headcount` | ✅ | ✅ | ✅ |
 | My Summary | `/my-summary` | ✅ | ✅ | ✅ |
-| Deposits | `/deposits` | ✅ | ✅ | ❌ |
 | Matrix | `/matrix` | ✅ | ❌ | ❌ |
 | Members | `/members` | ✅ | ❌ | ❌ |
 | Audit | `/audit` | ✅ | ❌ | ❌ |
@@ -313,7 +313,7 @@ Each module below lists: **what it does**, **which files to touch**, **which API
 - `totalMeals` derived as `totalExpense / mealRate` (no extra API call)
 - i18n keys: `calculator.*`
 
-**Memo photos:** a trip can be `ITEMIZED` or `MEMO_TOTAL` (photo of the paper memo + one total); photos are stored in `BazaarMemo`, see `context/04-expenses.md`.
+**Memo photos:** a trip can be `ITEMIZED` or `MEMO_TOTAL` (photo of the paper memo + one total); photos are stored in Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set (else in `BazaarMemo.data`), always served through the authenticated memo route; see `src/lib/memo-storage.ts` and `context/04-expenses.md`. Move old photos with `npm run memos:to-blob -- --yes`.
 
 **Dropdowns:** never use a native `<select>`. Use `src/components/ui/Select/Select.tsx`.
 

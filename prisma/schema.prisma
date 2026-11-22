@@ -254,7 +254,10 @@ model BazaarMemo {
   messId     String   @map("mess_id") @db.Uuid
   mimeType   String   @map("mime_type")
   sizeBytes  Int      @map("size_bytes")
-  data       Bytes
+  /// The photo itself when Blob storage is not set up (local development). Null when in Blob.
+  data       Bytes?
+  /// Vercel Blob URL (secret, never sent to the browser). Null when the bytes are in `data`.
+  blobUrl    String?  @map("blob_url")
   uploadedBy String?  @map("uploaded_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

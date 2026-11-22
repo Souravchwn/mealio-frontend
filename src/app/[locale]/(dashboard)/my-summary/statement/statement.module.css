@@ -1,0 +1,295 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+/* ── Toolbar (not printed) ───────────────────────────────────────────────── */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+}
+
+.back:hover {
+    color: var(--color-text);
+}
+
+.actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.primaryBtn,
+.secondaryBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.primaryBtn {
+    border: none;
+    background: var(--color-lime);
+    color: var(--color-on-lime);
+}
+
+.secondaryBtn {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    color: var(--color-text);
+}
+
+.primaryBtn:focus-visible,
+.secondaryBtn:focus-visible,
+.back:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* ── The sheet ───────────────────────────────────────────────────────────── */
+.sheet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    background: var(--color-bg-card);
+}
+
+.head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.mess {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.meta {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.badge {
+    flex-shrink: 0;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+.badgeOpen {
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+}
+
+.badgeClosed {
+    background: color-mix(in srgb, var(--color-text-muted) 16%, transparent);
+    color: var(--color-text-muted);
+}
+
+.balance {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-xl);
+    border: 1px solid;
+}
+
+.balance span {
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.balance strong {
+    font-size: var(--text-3xl);
+    line-height: 1.1;
+}
+
+.balance small {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.ahead {
+    border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+    background: color-mix(in srgb, var(--color-success) 8%, transparent);
+}
+
+.ahead strong {
+    color: var(--color-success);
+}
+
+.owes {
+    border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.owes strong {
+    color: var(--color-danger);
+}
+
+.h2 {
+    margin-bottom: var(--space-2);
+    font-size: var(--text-base);
+    font-weight: 700;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.table th {
+    padding: var(--space-2) var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-align: left;
+}
+
+.table td {
+    padding: var(--space-2) var(--space-2);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+    vertical-align: top;
+}
+
+.table :global(.num) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.total td {
+    border-bottom: none;
+    border-top: 1px solid var(--color-border);
+    font-weight: 700;
+}
+
+.sub {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.days td,
+.days th {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.offDay td {
+    color: var(--color-text-muted);
+}
+
+.note,
+.empty,
+.footer {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.note {
+    margin-top: var(--space-2);
+}
+
+.error {
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
+}
+
+.skeleton {
+    height: 420px;
+    border-radius: var(--radius-2xl);
+    background: var(--color-bg-card);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% {
+        opacity: 0.55;
+    }
+}
+
+/* ── Paper ───────────────────────────────────────────────────────────────── */
+@media print {
+    .page {
+        max-width: none;
+        gap: 0;
+    }
+
+    .sheet {
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: #fff;
+        color: #111;
+        gap: 18px;
+    }
+
+    .mess,
+    .meta,
+    .sub,
+    .note,
+    .empty,
+    .footer,
+    .table th,
+    .offDay td,
+    .balance small {
+        color: #555;
+    }
+
+    .table td,
+    .table th,
+    .total td {
+        border-color: #ccc;
+    }
+
+    .table tr {
+        break-inside: avoid;
+    }
+
+    .badge,
+    .balance {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}

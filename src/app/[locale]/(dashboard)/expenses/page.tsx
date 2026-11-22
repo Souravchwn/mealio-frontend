@@ -98,6 +98,10 @@ export default function ExpensesPage() {
 
     /* ─── Add Contribution form ─── */
     const [showContribForm,   setShowContribForm]   = useState(false);
+    /** A form that just opened scrolls fully into view, clear of the phone's bottom bar. */
+    const revealOnOpen = useCallback((el: HTMLDivElement | null) => {
+        el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, []);
     const [contribMember,     setContribMember]     = useState("");
     const [contribAmount,     setContribAmount]     = useState("");
     const [contribNote,       setContribNote]       = useState("");
@@ -454,7 +458,7 @@ export default function ExpensesPage() {
             {activeTab === "sessions" && (
                 <>
                     {showSessionForm && canWrite && (
-                        <div className={styles.formCard}>
+                        <div className={styles.formCard} ref={revealOnOpen}>
                             <div className={styles.formCardHeader}>
                                 <h3 className={styles.formTitle}>{t("addSession")}</h3>
                                 <button className={styles.closeBtn} onClick={resetSessionForm} aria-label={tc("close")}>
@@ -742,7 +746,7 @@ export default function ExpensesPage() {
                 <>
                     {/* Add form */}
                     {showContribForm && canWrite && (
-                        <div className={styles.formCard}>
+                        <div className={styles.formCard} ref={revealOnOpen}>
                             <div className={styles.formCardHeader}>
                                 <h3 className={styles.formTitle}>{t("addContribution")}</h3>
                                 <button className={styles.closeBtn} onClick={() => setShowContribForm(false)} aria-label={tc("close")}>

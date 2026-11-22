@@ -8,6 +8,8 @@ import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/constants'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 import { createAuditTx } from '@/lib/audit'
 import { MAX_AMOUNT, MEMO_SELECT, parseMemoUploads, serializeMemo } from '@/lib/memos'
+import { prepareMemoRows } from '@/lib/memo-storage'
+import { randomUUID } from 'node:crypto'
 
 export async function GET(req: NextRequest) {
   const token = extractToken(req)
@@ -148,9 +150,14 @@ export async function POST(req: NextRequest) {
   const sessionDate = new Date(`${date as string}T00:00:00.000Z`)
 
   try {
+    // Photos are uploaded first (to Blob when set up), so the transaction only writes rows
+    const sessionId = randomUUID()
+    const memoRows = await prepareMemoRows(payload.messId, sessionId, memos)
+
     const result = await prisma.$transaction(async (tx) => {
       const session = await tx.bazaarSession.create({
         data: {
+          id: sessionId,
           messId: payload.messId,
           sessionDate,
           yearMonth,
@@ -163,12 +170,10 @@ export async function POST(req: NextRequest) {
 
       if (memos.length > 0) {
         await tx.bazaarMemo.createMany({
-          data: memos.map((m) => ({
+          data: memoRows.map((m) => ({
+            ...m,
             sessionId: session.id,
             messId: payload.messId,
-            mimeType: m.mimeType,
-            sizeBytes: m.bytes.length,
-            data: m.bytes,
             uploadedBy: payload.sub,
           })),
         })

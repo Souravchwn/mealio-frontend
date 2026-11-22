@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Sun, CloudSun, Moon, UserPlus, UtensilsCrossed, TrendingUp, Equal, Minus, Plus } from "lucide-react";
+import Link from "next/link";
+import { Sun, CloudSun, Moon, UserPlus, UtensilsCrossed, TrendingUp, Equal, Minus, Plus, FileText } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, formatCurrency, localISODate } from "@/lib/utils";
@@ -91,9 +92,14 @@ export default function MySummaryPage() {
 
     return (
         <div className={styles.page}>
-            <header>
-                <p className={styles.eyebrow}>{monthLabel}</p>
-                <h2 className={styles.title}>{t("title")}</h2>
+            <header className={styles.header}>
+                <div>
+                    <p className={styles.eyebrow}>{monthLabel}</p>
+                    <h2 className={styles.title}>{t("title")}</h2>
+                </div>
+                <Link href={`/${locale}/my-summary/statement`} className={styles.statementLink}>
+                    <FileText size={16} /> {t("statementLink")}
+                </Link>
             </header>
 
             {/* Balance hero */}
