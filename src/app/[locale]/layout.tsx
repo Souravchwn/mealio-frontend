@@ -4,6 +4,7 @@ import { Baloo_2, Hind_Siliguri, Inter, Space_Grotesk } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { Toaster } from "sonner";
+import { ServiceWorkerRegister } from "@/components/composed/ServiceWorker/ServiceWorkerRegister";
 import { ThemeProvider } from "@/components/composed/ThemeProvider/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { routing } from "@/i18n/routing";
@@ -75,6 +76,7 @@ export default async function LocaleLayout({
                     disableTransitionOnChange
                 >
                     <AuthProvider>
+                        <ServiceWorkerRegister />
                         <NextIntlClientProvider messages={messages}>
                             {children}
                             <Toaster

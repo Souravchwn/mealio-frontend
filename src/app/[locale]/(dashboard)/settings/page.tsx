@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import NextLink from "next/link";
 import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { TimePicker } from "@/components/ui/TimePicker/TimePicker";
 import { Select } from "@/components/ui/Select/Select";
-import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw, Globe, Megaphone, Trash2 } from "lucide-react";
+import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw, Globe, Megaphone, Trash2, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ANNOUNCEMENT_MAX_LENGTH, ANNOUNCEMENT_VISIBLE_DAYS } from "@/lib/constants";
+import { buildTimezoneOptions } from "@/lib/timezones";
 import type { Announcement, DefaultMealsSetting, GuestMealPolicy } from "@/types";
 import { AccountSection, DeleteMessCard } from "./AccountSection";
 import styles from "./settings.module.css";
@@ -32,24 +34,6 @@ const MEAL_ICONS: Record<MealType, React.ReactNode> = {
 };
 
 const SLOT_UPPER = ["BREAKFAST", "LUNCH", "DINNER"] as const;
-
-// Zones people look for first (South Asia, the Gulf, and where members often work abroad)
-const COMMON_TIMEZONES = [
-    "Asia/Dhaka", "Asia/Kolkata", "Asia/Karachi", "Asia/Kathmandu", "Asia/Colombo", "Asia/Thimphu",
-    "Asia/Dubai", "Asia/Riyadh", "Asia/Qatar", "Asia/Kuwait", "Asia/Muscat", "Asia/Bahrain",
-    "Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Bangkok", "Asia/Jakarta", "Asia/Tokyo", "Asia/Seoul", "Asia/Hong_Kong",
-    "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Rome",
-    "America/New_York", "America/Chicago", "America/Los_Angeles", "America/Toronto",
-    "Australia/Sydney", "Australia/Melbourne", "Pacific/Auckland", "Africa/Cairo", "Africa/Johannesburg",
-];
-// Old names some browsers still list, and the current name for each
-const LEGACY_TIMEZONES: Record<string, string> = {
-    "Asia/Calcutta": "Asia/Kolkata",
-    "Asia/Katmandu": "Asia/Kathmandu",
-    "Asia/Dacca": "Asia/Dhaka",
-    "Asia/Saigon": "Asia/Ho_Chi_Minh",
-    "Asia/Rangoon": "Asia/Yangon",
-};
 
 function defaultPrefs(): PrefMap {
     const map = {} as PrefMap;
@@ -491,42 +475,7 @@ export default function SettingsPage() {
         }
     }
 
-    // Every zone the browser knows, with its current offset, e.g. "Asia/Dhaka · UTC+6".
-    // Browsers list some zones under their old names (Chrome says Asia/Calcutta, not Asia/Kolkata), so
-    // the names people actually search for are added, and the old alias is hidden when the new one exists.
-    const timezoneOptions = useMemo(() => {
-        const isZone = (z: string) => {
-            try {
-                new Intl.DateTimeFormat("en", { timeZone: z });
-                return true;
-            } catch {
-                return false;
-            }
-        };
-        let known: string[] = [];
-        try {
-            known = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
-        } catch {
-            known = [];
-        }
-        const zones = new Set<string>([...known, ...COMMON_TIMEZONES.filter(isZone)]);
-        for (const [legacy, modern] of Object.entries(LEGACY_TIMEZONES)) {
-            if (zones.has(modern)) zones.delete(legacy);
-        }
-        zones.add(savedTimezone); // whatever is saved must always be selectable
-        const now = new Date();
-        return [...zones].sort().map((zone) => {
-            let hint = "";
-            try {
-                hint = new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: "shortOffset" })
-                    .formatToParts(now)
-                    .find((p) => p.type === "timeZoneName")?.value.replace("GMT", "UTC") ?? "";
-            } catch {
-                hint = "";
-            }
-            return { value: zone, label: zone.replace(/_/g, " "), hint };
-        });
-    }, [savedTimezone]);
+    const timezoneOptions = useMemo(() => buildTimezoneOptions(savedTimezone), [savedTimezone]);
 
     // ── Broadcast ──────────────────────────────────────────────────────────────
     async function sendBroadcast() {
@@ -571,6 +520,16 @@ export default function SettingsPage() {
                 <h2 className={styles.title}>{t("title")}</h2>
                 <p className={styles.subtitle}>{t("subtitle")}</p>
             </div>
+
+            {isAdmin && (
+                <NextLink href={`/${locale}/setup`} className={styles.quickSetup}>
+                    <Wand2 size={20} aria-hidden />
+                    <span>
+                        <strong>{t("quickSetup")}</strong>
+                        <small>{t("quickSetupHelp")}</small>
+                    </span>
+                </NextLink>
+            )}
 
             {/* Tab bar */}
             <div className={styles.tabBar}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,9 +32,13 @@ function RegisterForm() {
     const searchParams = useSearchParams();
     const linkCode = (searchParams.get("code") ?? "").toUpperCase();
 
+    // Set when this page has just signed the person in, so the effect below does not
+    // override where handleRegister sends them (the setup wizard for a new mess)
+    const justRegistered = useRef(false);
+
     // Signed in already: go to the app, unless this is someone else's invite link
     useEffect(() => {
-        if (isAuthenticated && !linkCode) router.replace(`/${locale}/overview`);
+        if (isAuthenticated && !linkCode && !justRegistered.current) router.replace(`/${locale}/overview`);
     }, [isAuthenticated, linkCode, router, locale]);
 
     const [mode, setMode] = useState<Mode>(linkCode ? "join" : "create");
@@ -98,9 +102,11 @@ function RegisterForm() {
                 if (response.claim) setPendingClaim(response.memberName ?? name);
                 return;
             }
+            justRegistered.current = true;
             login(response.user, response.accessToken);
             toast.success(mode === "create" ? t("createdMess") : t("success"));
-            router.push(`/${locale}/overview`);
+            // A new mess goes straight into the quick setup wizard
+            router.push(mode === "create" ? `/${locale}/setup` : `/${locale}/overview`);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : t("error"));
         } finally {

@@ -93,7 +93,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
     const current = Object.values(nav).find((item) => isActive(item.href));
-    const pageTitle = current ? t(current.key) : t("overview");
+    // Pages outside the menu (the setup wizard) name themselves
+    const pageTitle = current ? t(current.key) : pathname.startsWith(`${base}/setup`) ? t("setup") : t("overview");
     const moreActive = moreItems.some((item) => isActive(item.href));
 
     const handleLogout = () => {

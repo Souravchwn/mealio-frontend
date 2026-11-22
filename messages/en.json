@@ -298,6 +298,7 @@
         }
     },
     "nav": {
+        "setup": "Quick setup",
         "overview": "Overview",
         "meals": "My Meals",
         "mealHistory": "Meal History",
@@ -829,7 +830,72 @@
         "expired": "Guest period ended",
         "active": "Active guest"
     },
+    "setup": {
+        "title": "Quick setup",
+        "eyebrow": "Step {n} of {total}",
+        "progress": "Setup steps",
+        "adminOnly": "Only the mess admin can run setup.",
+        "toOverview": "Go to Overview",
+        "back": "Back",
+        "later": "Do this later",
+        "finish": "Open Overview",
+        "next": "Next",
+        "saveNext": "Save and continue",
+        "saving": "Saving…",
+        "saveFailed": "Could not save. Please try again.",
+        "mess": {
+            "title": "Your mess",
+            "lead": "The name everyone sees, and the clock the mess runs on.",
+            "name": "Mess name",
+            "nameRequired": "Give the mess a name.",
+            "timezone": "Timezone",
+            "timezoneHelp": "Decides when each day starts and when meals lock. Most messes in Bangladesh use Asia/Dhaka."
+        },
+        "meals": {
+            "title": "Meals and lock times",
+            "lead": "Which meals the mess cooks, and until when people can change them.",
+            "slot": {
+                "BREAKFAST": "Breakfast",
+                "LUNCH": "Lunch",
+                "DINNER": "Dinner"
+            },
+            "locksAt": "Locks at",
+            "locksAtFor": "{meal} locks at",
+            "help": "After the lock time only the admin can change that meal. You can change all of this later in Settings.",
+            "atLeastOne": "Keep at least one meal on."
+        },
+        "people": {
+            "title": "Add your mess mates",
+            "lead": "Add everyone by name now. They can join with the link later, or never: you can still count their meals and deposits.",
+            "name": "Member name",
+            "namePlaceholder": "e.g. Rahim",
+            "add": "Add",
+            "addHelp": "Press Add for each person. Their meals start counting from today.",
+            "listLabel": "Members",
+            "inviteTitle": "Invite link",
+            "inviteHelp": "Send this in your mess group. People who open it make an account and join your mess.",
+            "share": "Share link",
+            "copy": "Copy",
+            "copied": "Copied",
+            "shareText": "Join {mess} on Mealtill: {link}",
+            "addFailed": "Could not add this person."
+        },
+        "done": {
+            "title": "All set",
+            "lead": "Your mess is ready. Here is what was set up.",
+            "mess": "Mess: {name}",
+            "timezone": "Timezone: {tz}",
+            "members": "{n, plural, one {# member} other {# members}}",
+            "installTitle": "Put Mealtill on this phone",
+            "installed": "Mealtill is already installed on this device.",
+            "installHelp": "Opens like an app from your home screen, with shortcuts on a long press.",
+            "install": "Install app",
+            "installManual": "In your browser menu choose \"Install app\" or \"Add to Home screen\". On iPhone: Share, then Add to Home Screen."
+        }
+    },
     "settings": {
+        "quickSetup": "Quick setup",
+        "quickSetupHelp": "Name, timezone, meal times and members in four short steps.",
         "timezone": {
             "title": "Timezone",
             "help": "Decides when each day starts and when meal cutoffs fall. Days that already happened are not changed.",

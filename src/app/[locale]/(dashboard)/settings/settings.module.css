@@ -727,3 +727,41 @@
     opacity: 0.5;
 }
 
+
+/* ── Quick setup entry ──────────────────────────────────────────────────── */
+.quickSetup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+    border-radius: var(--radius-xl);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-card));
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.quickSetup svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+}
+
+.quickSetup span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.quickSetup small {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.quickSetup:hover {
+    border-color: var(--color-primary);
+}
+
+.quickSetup:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}

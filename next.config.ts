@@ -61,7 +61,7 @@ const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 const privatePages = [
     "login", "register", "forgot-password", "reset-password", "verify-email",
     "overview", "meals", "expenses", "headcount", "my-summary", "matrix", "members",
-    "audit", "settings", "mess", "archive", "console", "tg",
+    "audit", "settings", "setup", "mess", "archive", "console", "tg",
 ].join("|");
 
 const nextConfig: NextConfig = {
@@ -76,6 +76,9 @@ const nextConfig: NextConfig = {
             { source: "/", headers: securityHeaders },
             { source: "/:path((?!en/tg$|bn/tg$).*)", headers: securityHeaders },
             { source: "/:locale(en|bn)/tg", headers: telegramAppHeaders },
+            // The service worker must always be fetched fresh, or an old one keeps running
+            { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
+            { source: "/offline.html", headers: noindex },
             // Never cache API answers in shared caches
             { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
         ];
