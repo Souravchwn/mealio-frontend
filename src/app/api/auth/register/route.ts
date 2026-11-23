@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         access_token: token,
         refresh_token: token,
-        user: { id: member.id, name: member.name, email: member.email, role: member.role, mess_id: mess.id, mess_name: mess.name },
+        user: { id: member.id, name: member.name, email: member.email, role: member.role, mess_id: mess.id, mess_name: mess.name, currency: mess.currency },
         invite_code: mess.inviteCode,
       })
     }
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     }
     const mess = await prisma.mess.findFirst({
       where: { inviteCode: mess_invite_code.toUpperCase().trim(), isActive: true, deletedAt: null, suspendedAt: null },
-      select: { id: true, name: true, plan: true, requireJoinApproval: true },
+      select: { id: true, name: true, plan: true, requireJoinApproval: true, currency: true },
     })
     if (!mess) {
       await logSecurityEvent({ type: 'INVITE_CODE_INVALID', severity: 'WARN', ip, email: normEmail })
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       access_token: token,
       refresh_token: token,
-      user: { id: member.id, name: member.name, email: member.email, role: member.role, mess_id: mess.id, mess_name: mess.name },
+      user: { id: member.id, name: member.name, email: member.email, role: member.role, mess_id: mess.id, mess_name: mess.name, currency: mess.currency },
     })
   } catch (err) {
     console.error('[POST /api/auth/register]', err)

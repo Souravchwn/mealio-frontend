@@ -7,7 +7,8 @@ import {
     ShoppingBag, TrendingDown, X, Check,
     Calculator, Zap, Users, Ban, Camera, ListChecks, Paperclip, Wallet,
 } from "lucide-react";
-import { cn, formatCurrency, getCategoryColor, localISODate } from "@/lib/utils";
+import { cn, formatCurrency, getCategoryColor, getDisplayCurrency, localISODate } from "@/lib/utils";
+import { currencySymbol, paymentMethodsFor } from "@/lib/money";
 import { DatePicker } from "@/components/ui/DatePicker/DatePicker";
 import { Select } from "@/components/ui/Select/Select";
 import { MemoPicker, type MemoDraft } from "@/components/composed/Memo/MemoPicker";
@@ -21,7 +22,6 @@ import { toast } from "sonner";
 import styles from "./expenses.module.css";
 
 const CATEGORIES: ExpenseCategory[] = ["PROTEIN", "CARB", "VEGETABLE", "SPICE", "OIL", "UTILITY", "OTHER"];
-const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "OTHER"];
 
 interface ItemRow      { category: ExpenseCategory; amount: string; description: string }
 interface MemberOption { id: string; name: string }
@@ -332,7 +332,7 @@ export default function ExpensesPage() {
         }
     }
 
-    /** "Matched the book", "৳200 short", "৳50 extra" or "Opening count" */
+    /** "Matched the book", "200 short", "50 extra" (in the mess currency) or "Opening count" */
     const diffLabel = (difference: number | null) => {
         if (difference === null) return tcash("opening");
         if (Math.abs(difference) < 0.005) return tcash("matched");
@@ -518,7 +518,7 @@ export default function ExpensesPage() {
                                         <div className={styles.field}>
                                             <label className={styles.label} htmlFor="memo-total">{t("memo.total")}</label>
                                             <input id="memo-total" className={styles.memoTotalInput} type="number"
-                                                inputMode="decimal" step="0.01" min="0.01" placeholder="৳ 0"
+                                                inputMode="decimal" step="0.01" min="0.01" placeholder={formatCurrency(0)}
                                                 value={memoTotal} onChange={(e) => setMemoTotal(e.target.value)} required />
                                             <span className={styles.fieldHint}>{t("memo.totalHint")}</span>
                                         </div>
@@ -542,7 +542,7 @@ export default function ExpensesPage() {
                                                             }))}
                                                         />
                                                         <input className={styles.itemAmountInput} type="number"
-                                                            inputMode="decimal" step="0.01" min="0.01" placeholder="৳"
+                                                            inputMode="decimal" step="0.01" min="0.01" placeholder={currencySymbol(getDisplayCurrency())}
                                                             value={item.amount}
                                                             onChange={(e) => updateItem(idx, "amount", e.target.value)} required />
                                                         <input className={styles.itemDescInput} type="text"
@@ -769,7 +769,7 @@ export default function ExpensesPage() {
                                     <div className={styles.field}>
                                         <label className={styles.label}>{t("amount")}</label>
                                         <input className={styles.input} type="number" step="0.01" min="0.01"
-                                            placeholder="৳ 0.00" value={contribAmount}
+                                            placeholder={formatCurrency(0)} value={contribAmount}
                                             onChange={(e) => setContribAmount(e.target.value)} required />
                                     </div>
                                 </div>
@@ -794,7 +794,7 @@ export default function ExpensesPage() {
                                             value={contribMethod}
                                             onChange={(v) => setContribMethod(v as PaymentMethod)}
                                             aria-label={tp("method")}
-                                            options={PAYMENT_METHODS.map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
+                                            options={paymentMethodsFor(getDisplayCurrency()).map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
                                         />
                                     </div>
                                     <div className={styles.field}>
@@ -879,7 +879,7 @@ export default function ExpensesPage() {
                                         <div className={styles.field}>
                                             <label className={styles.label}>{tcash("counted")}</label>
                                             <input className={styles.input} type="number" step="0.01" min="0"
-                                                placeholder="৳ 0.00" value={cashCounted}
+                                                placeholder={formatCurrency(0)} value={cashCounted}
                                                 onChange={(e) => setCashCounted(e.target.value)} required />
                                         </div>
                                         <div className={styles.field}>

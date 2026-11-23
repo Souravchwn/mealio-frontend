@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/Button/Button";
 import { Card } from "@/components/ui/Card/Card";
 import { TimePicker } from "@/components/ui/TimePicker/TimePicker";
 import { Select } from "@/components/ui/Select/Select";
-import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw, Globe, Megaphone, Trash2, Wand2 } from "lucide-react";
+import { Sun, CloudSun, Moon, Save, Copy, Check, Link, Calendar, Users, Send, Unlink, RefreshCw, Globe, Megaphone, Trash2, Wand2, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ANNOUNCEMENT_MAX_LENGTH, ANNOUNCEMENT_VISIBLE_DAYS } from "@/lib/constants";
 import { buildTimezoneOptions } from "@/lib/timezones";
+import { buildCurrencyOptions } from "@/lib/currencies";
 import type { Announcement, DefaultMealsSetting, GuestMealPolicy } from "@/types";
 import { AccountSection, DeleteMessCard } from "./AccountSection";
 import styles from "./settings.module.css";
@@ -48,7 +49,7 @@ function defaultPrefs(): PrefMap {
 export default function SettingsPage() {
     const t = useTranslations("settings");
     const locale = useLocale();
-    const { user, token } = useAuth();
+    const { user, token, updateUser } = useAuth();
 
     const [activeTab, setActiveTab] = useState<Tab>("general");
 
@@ -82,6 +83,11 @@ export default function SettingsPage() {
     const [timezone, setTimezone] = useState("Asia/Dhaka");
     const [savedTimezone, setSavedTimezone] = useState("Asia/Dhaka");
     const [savingTz, setSavingTz] = useState(false);
+
+    // ── Currency (how amounts are shown; nothing is converted) ─────────────────
+    const [currency, setCurrency] = useState("BDT");
+    const [savedCurrency, setSavedCurrency] = useState("BDT");
+    const [savingCurrency, setSavingCurrency] = useState(false);
 
     // ── Broadcast ────────────────────────────────────────────────────────────────
     const [broadcastText, setBroadcastText] = useState("");
@@ -164,6 +170,10 @@ export default function SettingsPage() {
             setRequireApproval(data.requireJoinApproval ?? true);
             setTimezone(data.timezone);
             setSavedTimezone(data.timezone);
+            if (data.currency) {
+                setCurrency(data.currency);
+                setSavedCurrency(data.currency);
+            }
             if (data.weekendDays) setWeekendDays(data.weekendDays);
             if (data.defaultMeals) setDefaultMeals(data.defaultMeals);
         }).catch(() => {});
@@ -476,6 +486,22 @@ export default function SettingsPage() {
     }
 
     const timezoneOptions = useMemo(() => buildTimezoneOptions(savedTimezone), [savedTimezone]);
+    const currencyOptions = useMemo(() => buildCurrencyOptions(locale, savedCurrency), [locale, savedCurrency]);
+
+    async function saveCurrency() {
+        if (!token) return;
+        setSavingCurrency(true);
+        try {
+            await api.admin.updateSettings({ currency }, token);
+            setSavedCurrency(currency);
+            updateUser({ currency }); // every amount on screen switches at once
+            toast.success(t("currency.saved"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("errors.save"));
+        } finally {
+            setSavingCurrency(false);
+        }
+    }
 
     // ── Broadcast ──────────────────────────────────────────────────────────────
     async function sendBroadcast() {
@@ -1074,6 +1100,33 @@ export default function SettingsPage() {
                             </details>
                         </Card>
                     )}
+
+                    {/* Currency */}
+                    <Card>
+                        <h3 className={styles.sectionTitle}>
+                            <Coins size={18} />
+                            {t("currency.title")}
+                        </h3>
+                        <p className={styles.helpText}>{t("currency.help")}</p>
+                        <div className={styles.field}>
+                            <div className={styles.inputRow}>
+                                <Select
+                                    value={currency}
+                                    onChange={setCurrency}
+                                    options={currencyOptions}
+                                    disabled={!isAdmin}
+                                    aria-label={t("currency.title")}
+                                />
+                                {isAdmin && (
+                                    <Button onClick={saveCurrency} disabled={savingCurrency || currency === savedCurrency} loading={savingCurrency}>
+                                        <Save size={16} />
+                                        {savingCurrency ? t("saving") : t("saveChanges")}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                        {!isAdmin && <p className={styles.helpText}>{t("currency.adminOnly")}</p>}
+                    </Card>
 
                     {/* Timezone */}
                     <Card>

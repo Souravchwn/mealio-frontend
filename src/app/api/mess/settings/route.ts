@@ -5,6 +5,7 @@ import { createAuditTx } from '@/lib/audit'
 import { getMessSettings, isValidTimezone, refreshMessSettings, type DefaultMeals, type MessSettings } from '@/lib/mess-settings'
 import { GUEST_MEAL_POLICIES, MEAL_TYPES, type GuestMealPolicy } from '@/lib/constants'
 import { settleDailyLogs } from '@/lib/daily-logs'
+import { isValidCurrency } from '@/lib/money'
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 
@@ -21,6 +22,7 @@ function toResponse(s: MessSettings) {
     estimated_monthly_budget: s.estimatedMonthlyBudget,
     month_start_day: s.monthStartDay,
     timezone: s.timezone,
+    currency: s.currency,
     guest_meal_policy: s.guestMealPolicy,
     bazaar_counts_as_deposit: s.bazaarCountsAsDeposit,
     carry_forward_balance: s.carryForwardBalance,
@@ -63,7 +65,7 @@ export async function PUT(req: NextRequest) {
   }
   const {
     name, cut_off_time, estimated_monthly_budget, month_start_day,
-    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval, default_meals, timezone,
+    guest_meal_policy, bazaar_counts_as_deposit, carry_forward_balance, weekend_days, require_join_approval, default_meals, timezone, currency,
   } = body
   const updateData: Record<string, unknown> = {}
 
@@ -106,6 +108,14 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ detail: 'Unknown timezone. Use an IANA name like Asia/Dhaka.' }, { status: 400 })
     }
     updateData.timezone = tz
+  }
+
+  if (currency !== undefined) {
+    const code = typeof currency === 'string' ? currency.trim().toUpperCase() : ''
+    if (!isValidCurrency(code)) {
+      return NextResponse.json({ detail: 'Unknown currency. Use a three-letter code like BDT, INR or USD.' }, { status: 400 })
+    }
+    updateData.currency = code
   }
 
   if (guest_meal_policy !== undefined) {

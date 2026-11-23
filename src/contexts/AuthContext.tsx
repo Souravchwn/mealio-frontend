@@ -3,11 +3,14 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, ReactNode } from "react";
 import { toast } from "sonner";
 import { User } from "@/types";
+import { setDisplayCurrency } from "@/lib/utils";
 
 interface AuthContextType {
     user: User | null;
     token: string | null;
     login: (user: User, token: string) => void;
+    /** Merge fresh facts about the signed-in member (e.g. the mess currency after a change) */
+    updateUser: (patch: Partial<User>) => void;
     logout: () => void;
     isAuthenticated: boolean;
     isLoading: boolean;
@@ -45,6 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("user", JSON.stringify(newUser));
     };
 
+    const updateUser = (patch: Partial<User>) => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            const next = { ...prev, ...patch };
+            try {
+                localStorage.setItem("user", JSON.stringify(next));
+            } catch {
+                /* storage blocked */
+            }
+            return next;
+        });
+    };
+
     const logout = () => {
         setUser(null);
         setToken(null);
@@ -72,12 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("mealio:session-rejected", onRejected);
     }, []);
 
+    // Amounts render in the mess currency. Set during render so the very first paint is right;
+    // a change re-renders this provider and with it every screen that shows money.
+    // Only when known, so it never overrides a page that set it itself (the Telegram Mini App)
+    if (hydrated && user?.currency) setDisplayCurrency(user.currency);
+
     return (
         <AuthContext.Provider
             value={{
                 user: hydrated ? user : null,
                 token: hydrated ? token : null,
                 login,
+                updateUser,
                 logout,
                 isAuthenticated: hydrated && !!user && !!token,
                 isLoading: !hydrated,

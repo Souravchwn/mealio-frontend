@@ -10,7 +10,8 @@
 
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { CURRENCY_SYMBOL, DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, type GuestMealPolicy } from './constants'
+import { DEFAULT_CUTOFF_TIME, DEFAULT_TIMEZONE, type GuestMealPolicy } from './constants'
+import { currencySymbol } from './money'
 import { resolvePeriod, calculateNextPeriod, type Period, type PeriodRange } from './period'
 import { requireMessSettings, todayIn, dateIn } from './mess-settings'
 import { ensureDailyLogs } from './daily-logs'
@@ -414,7 +415,7 @@ export async function closeMonth(
         memberId: r.memberId,
         entryType: 'DEDUCTION',
         amount: -r.mealCost,
-        note: `Meal deduction for ${period.yearMonth}: ${r.billableMeals} meals × ${CURRENCY_SYMBOL}${mealRate.toFixed(2)}`,
+        note: `Meal deduction for ${period.yearMonth}: ${r.billableMeals} meals × ${currencySymbol(settings.currency)}${mealRate.toFixed(2)}`,
         createdBy: adminId,
       }))
     if (deductions.length > 0) await tx.ledgerEntry.createMany({ data: deductions })

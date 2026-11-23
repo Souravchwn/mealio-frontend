@@ -546,6 +546,7 @@ Full reference: `context/19-members-by-name-and-guests.md`. Rules:
 | `bazaarCountsAsDeposit` | `false` (default) / `true` | When true, bazaar expenses are credited to the member who recorded them. Leave false when shopping uses deposited money (otherwise it is double counted). |
 | `carryForwardBalance` | `true` (default) / `false` | Whether closing a month carries each member's balance into the next month. |
 | `weekendDays` | `[0, 6]` (default) | Which weekdays use members' WEEKEND defaults (0 = Sun … 6 = Sat). |
+| `currency` | ISO 4217, `BDT` for old messes; new messes guess it from the creator's timezone | How amounts are shown (display only, never converted). Client: `formatCurrency()` in `src/lib/utils.ts` follows the signed-in user's `currency`, kept fresh by `/api/mess/period`. Server text: `currencySymbol()` from `src/lib/money.ts`. Deposit methods offered come from `paymentMethodsFor(currency)` (bKash/Nagad only for BDT). |
 
 Balance = deposits (`CONTRIBUTION`) + carry-forward + bazaar credit − billable meals × meal rate.
 ---

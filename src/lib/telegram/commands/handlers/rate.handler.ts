@@ -2,7 +2,8 @@ import type { CommandHandler } from '../types'
 import type { CommandContext } from '../../dto'
 import type { ReportService } from '../../services/report.service'
 import type { TelegramSender } from '../../infrastructure/sender'
-import { CURRENCY_SYMBOL as C } from '@/lib/constants'
+import { currencySymbol } from '@/lib/money'
+import { getMessSettings } from '@/lib/mess-settings'
 
 export class RateCommandHandler implements CommandHandler {
   constructor(
@@ -21,6 +22,7 @@ export class RateCommandHandler implements CommandHandler {
     }
 
     const rate = await this.reportService.getMealRate(ctx.member.messId)
+    const C = currencySymbol((await getMessSettings(ctx.member.messId))?.currency)
 
     await this.sender.sendMessage(
       ctx.chatId,

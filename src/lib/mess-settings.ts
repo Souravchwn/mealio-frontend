@@ -10,6 +10,7 @@
  */
 
 import { prisma } from './prisma'
+import { DEFAULT_CURRENCY } from './money'
 import { redisGet, redisSet } from './redis'
 import {
   DEFAULT_CUTOFF_TIME,
@@ -62,6 +63,8 @@ export interface MessSettings {
   messId: string
   name: string
   timezone: string
+  /** ISO 4217 code, e.g. BDT */
+  currency: string
   /** Legacy single cutoff (HH:MM) */
   cutOffTime: string
   monthStartDay: number
@@ -81,7 +84,7 @@ export interface MessSettings {
 }
 
 /** Bump the version suffix whenever the MessSettings shape changes. */
-const key = (messId: string) => `mealio:mess:${messId}:settings:v5`
+const key = (messId: string) => `mealio:mess:${messId}:settings:v6`
 /** Long TTL — the cache is refreshed on every write; the TTL only self-heals stray drift. */
 const TTL_SECONDS = 24 * 60 * 60
 
@@ -115,6 +118,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
       defaultMeals: true,
       plan: true,
       timezone: true,
+      currency: true,
       mealConfigs: { select: { mealType: true, enabled: true, cutoffTime: true, maxCount: true } },
     },
   })
@@ -146,6 +150,7 @@ async function loadFromDb(messId: string): Promise<MessSettings | null> {
     messId: mess.id,
     name: mess.name,
     timezone: mess.timezone || DEFAULT_TIMEZONE,
+    currency: mess.currency || DEFAULT_CURRENCY,
     cutOffTime: legacyCutoff,
     monthStartDay: mess.monthStartDay ?? 1,
     estimatedMonthlyBudget: mess.estimatedMonthlyBudget ? Number(mess.estimatedMonthlyBudget) : null,

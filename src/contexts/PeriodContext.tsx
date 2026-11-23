@@ -14,6 +14,8 @@ export interface CurrentPeriod {
     daysLeft: number;
     /** Today is past the end date and nobody has closed the period yet */
     overdue: boolean;
+    /** The mess currency (ISO 4217) */
+    currency?: string;
 }
 
 interface PeriodContextValue {
@@ -25,7 +27,7 @@ const PeriodContext = createContext<PeriodContextValue>({ period: null, reload: 
 
 /** The mess's current billing period, loaded once for the whole dashboard. */
 export function PeriodProvider({ children }: { children: ReactNode }) {
-    const { token } = useAuth();
+    const { token, user, updateUser } = useAuth();
     const [period, setPeriod] = useState<CurrentPeriod | null>(null);
     const [tick, setTick] = useState(0);
 
@@ -40,6 +42,13 @@ export function PeriodProvider({ children }: { children: ReactNode }) {
             cancelled = true;
         };
     }, [token, tick]);
+
+    // Members see a currency change on their next page load, without signing in again
+    const knownCurrency = user?.currency;
+    useEffect(() => {
+        if (period?.currency && period.currency !== knownCurrency) updateUser({ currency: period.currency });
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- updateUser is recreated each render
+    }, [period?.currency, knownCurrency]);
 
     const reload = useCallback(() => setTick((n) => n + 1), []);
 

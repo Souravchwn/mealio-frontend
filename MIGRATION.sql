@@ -571,3 +571,9 @@ CREATE TABLE IF NOT EXISTS announcements (
 );
 CREATE INDEX IF NOT EXISTS idx_announcements_mess_created ON announcements(mess_id, created_at DESC);
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 33. Currency per mess
+-- ============================================================
+-- Every existing mess keeps taka; an admin can change it in Settings.
+ALTER TABLE messes ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'BDT';

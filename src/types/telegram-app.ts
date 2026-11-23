@@ -7,7 +7,7 @@ type Slots<T> = { breakfast: T; lunch: T; dinner: T }
 export interface TgHomeLinked {
     linked: true;
     member: { name: string; role: string };
-    mess: { name: string; timezone: string; periodStart: string; periodEnd: string };
+    mess: { name: string; timezone: string; currency: string; periodStart: string; periodEnd: string };
     today: {
         date: string;
         breakfast: number;

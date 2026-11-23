@@ -24,6 +24,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { buildTimezoneOptions } from "@/lib/timezones";
+import { buildCurrencyOptions } from "@/lib/currencies";
 import { canInstall, isInstalled, onInstallPromptChange, promptInstall } from "@/lib/install-prompt";
 import styles from "./setup.module.css";
 
@@ -46,7 +47,7 @@ export default function SetupPage() {
     const t = useTranslations("setup");
     const locale = useLocale();
     const router = useRouter();
-    const { user, token } = useAuth();
+    const { user, token, updateUser } = useAuth();
     const isAdmin = user?.role === "ADMIN";
 
     const [step, setStep] = useState<Step>("mess");
@@ -59,6 +60,9 @@ export default function SetupPage() {
     const [timezone, setTimezone] = useState("Asia/Dhaka");
     const [savedTimezone, setSavedTimezone] = useState("Asia/Dhaka");
     const timezoneOptions = useMemo(() => buildTimezoneOptions(savedTimezone), [savedTimezone]);
+    const [currency, setCurrency] = useState("BDT");
+    const [savedCurrency, setSavedCurrency] = useState("BDT");
+    const currencyOptions = useMemo(() => buildCurrencyOptions(locale, savedCurrency), [locale, savedCurrency]);
 
     // Step 2
     const [slots, setSlots] = useState<Record<Slot, SlotState> | null>(null);
@@ -91,6 +95,10 @@ export default function SetupPage() {
                 setSavedName(settingsRes.value.name);
                 setTimezone(settingsRes.value.timezone);
                 setSavedTimezone(settingsRes.value.timezone);
+                if (settingsRes.value.currency) {
+                    setCurrency(settingsRes.value.currency);
+                    setSavedCurrency(settingsRes.value.currency);
+                }
             }
             if (configsRes.status === "fulfilled") {
                 const map = {} as Record<Slot, SlotState>;
@@ -125,13 +133,18 @@ export default function SetupPage() {
                 toast.error(t("mess.nameRequired"));
                 return false;
             }
-            const data: { name?: string; timezone?: string } = {};
+            const data: { name?: string; timezone?: string; currency?: string } = {};
             if (trimmed !== savedName) data.name = trimmed;
             if (timezone !== savedTimezone) data.timezone = timezone;
+            if (currency !== savedCurrency) data.currency = currency;
             if (Object.keys(data).length === 0) return true;
             await api.admin.updateSettings(data, token);
             setSavedName(trimmed);
             setSavedTimezone(timezone);
+            if (data.currency) {
+                setSavedCurrency(currency);
+                updateUser({ currency });
+            }
             return true;
         }
         if (step === "meals" && slots && savedSlots) {
@@ -152,7 +165,7 @@ export default function SetupPage() {
             return true;
         }
         return true;
-    }, [token, step, name, savedName, timezone, savedTimezone, slots, savedSlots, t]);
+    }, [token, step, name, savedName, timezone, savedTimezone, currency, savedCurrency, updateUser, slots, savedSlots, t]);
 
     async function next() {
         setSaving(true);
@@ -255,6 +268,11 @@ export default function SetupPage() {
                             <Select value={timezone} onChange={setTimezone} options={timezoneOptions} aria-label={t("mess.timezone")} />
                             <span className={styles.help}>{t("mess.timezoneHelp")}</span>
                         </div>
+                        <div className={styles.field}>
+                            <span className={styles.label}>{t("mess.currency")}</span>
+                            <Select value={currency} onChange={setCurrency} options={currencyOptions} aria-label={t("mess.currency")} />
+                            <span className={styles.help}>{t("mess.currencyHelp")}</span>
+                        </div>
                     </div>
                 ) : step === "meals" && slots ? (
                     <div className={styles.slots}>
@@ -328,6 +346,7 @@ export default function SetupPage() {
                         <ul className={styles.summary}>
                             <li><Check size={16} /> {t("done.mess", { name: savedName })}</li>
                             <li><Check size={16} /> {t("done.timezone", { tz: savedTimezone.replace(/_/g, " ") })}</li>
+                            <li><Check size={16} /> {t("done.currency", { code: savedCurrency })}</li>
                             <li><Check size={16} /> {t("done.members", { n: members.length })}</li>
                         </ul>
                         <div className={styles.install}>

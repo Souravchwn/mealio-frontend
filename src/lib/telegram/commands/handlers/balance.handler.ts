@@ -2,7 +2,8 @@ import type { CommandHandler } from '../types'
 import type { CommandContext } from '../../dto'
 import type { ReportService } from '../../services/report.service'
 import type { TelegramSender } from '../../infrastructure/sender'
-import { CURRENCY_SYMBOL as C } from '@/lib/constants'
+import { currencySymbol } from '@/lib/money'
+import { getMessSettings } from '@/lib/mess-settings'
 
 export class BalanceCommandHandler implements CommandHandler {
   constructor(
@@ -25,6 +26,7 @@ export class BalanceCommandHandler implements CommandHandler {
     }
 
     const bal = await this.reportService.getMemberBalance(ctx.member.id, ctx.member.name, ctx.member.messId)
+    const C = currencySymbol((await getMessSettings(ctx.member.messId))?.currency)
 
     const sign = bal.balance >= 0 ? '+' : ''
     await this.sender.sendMessage(

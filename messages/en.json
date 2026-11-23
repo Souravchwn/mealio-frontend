@@ -405,7 +405,7 @@
         "subtitle": "Daily bazaar trips and member contributions",
         "addSession": "Add bazaar session",
         "addContribution": "Record contribution",
-        "amount": "Amount (৳)",
+        "amount": "Amount",
         "category": "Category",
         "description": "Description (optional)",
         "date": "Date",
@@ -495,6 +495,8 @@
         "payment": {
             "method": "Paid by",
             "methods": {
+                "CARD": "Card",
+                "WALLET": "Mobile wallet",
                 "CASH": "Cash",
                 "BKASH": "bKash",
                 "NAGAD": "Nagad",
@@ -521,7 +523,7 @@
             "extra": "{amount} extra",
             "opening": "Opening count",
             "countNow": "Count the fund",
-            "counted": "Amount you counted (৳)",
+            "counted": "Amount you counted",
             "note": "Note (optional)",
             "notePlaceholder": "e.g. Paid Rahim back at month end",
             "saved": "Count saved",
@@ -849,6 +851,8 @@
         "saving": "Saving…",
         "saveFailed": "Could not save. Please try again.",
         "mess": {
+            "currency": "Currency",
+            "currencyHelp": "Guessed from your timezone. Amounts are shown in it; nothing is converted.",
             "title": "Your mess",
             "lead": "The name everyone sees, and the clock the mess runs on.",
             "name": "Mess name",
@@ -886,6 +890,7 @@
             "addFailed": "Could not add this person."
         },
         "done": {
+            "currency": "Currency: {code}",
             "title": "All set",
             "lead": "Your mess is ready. Here is what was set up.",
             "mess": "Mess: {name}",
@@ -899,6 +904,12 @@
         }
     },
     "settings": {
+        "currency": {
+            "title": "Currency",
+            "help": "How amounts are shown everywhere in this mess. Changing it does not convert any amounts already recorded.",
+            "saved": "Currency saved",
+            "adminOnly": "Only the mess admin can change the currency."
+        },
         "quickSetup": "Quick setup",
         "quickSetupHelp": "Name, timezone, meal times and members in four short steps.",
         "timezone": {
@@ -1110,7 +1121,7 @@
         "totalExpense": "Total expense",
         "totalDeposited": "Total deposited",
         "whatIf": "What if you add…",
-        "whatIfPlaceholder": "৳ amount",
+        "whatIfPlaceholder": "Amount",
         "newRate": "New rate",
         "rateChange": "Change",
         "memberDeposits": "Member deposits",

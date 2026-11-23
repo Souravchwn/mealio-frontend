@@ -8,6 +8,7 @@ import { prisma } from './prisma'
 import { randomCode } from './tokens'
 import { DEFAULT_CUTOFF_TIME, DEFAULT_MAX_MEAL_COUNT, DEFAULT_MEAL_CONFIGS, DEFAULT_TIMEZONE } from './constants'
 import { isValidTimezone } from './mess-settings'
+import { currencyForTimezone } from './money'
 
 /** Places whose weekend is Friday and Saturday. Everywhere else starts on Saturday and Sunday. */
 const FRIDAY_SATURDAY_ZONES = new Set([
@@ -55,10 +56,11 @@ export async function createMessRecord(
       ownerId: input.ownerId ?? null,
       // The creator's timezone and its usual weekend; both can be changed in Settings
       timezone: input.timezone ?? DEFAULT_TIMEZONE,
+      currency: currencyForTimezone(input.timezone ?? DEFAULT_TIMEZONE),
       weekendDays: input.weekendDays ?? weekendFor(input.timezone ?? DEFAULT_TIMEZONE),
       isActive: true,
     },
-    select: { id: true, name: true, inviteCode: true, cutOffTime: true },
+    select: { id: true, name: true, inviteCode: true, cutOffTime: true, currency: true },
   })
   await tx.mealConfig.createMany({
     data: DEFAULT_MEAL_CONFIGS.map((cfg) => ({

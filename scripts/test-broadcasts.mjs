@@ -97,6 +97,22 @@ try {
   r = await api('/api/mess/settings', { method: 'PUT', token: tokenMemberA, body: { timezone: 'Europe/London' } })
   check('a member cannot change the timezone', denied(r.status), `status ${r.status}`)
 
+  // ── Currency ──────────────────────────────────────────────────────────────
+  r = await api('/api/mess/settings', { token: tokenA })
+  check('a mess made directly in the database keeps taka', r.json?.currency === 'BDT', JSON.stringify(r.json?.currency))
+  r = await api('/api/mess/settings', { method: 'PUT', token: tokenA, body: { currency: 'inr' } })
+  check('admin can change the currency (code is upper-cased)', r.status === 200 && r.json?.currency === 'INR', `status ${r.status}`)
+  r = await api('/api/mess/period', { token: tokenMemberA })
+  check('members get the new currency with the period', r.json?.currency === 'INR', JSON.stringify(r.json?.currency))
+  for (const bad of ['XYZ', 'US', 'dollars', '', 7, null]) {
+    r = await api('/api/mess/settings', { method: 'PUT', token: tokenA, body: { currency: bad } })
+    check(`rejects currency ${JSON.stringify(bad)}`, r.status === 400, `status ${r.status}`)
+  }
+  r = await api('/api/mess/settings', { method: 'PUT', token: tokenMemberA, body: { currency: 'USD' } })
+  check('a member cannot change the currency', denied(r.status), `status ${r.status}`)
+  r = await api('/api/mess/settings', { token: tokenB })
+  check("another mess's currency is untouched", r.json?.currency === 'BDT', JSON.stringify(r.json?.currency))
+
   r = await api('/api/mess/settings', { token: tokenB })
   check('mess B keeps its own timezone', r.json?.timezone === 'Asia/Dhaka', JSON.stringify(r.json?.timezone))
 

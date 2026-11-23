@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
       mess: {
         name: settings?.name ?? '',
         timezone: settings?.timezone ?? 'Asia/Dhaka',
+        currency: settings?.currency ?? 'BDT',
         period_start: period.startDate.toISOString().slice(0, 10),
         period_end: period.endDate.toISOString().slice(0, 10),
       },

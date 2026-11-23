@@ -6,8 +6,7 @@ import { endOfPeriodExclusive } from '@/lib/financial'
 import { createAuditTx } from '@/lib/audit'
 
 /** How a deposit reached the mess. Recorded only: Mealtill never moves money. */
-const PAYMENT_METHODS = ['CASH', 'BKASH', 'NAGAD', 'BANK', 'OTHER'] as const
-type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+import { ALL_PAYMENT_METHODS as PAYMENT_METHODS, type PaymentMethodCode as PaymentMethod } from '@/lib/money'
 const MAX_REFERENCE = 64
 
 // ── GET /api/contributions ────────────────────────────────────────────────────

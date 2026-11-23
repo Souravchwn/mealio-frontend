@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       select: {
         id: true, name: true, email: true, role: true, messId: true, passwordHash: true, isActive: true,
         joinStatus: true, deletedAt: true,
-        mess: { select: { name: true, isActive: true, suspendedAt: true, deletedAt: true } },
+        mess: { select: { name: true, currency: true, isActive: true, suspendedAt: true, deletedAt: true } },
       },
     })
 
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
         role: member.role,
         mess_id: member.messId,
         mess_name: member.mess.name,
+        currency: member.mess.currency,
       },
     })
   } catch (err) {

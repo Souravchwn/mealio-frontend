@@ -1,13 +1,23 @@
 import { ExpenseCategory } from "@/types";
+import { DEFAULT_CURRENCY, formatMoney } from "./money";
+
+let displayCurrency: string = DEFAULT_CURRENCY;
 
 /**
- * Format a number as BDT currency
+ * The currency every amount on screen is shown in: the signed-in member's mess currency.
+ * AuthProvider sets it from the user (and keeps it fresh); the Telegram Mini App sets it from its data.
  */
+export function setDisplayCurrency(code: string | null | undefined): void {
+    displayCurrency = code || DEFAULT_CURRENCY;
+}
+
+export function getDisplayCurrency(): string {
+    return displayCurrency;
+}
+
+/** An amount in the mess currency: "৳1,250.00", "$1,250.00", "¥1,250". */
 export function formatCurrency(amount: number): string {
-    return `৳ ${amount.toLocaleString("en-BD", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })}`;
+    return formatMoney(amount, displayCurrency);
 }
 
 /**

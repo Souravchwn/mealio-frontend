@@ -688,6 +688,7 @@ export const api = {
                 today: string;
                 daysLeft: number;
                 overdue: boolean;
+                currency: string;
             }>("/api/mess/period", { method: "GET", token }),
         /** New code; the old one stops working at once */
         rotateInvite: (token: string) =>
@@ -780,6 +781,7 @@ export const api = {
                 weekendDays?: number[];
                 requireJoinApproval?: boolean;
                 timezone?: string;
+                currency?: string;
                 defaultMeals?: DefaultMealsSetting;
             },
             token: string

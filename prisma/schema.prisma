@@ -27,6 +27,8 @@ model Mess {
   /// IANA timezone that decides when "today" starts and when meal cutoffs fall.
   /// The source of truth (a linked Telegram group no longer decides it).
   timezone               String   @default("Asia/Dhaka")
+  /// ISO 4217 code the mess keeps its accounts in (BDT, INR, USD...). Display only: amounts are plain numbers.
+  currency               String   @default("BDT")
   /// Meals a member eats by default when they have not set their own (JSON: WEEKDAY/WEEKEND -> BREAKFAST/LUNCH/DINNER -> bool)
   defaultMeals           String?  @map("default_meals")
   isActive               Boolean  @default(true) @map("is_active")

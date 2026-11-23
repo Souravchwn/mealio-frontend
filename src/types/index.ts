@@ -136,6 +136,8 @@ export interface User {
     role: Role;
     messId: string;
     messName: string;
+    /** ISO 4217 code of the mess's currency (older sessions may not have it yet) */
+    currency?: string;
 }
 
 export interface AuthResponse {
@@ -239,7 +241,7 @@ export interface BazaarSessionResponse {
 }
 
 /** How a deposit reached the mess. Recorded only; Mealtill never moves money. */
-export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "OTHER";
+export type PaymentMethod = "CASH" | "BKASH" | "NAGAD" | "BANK" | "CARD" | "WALLET" | "OTHER";
 
 export interface ContributionResponse {
     id: string;
@@ -338,6 +340,8 @@ export interface MessSettingsResponse {
     estimatedMonthlyBudget: number | null;
     monthStartDay: number;
     timezone: string;
+    /** ISO 4217 code */
+    currency: string;
     guestMealPolicy: GuestMealPolicy;
     bazaarCountsAsDeposit: boolean;
     carryForwardBalance: boolean;

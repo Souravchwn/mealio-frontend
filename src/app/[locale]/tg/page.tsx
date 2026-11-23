@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { ArrowUpRight, CloudSun, Link2, Moon, RefreshCw, Sun, Users } from "lucide-react";
 import { api } from "@/lib/api";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, setDisplayCurrency } from "@/lib/utils";
 import type { TgHome, TgHomeLinked, TgSlot } from "@/types/telegram-app";
 import styles from "./tg.module.css";
 
@@ -112,6 +112,7 @@ export default function TelegramMiniApp() {
         setRefreshing(true);
         try {
             const home = await api.tg.home(initDataCache);
+            if (home.linked) setDisplayCurrency(home.mess.currency);
             setData(home);
             setError(null);
             if (haptic) window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");

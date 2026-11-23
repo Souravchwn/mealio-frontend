@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
       today,
       days_left: daysLeft,
       overdue: today > end,
+      // The mess's currency rides along so every screen formats money right after a change
+      currency: settings.currency,
     })
   } catch (err) {
     console.error('[GET /api/mess/period]', err)
