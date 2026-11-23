@@ -51,6 +51,10 @@ Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` (a Gmail app pass
 
 ## 4. Deploy
 
+Server functions run in Singapore (`vercel.json`, `"regions": ["sin1"]`), next to the Supabase database.
+Keep the two in the same region: with the functions in the US every request took about 5 seconds.
+If you move the database, change the region to match.
+
 Push the repository to Vercel and deploy. Set `NEXT_PUBLIC_APP_URL` to the final https address, then redeploy once so the Telegram webhook address is right.
 
 ## 5. First staff login
